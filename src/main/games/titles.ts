@@ -1,4 +1,4 @@
-import { basename, extname } from 'node:path'
+import { extname } from 'node:path'
 
 /** "hollow_knight" → "Hollow Knight", "DeadCells" → "Dead Cells", "doom-x64" → "Doom". */
 export function prettifyName(name: string): string {
@@ -15,7 +15,9 @@ export function prettifyName(name: string): string {
 
 /** "D:\Games\hollow_knight\hollow_knight.exe" → "Hollow Knight". */
 export function titleFromExecutable(path: string): string {
-  return prettifyName(basename(path, extname(path)))
+  // Both separators, whatever the host: a Windows path also reads right under Linux.
+  const file = path.split(/[\\/]/).pop() ?? path
+  return prettifyName(file.slice(0, file.length - extname(file).length))
 }
 
 /**

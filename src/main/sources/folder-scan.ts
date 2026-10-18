@@ -1,6 +1,6 @@
 import type { Dirent } from 'node:fs'
 import { readdir, stat } from 'node:fs/promises'
-import { basename, extname, join, relative, sep } from 'node:path'
+import { basename, extname, join, posix, win32 } from 'node:path'
 import { normalizeTitle, prettifyName } from '../games/titles'
 
 // Scan of user-chosen folders for standalone games: one game per sub-folder, the best
@@ -161,11 +161,18 @@ export async function scanFolder(
   return findings
 }
 
-/** True when `child` is `parent` or inside it (case-insensitive on Windows/macOS). */
+/**
+ * True when `child` is `parent` or inside it. Windows paths (drive letter, UNC) are compared
+ * as such whatever the host, case-insensitively; others case-insensitively on macOS only.
+ */
 export function isInside(child: string, parent: string): boolean {
-  const caseless = process.platform !== 'linux'
+  const windows = /^([a-z]:[\\/]|\\\\)/i.test(parent)
+  const paths = windows ? win32 : posix
+  const caseless = windows || process.platform === 'darwin'
   const a = caseless ? child.toLowerCase() : child
   const b = caseless ? parent.toLowerCase() : parent
-  const rel = relative(b, a)
-  return rel === '' || (!rel.startsWith('..') && !rel.startsWith(sep) && !/^[a-z]:/i.test(rel))
+  const rel = paths.relative(b, a)
+  return (
+    rel === '' || (!rel.startsWith('..') && !rel.startsWith(paths.sep) && !/^[a-z]:/i.test(rel))
+  )
 }
