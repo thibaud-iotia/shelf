@@ -14,9 +14,15 @@ env:
   RELEASES_REPO: ${{ vars.RELEASES_REPO || github.repository }}
 
 jobs:
+  # Linux and Windows: without a system keyring (headless Linux) Shelf refuses to store API
+  # keys, with one (Windows) it stores them encrypted. The e2e cover both.
   checks:
-    name: Checks and tests
-    runs-on: ubuntu-latest
+    name: Checks and tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -27,23 +33,20 @@ jobs:
       # A tag must match package.json: the installer names come from its version.
       - name: Tag matches package.json
         if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
         run: test "$GITHUB_REF_NAME" = "v$(node -p "require('./package.json').version")"
       - run: npm run check
       - run: npm run format:check
-      # Electron needs a display on Linux, and safeStorage a keyring (API keys are never stored
-      # in clear): an unlocked GNOME keyring, as on a desktop session.
-      - run: sudo apt-get update -q && sudo apt-get install -yq gnome-keyring
-      - run: >
-          dbus-run-session -- sh -c
-          'echo -n "" | gnome-keyring-daemon --unlock --components=secrets > /dev/null &&
-          xvfb-run --auto-servernum npm run test:e2e'
-        env:
-          XDG_CURRENT_DESKTOP: GNOME
+      # Electron needs a display on Linux.
+      - if: runner.os == 'Linux'
+        run: xvfb-run --auto-servernum npm run test:e2e
+      - if: runner.os != 'Linux'
+        run: npm run test:e2e
       # Traces and screenshots of the failed tests only, kept a week.
       - uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: e2e-results
+          name: e2e-results-${{ matrix.os }}
           retention-days: 7
           path: test-results
           if-no-files-found: ignore

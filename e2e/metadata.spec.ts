@@ -1,10 +1,10 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { expect, NODE_PATH, stubOpenDialog, test } from './fixtures'
 
 const COVER = resolve('tests/fixtures/images/cover.png')
 
-test('API keys are stored encrypted and never shown back', async ({ page, userDataDir }) => {
+test('API keys are stored encrypted and never shown back', async ({ app, page, userDataDir }) => {
   await page.getByRole('button', { name: 'Réglages' }).click()
   // Mockup 08: the settings open on "Métadonnées".
   await expect(page.getByRole('heading', { name: 'Métadonnées et images' })).toBeVisible()
@@ -14,6 +14,17 @@ test('API keys are stored encrypted and never shown back', async ({ page, userDa
   await igdb.getByLabel('Client ID').fill('my-client-id-123')
   await igdb.getByLabel('Secret').fill('my-very-secret-value')
   await igdb.getByRole('button', { name: 'Enregistrer' }).click()
+
+  // No system keyring (headless Linux): refused with a clear message, nothing written in clear.
+  if (!(await app.evaluate(({ safeStorage }) => safeStorage.isEncryptionAvailable()))) {
+    await expect(page.getByTestId('toast-error')).toContainText('chiffrement du système')
+    await expect(page.getByTestId('keys-igdb-status')).toHaveText('non configuré')
+    expect(existsSync(join(userDataDir, 'secrets.json'))).toBe(false)
+    const db = readFileSync(join(userDataDir, 'shelf.db'))
+    expect(db.includes(Buffer.from('my-very-secret-value'))).toBe(false)
+    return
+  }
+
   await expect(page.getByTestId('keys-igdb-status')).toHaveText('✓ configuré')
   await expect(igdb.getByLabel('Secret')).toHaveValue('')
   await expect(
