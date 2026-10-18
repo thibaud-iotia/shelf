@@ -1,0 +1,26 @@
+# Packaging is finalised in Phase 6 (icons, CI). Auto-update stays disabled (personal use).
+appId: fr.perso.shelf
+productName: Shelf
+directories:
+  output: release
+  buildResources: build
+files:
+  - out/**
+  - package.json
+extraResources:
+  - from: drizzle
+    to: drizzle
+asarUnpack:
+  - node_modules/better-sqlite3/**
+win:
+  target: nsis
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+linux:
+  target: [AppImage, deb]
+  category: Game
+mac:
+  target: dmg
+  category: public.app-category.games
+publish: null

@@ -1,0 +1,98 @@
+@import 'tailwindcss';
+@import './styles/fonts.css';
+@import './styles/certflix-tokens.css';
+
+/* Tailwind utilities backed by the Certflix tokens. Semantic colors stay `inline`
+   so they follow .theme-dark / .theme-light scopes. */
+@theme {
+  --font-display: 'Space Grotesk', 'Segoe UI', system-ui, sans-serif;
+  --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', monospace;
+
+  --radius-xs: 6px;
+  --radius-sm: 10px;
+  --radius-md: 14px;
+  --radius-lg: 20px;
+  --radius-xl: 28px;
+  --radius-2xl: 36px;
+}
+
+@theme inline {
+  --color-page: var(--surface-page);
+  --color-raised: var(--surface-raised);
+  --color-card: var(--surface-card);
+  --color-card-hi: var(--surface-card-hi);
+  --color-inset: var(--surface-inset);
+  --color-overlay: var(--surface-overlay);
+
+  --color-line: var(--border);
+  --color-line-subtle: var(--border-subtle);
+  --color-line-strong: var(--border-strong);
+
+  --color-heading: var(--text-heading);
+  --color-body: var(--text-body);
+  --color-muted: var(--text-muted);
+
+  --color-brand: var(--brand);
+  --color-brand-subtle: var(--brand-subtle);
+  --color-accent: var(--accent);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-warning: var(--warning);
+  --color-warning-subtle: var(--warning-subtle);
+
+  --color-ink-950: var(--ink-950);
+  --color-ink-900: var(--ink-900);
+  --color-ink-850: var(--ink-850);
+  --color-ink-800: var(--ink-800);
+  --color-ink-700: var(--ink-700);
+  --color-ink-600: var(--ink-600);
+  --color-ink-500: var(--ink-500);
+  --color-ink-400: var(--ink-400);
+
+  --color-red-200: var(--red-200);
+  --color-red-300: var(--red-300);
+  --color-green-300: var(--green-300);
+  --color-amber-300: var(--amber-300);
+
+  --color-text-hi: var(--text-hi);
+  --color-text-mid: var(--text-mid);
+  --color-text-lo: var(--text-lo);
+
+  --shadow-glow-brand: var(--glow-brand);
+  --shadow-glow-accent: var(--glow-accent);
+}
+
+@utility bg-grad-brand {
+  background: var(--grad-brand);
+}
+@utility bg-grad-hero {
+  background: var(--grad-hero);
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--surface-page);
+    color: var(--text-body);
+    font-family: var(--font-body);
+    font-size: var(--fs-body-sm);
+    -webkit-font-smoothing: antialiased;
+    user-select: none;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+  }
+
+  input,
+  textarea {
+    user-select: text;
+  }
+}

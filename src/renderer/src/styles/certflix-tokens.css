@@ -1,0 +1,291 @@
+/* Certflix design system tokens — extracted verbatim from design/Maquettes Bibliothèque.html (_ds/certflix-design-system/tokens). Do not edit by hand; app overrides go in app.css. */
+
+:root {
+  /* ---- Base palette: brand red ("Certflix Red") ---- */
+  --red-50:  #FFE9ED;
+  --red-100: #FFC9D2;
+  --red-200: #FF9AAA;
+  --red-300: #FF6E83;
+  --red-400: #FF3D57;   /* signature */
+  --red-500: #F5254A;
+  --red-600: #D6153A;
+  --red-700: #A50E2C;
+
+  /* ---- Certified green (pass / success / momentum) ---- */
+  --green-50:  #DFF9EF;
+  --green-100: #A6EFD3;
+  --green-200: #5FE3B3;
+  --green-300: #12D18E;   /* signature success */
+  --green-400: #0BB77C;
+  --green-500: #089164;
+  --green-600: #066B4A;
+
+  /* ---- Supporting accents ---- */
+  --amber-300: #FFC24B;   /* in-progress / warning */
+  --amber-400: #F5A623;
+  --blue-300:  #4C8DFF;   /* info / links on light */
+  --violet-300:#8B7BFF;   /* decorative accent */
+
+  /* ---- Ink: cool near-black surface ramp (dark theme) ---- */
+  --ink-950: #08080C;   /* page base */
+  --ink-900: #0B0B12;
+  --ink-850: #12121C;   /* elevated surface */
+  --ink-800: #191926;   /* card */
+  --ink-700: #232333;   /* raised card / hover */
+  --ink-600: #2E2E42;   /* border strong */
+  --ink-500: #3B3B52;   /* border */
+  --ink-400: #565676;   /* disabled fg */
+
+  /* ---- Neutral gray ramp (light theme + text) ---- */
+  --gray-0:   #FFFFFF;
+  --gray-50:  #F7F7FB;
+  --gray-100: #EFEFF5;
+  --gray-200: #E2E2EC;
+  --gray-300: #CBCBD9;
+  --gray-400: #A5A5BA;
+  --gray-500: #7C7C95;
+  --gray-600: #5A5A72;
+  --gray-700: #3F3F54;
+  --gray-800: #262635;
+  --gray-900: #14141C;
+
+  /* ---- Text ramp on dark ---- */
+  --white:    #FFFFFF;
+  --text-hi:  #F4F4F8;   /* headings on dark */
+  --text-mid: #B6B6C8;   /* body on dark */
+  --text-lo:  #7E7E96;   /* muted on dark */
+
+  /* =========================================================
+     SEMANTIC ALIASES — default = DARK theme
+     ========================================================= */
+  --brand:            var(--red-400);
+  --brand-hover:      var(--red-300);
+  --brand-press:      var(--red-500);
+  --brand-subtle:     rgba(245, 37, 74, 0.08);
+  --brand-on:         #FFFFFF;
+
+  --accent:           var(--green-400);
+  --accent-hover:     var(--green-300);
+  --accent-subtle:    rgba(11, 183, 124, 0.12);
+
+  /* DEFAULT = LIGHT theme (white-based) */
+  --surface-page:     var(--gray-50);
+  --surface-raised:   var(--gray-0);
+  --surface-card:     var(--gray-0);
+  --surface-card-hi:  var(--gray-50);
+  --surface-inset:    var(--gray-100);
+  --surface-overlay:  rgba(20, 20, 28, 0.45);
+
+  --border:           var(--gray-200);
+  --border-subtle:    var(--gray-100);
+  --border-strong:    var(--gray-300);
+
+  --text-body:        var(--gray-700);
+  --text-heading:     var(--gray-900);
+  --text-muted:       var(--gray-500);
+  --text-inverse:     var(--white);
+  --text-link:        var(--red-500);
+  --text-link-hover:  var(--red-600);
+
+  --focus-ring:       rgba(245, 37, 74, 0.45);
+
+  /* Status */
+  --success:      var(--green-400);
+  --success-subtle: var(--green-50);
+  --warning:      var(--amber-400);
+  --warning-subtle: rgba(245, 166, 35, 0.14);
+  --danger:       var(--red-400);
+  --danger-subtle: rgba(255, 61, 87, 0.12);
+  --info:         var(--blue-300);
+  --info-subtle:  rgba(76, 141, 255, 0.14);
+
+  /* Cloud-provider brand chips (for cert content) */
+  --gcp:   #4285F4;
+  --aws:   #FF9900;
+  --azure: #0089D6;
+}
+
+/* =========================================================
+   LIGHT THEME alias — light is already the default in :root,
+   but class="theme-light" is kept so it can re-assert light
+   inside a dark-scoped region.
+   ========================================================= */
+.theme-light {
+  --surface-page:     var(--gray-50);
+  --surface-raised:   var(--gray-0);
+  --surface-card:     var(--gray-0);
+  --surface-card-hi:  var(--gray-50);
+  --surface-inset:    var(--gray-100);
+  --surface-overlay:  rgba(20, 20, 28, 0.45);
+  --border:           var(--gray-200);
+  --border-subtle:    var(--gray-100);
+  --border-strong:    var(--gray-300);
+  --text-body:        var(--gray-700);
+  --text-heading:     var(--gray-900);
+  --text-muted:       var(--gray-500);
+  --text-link:        var(--red-500);
+  --text-link-hover:  var(--red-600);
+  --brand:            var(--red-500);
+  --brand-subtle:     rgba(245, 37, 74, 0.08);
+  --accent:           var(--green-400);
+  --accent-subtle:    rgba(11, 183, 124, 0.12);
+  --success:          var(--green-400);
+}
+
+/* =========================================================
+   DARK THEME — apply via <body class="theme-dark"> or any scope.
+   The original dark, energetic surface for marketing / hero moments.
+   ========================================================= */
+.theme-dark {
+  --brand:            var(--red-400);
+  --brand-hover:      var(--red-300);
+  --brand-press:      var(--red-500);
+  --brand-subtle:     rgba(255, 61, 87, 0.12);
+
+  --accent:           var(--green-300);
+  --accent-hover:     var(--green-200);
+  --accent-subtle:    rgba(18, 209, 142, 0.14);
+
+  --surface-page:     var(--ink-950);
+  --surface-raised:   var(--ink-850);
+  --surface-card:     var(--ink-800);
+  --surface-card-hi:  var(--ink-700);
+  --surface-inset:    var(--ink-900);
+  --surface-overlay:  rgba(8, 8, 12, 0.72);
+
+  --border:           var(--ink-500);
+  --border-subtle:    var(--ink-600);
+  --border-strong:    var(--ink-400);
+
+  --text-body:        var(--text-mid);
+  --text-heading:     var(--text-hi);
+  --text-muted:       var(--text-lo);
+  --text-link:        var(--red-300);
+  --text-link-hover:  var(--red-200);
+  --focus-ring:       rgba(255, 61, 87, 0.55);
+
+  --success:          var(--green-300);
+  --success-subtle:   var(--green-50);
+}
+:root {
+  --font-display: "Space Grotesk", "Segoe UI", system-ui, sans-serif;
+  --font-body:    "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  --font-mono:    "JetBrains Mono", ui-monospace, "SF Mono", monospace;
+
+  /* Type scale (rem-ish, in px for clarity) — 1.20 minor-third-ish */
+  --fs-display-2xl: 72px;   /* hero */
+  --fs-display-xl:  56px;
+  --fs-display-lg:  44px;
+  --fs-h1:          36px;
+  --fs-h2:          28px;
+  --fs-h3:          22px;
+  --fs-h4:          18px;
+  --fs-body-lg:     18px;
+  --fs-body:        16px;
+  --fs-body-sm:     14px;
+  --fs-caption:     13px;
+  --fs-micro:       11px;
+
+  /* Weights */
+  --fw-light:    300; /* @kind other */
+  --fw-regular:  400; /* @kind other */
+  --fw-medium:   500; /* @kind other */
+  --fw-semibold: 600; /* @kind other */
+  --fw-bold:     700; /* @kind other */
+
+  /* Line heights */
+  --lh-tight:   1.05; /* @kind other */
+  --lh-snug:    1.2; /* @kind other */
+  --lh-normal:  1.5; /* @kind other */
+  --lh-relaxed: 1.65; /* @kind other */
+
+  /* Letter spacing */
+  --ls-tight:  -0.02em; /* @kind other */
+  --ls-snug:   -0.01em; /* @kind other */
+  --ls-normal: 0; /* @kind other */
+  --ls-wide:   0.04em; /* @kind other */
+  --ls-caps:   0.08em; /* @kind other */
+}
+:root {
+  --space-0:   0;
+  --space-1:   4px;
+  --space-2:   8px;
+  --space-3:   12px;
+  --space-4:   16px;
+  --space-5:   20px;
+  --space-6:   24px;
+  --space-8:   32px;
+  --space-10:  40px;
+  --space-12:  48px;
+  --space-16:  64px;
+  --space-20:  80px;
+  --space-24:  96px;
+  --space-32:  128px;
+
+  /* Radius — friendly, generously rounded */
+  --radius-xs:  6px;
+  --radius-sm:  10px;
+  --radius-md:  14px;
+  --radius-lg:  20px;
+  --radius-xl:  28px;
+  --radius-2xl: 36px;
+  --radius-pill: 999px;
+
+  /* Content widths */
+  --width-prose:   680px;
+  --width-content: 1120px;
+  --width-wide:    1360px;
+
+  /* Control heights */
+  --control-sm: 34px;
+  --control-md: 42px;
+  --control-lg: 52px;
+}
+:root {
+  /* Shadows — soft, cool-tinted for dark UI depth */
+  --shadow-xs:  0 1px 2px rgba(0, 0, 0, 0.30);
+  --shadow-sm:  0 2px 8px rgba(0, 0, 0, 0.32);
+  --shadow-md:  0 8px 24px rgba(0, 0, 0, 0.38);
+  --shadow-lg:  0 18px 48px rgba(0, 0, 0, 0.46);
+  --shadow-xl:  0 32px 80px rgba(0, 0, 0, 0.55);
+
+  /* Colored glow — brand focus / featured elements */
+  --glow-brand: 0 8px 32px rgba(255, 61, 87, 0.35);
+  --glow-accent: 0 8px 32px rgba(18, 209, 142, 0.30);
+
+  /* Signature gradients */
+  --grad-brand: linear-gradient(135deg, #FF5A70 0%, #F5254A 100%); /* @kind color */
+  --grad-accent: linear-gradient(135deg, #2FE3A6 0%, #0BB77C 100%); /* @kind color */
+  --grad-ember: linear-gradient(120deg, #FF3D57 0%, #FF7A3D 55%, #FFC24B 100%); /* @kind color */
+  --grad-hero: radial-gradient(120% 120% at 100% 0%, rgba(255,61,87,0.20) 0%, rgba(8,8,12,0) 55%),
+               radial-gradient(100% 100% at 0% 100%, rgba(18,209,142,0.12) 0%, rgba(8,8,12,0) 50%); /* @kind color */
+  --grad-surface: linear-gradient(180deg, rgba(255,255,255,0.04) 0%, rgba(255,255,255,0) 100%);
+
+  /* Motion — snappy, springy but restrained */
+  --ease-out:   cubic-bezier(0.22, 1, 0.36, 1); /* @kind other */
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1); /* @kind other */
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1); /* @kind other */
+  --dur-fast:   120ms; /* @kind other */
+  --dur-base:   200ms; /* @kind other */
+  --dur-slow:   360ms; /* @kind other */
+}
+:root {
+  color-scheme: light;
+  --selection-bg: rgba(255, 61, 87, 0.24);
+}
+.theme-dark {
+  color-scheme: dark;
+}
+
+a {
+  color: var(--text-link);
+  text-decoration: none;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+a:hover {
+  color: var(--text-link-hover);
+}
+
+::selection {
+  background: var(--selection-bg);
+}
