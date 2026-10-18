@@ -48,8 +48,10 @@ function SideCard({ game, children }: { game: Game; children?: ReactNode }) {
         {formatPlaytime(game.playtimeSec)}
       </b>
       {game.externalPlaytimeMin !== null && (
-        <span data-testid="external-playtime" className="text-[13px] text-text-lo">
-          {SOURCE_LABELS[game.source]} : {formatPlaytime(game.externalPlaytimeMin * 60)}
+        <span data-testid="playtime-origin" className="text-[13px] text-text-lo">
+          Selon {SOURCE_LABELS[game.source]}
+          {game.localPlaytimeSec > 0 &&
+            ` · dont ${formatPlaytime(game.localPlaytimeSec)} lancé hors ${SOURCE_LABELS[game.source]}`}
         </span>
       )}
       <Label>DERNIÈRE SESSION</Label>

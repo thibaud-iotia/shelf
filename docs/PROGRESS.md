@@ -19,7 +19,7 @@ Journal de bord : état de chaque phase, décisions prises, points ouverts.
 Phases 1 à 6 réalisées d'une traite à la demande de l'utilisateur (« fais toutes les phases d'un
 coup, je veux voir le résultat final »), un commit par phase, toutes fusionnées dans `main`.
 
-Bilan des tests : 113 unitaires, 24 e2e (+ 1 test de fumée de l'app packagée).
+Bilan des tests : 114 unitaires, 24 e2e (+ 1 test de fumée de l'app packagée).
 
 ## Phase 0 — Squelette
 
@@ -80,6 +80,14 @@ Bilan des tests : 113 unitaires, 24 e2e (+ 1 test de fumée de l'app packagée).
 - Renderer minifié (350 kB au lieu de 900 kB). Workflow GitHub Actions (check, e2e, installeurs) optionnel.
 - Installeur Windows vérifié localement : `release/Shelf-0.1.0-win-x64.exe` ; test de fumée de l'app packagée vert.
 
+## Retours après le premier jet
+
+- Temps de jeu : celui du launcher fait foi (retour : « mets que celui de Steam ou Epic »). Total =
+  temps du compte (Steam `playtime_forever`, GOG Galaxy `GameTimes`) + sessions mesurées par Shelf.
+  Pas de double compte : un lancement par URI (`steam://`, Epic) n'ouvre jamais de session Shelf, et
+  Galaxy ne voit pas un exécutable GOG lancé directement par Shelf. Fiche : « Selon Steam ».
+  Epic (Legendary) et itch n'exposent pas de temps : seul le temps mesuré par Shelf compte.
+
 ## Décisions et écarts au plan
 
 - `GameSource.launch()` n'existe pas : le lancement est décidé par `launch/plan.ts` depuis la ligne en base
@@ -93,7 +101,8 @@ Bilan des tests : 113 unitaires, 24 e2e (+ 1 test de fumée de l'app packagée).
 ## Points ouverts
 
 - macOS et Linux non testés sur machine réelle (code et CI prêts) ; dmg non signé.
-- Steam ne permet pas de mesurer la durée des sessions lancées via `steam://` (temps Steam affiché à la place).
+- Steam ne permet pas de mesurer la durée des sessions lancées via `steam://` : le temps vient du compte, à jour après synchro.
+- Temps Epic non récupéré (Legendary ne l'expose pas).
 - Polices : sous-ensemble latin uniquement.
 - Thème clair non exposé (le DS le fournit, l'UI utilise les tokens sombres).
 - Synchro GOG option B et Legendary non testées contre les vrais services (fixtures uniquement).

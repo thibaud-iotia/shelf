@@ -120,6 +120,8 @@ export function toGame(
     addedAt: row.addedAt.getTime(),
     lastSyncedAt: row.lastSyncedAt?.getTime() ?? null,
     ...stats,
+    playtimeSec: (row.externalPlaytimeMin ?? 0) * 60 + stats.playtimeSec,
+    localPlaytimeSec: stats.playtimeSec,
     externalPlaytimeMin: row.externalPlaytimeMin,
     tags: gameTagNames,
     collectionIds,

@@ -26,9 +26,15 @@ export interface Game {
   hidden: boolean
   addedAt: number
   lastSyncedAt: number | null
-  /** Time measured locally by Shelf. */
+  /**
+   * Total playtime: the launcher's figure (Steam `playtime_forever`, GOG Galaxy) plus the
+   * sessions Shelf measured itself. Launcher launches (`steam://`…) are never measured by
+   * Shelf, so nothing is counted twice.
+   */
   playtimeSec: number
-  /** Time reported by the launcher account (Steam `playtime_forever`), kept separate. */
+  /** Part measured by Shelf (launched executables). */
+  localPlaytimeSec: number
+  /** Time reported by the launcher account, null when it exposes none. */
   externalPlaytimeMin: number | null
   lastPlayedAt: number | null
   lastSessionSec: number | null

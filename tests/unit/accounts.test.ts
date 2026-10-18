@@ -16,6 +16,7 @@ import {
 } from '../../src/main/accounts/steam'
 import { openDatabase, type DatabaseHandle } from '../../src/main/db/client'
 import { games } from '../../src/main/db/schema'
+import { closeSession, listGames, openSession } from '../../src/main/games/repository'
 import { assertAllowed, requestJson } from '../../src/main/net/http'
 import { SecretStore } from '../../src/main/secrets/store'
 import { apiFixture, fakeCipher, fakeFetch, json, MIGRATIONS, tempDir } from './helpers'
@@ -161,10 +162,20 @@ describe('GOG', () => {
       INSERT INTO GamePieces VALUES ('gog_42', 2, 1, '{"title":"Original Only"}');
     `)
     db.close()
-    expect(readGalaxyOwned(file).sort((a, b) => a.sourceId.localeCompare(b.sourceId))).toEqual([
+    const owned = () => readGalaxyOwned(file).sort((a, b) => a.sourceId.localeCompare(b.sourceId))
+    expect(owned()).toEqual([
       { source: 'gog', sourceId: '1207658924', title: 'Unreal Tournament 2004' },
       { source: 'gog', sourceId: '42', title: 'Original Only' }
     ])
+
+    // Newer databases also keep the time played through Galaxy.
+    const withTimes = new Database(file)
+    withTimes.exec(`
+      CREATE TABLE GameTimes (userId INTEGER, releaseKey TEXT, minutesInGame INTEGER, lastSessionEnd INTEGER);
+      INSERT INTO GameTimes VALUES (1, 'gog_1207658924', 95, 0), (1, 'steam_620', 30, 0);
+    `)
+    withTimes.close()
+    expect(owned().map((g) => g.playtimeMin)).toEqual([95, 0])
     await expect(gogGalaxyProvider(() => []).connect({})).rejects.toThrow(/GOG Galaxy introuvable/)
   })
 
@@ -279,6 +290,21 @@ describe('AccountService', () => {
       ['Hades', 'installed', 2535],
       ['Portal 2', 'not_installed', 10]
     ])
+  })
+
+  it('shows the launcher playtime, plus what Shelf measured outside of it', () => {
+    upsertOwned(
+      handle.db,
+      [{ source: 'gog', sourceId: '1', title: 'UT', playtimeMin: 120 }],
+      new Date()
+    )
+    const ut = listGames(handle.db)[0]!
+    expect(ut).toMatchObject({ playtimeSec: 7200, localPlaytimeSec: 0, externalPlaytimeMin: 120 })
+
+    // Executable launched by Shelf: the launcher never sees it, the times add up.
+    const t0 = new Date('2026-10-18T20:00:00Z')
+    closeSession(handle.db, openSession(handle.db, ut.id, t0), new Date(t0.getTime() + 600_000))
+    expect(listGames(handle.db)[0]).toMatchObject({ playtimeSec: 7800, localPlaytimeSec: 600 })
   })
 
   it('connects, syncs, stores the key in the vault only, disconnects', async () => {

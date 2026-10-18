@@ -34,10 +34,26 @@ export function readGalaxyOwned(file: string): OwnedGame[] {
       else entry.title = title
       titles.set(row.releaseKey, entry)
     }
+    // Time played through Galaxy (absent from older databases).
+    const minutes = new Map<string, number>()
+    const hasTimes = db
+      .prepare(`SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'GameTimes'`)
+      .get()
+    if (hasTimes) {
+      const times = db
+        .prepare(
+          `SELECT releaseKey, sum(minutesInGame) AS minutes FROM GameTimes
+           WHERE releaseKey LIKE 'gog\\_%' ESCAPE '\\' GROUP BY releaseKey`
+        )
+        .all() as { releaseKey: string; minutes: number | null }[]
+      for (const t of times) minutes.set(t.releaseKey, t.minutes ?? 0)
+    }
+
     return [...titles.entries()].map(([key, t]) => ({
       source: 'gog' as const,
       sourceId: key.slice('gog_'.length),
-      title: t.title ?? t.original!
+      title: t.title ?? t.original!,
+      ...(hasTimes ? { playtimeMin: minutes.get(key) ?? 0 } : {})
     }))
   } finally {
     db.close()

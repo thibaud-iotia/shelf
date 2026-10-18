@@ -7,7 +7,7 @@ export interface OwnedGame {
   source: GameSourceId
   sourceId: string
   title: string
-  /** Launcher-side playtime (Steam `playtime_forever`), when the API exposes it. */
+  /** Launcher-side playtime (Steam `playtime_forever`, GOG Galaxy `GameTimes`), when exposed. */
   playtimeMin?: number | null
 }
 

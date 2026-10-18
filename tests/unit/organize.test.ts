@@ -47,6 +47,7 @@ function game(partial: Partial<Game> & { id: number; title: string }): Game {
     addedAt: 0,
     lastSyncedAt: null,
     playtimeSec: 0,
+    localPlaytimeSec: 0,
     externalPlaytimeMin: null,
     lastPlayedAt: null,
     lastSessionSec: null,
