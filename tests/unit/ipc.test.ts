@@ -1,10 +1,19 @@
 import { describe, expect, it } from 'vitest'
 import { AppError, toSerializedError } from '../../src/shared/errors'
-import { IPC_CHANNELS, isIpcChannel } from '../../src/shared/ipc'
+import { IPC_CHANNELS, isIpcChannel, isIpcEvent } from '../../src/shared/ipc'
 
 describe('ipc contract', () => {
-  it('lists every declared channel', () => {
-    expect(IPC_CHANNELS).toEqual(['app:ping', 'app:info'])
+  it('lists every declared channel once, as domain:action', () => {
+    expect(IPC_CHANNELS).toContain('app:ping')
+    expect(IPC_CHANNELS).toContain('games:launch')
+    expect(new Set(IPC_CHANNELS).size).toBe(IPC_CHANNELS.length)
+    for (const channel of IPC_CHANNELS) expect(channel).toMatch(/^[a-z]+:[a-zA-Z]+$/)
+  })
+
+  it('whitelists main-process events', () => {
+    expect(isIpcEvent('games:running')).toBe(true)
+    expect(isIpcEvent('library:changed')).toBe(true)
+    expect(isIpcEvent('constructor')).toBe(false)
   })
 
   it('rejects unknown or inherited channel names', () => {

@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { expect, test } from './fixtures'
 import pkg from '../package.json'
+import journal from '../drizzle/meta/_journal.json'
 
 test('opens a single window titled "Shelf"', async ({ app, page }) => {
   expect(app.windows()).toHaveLength(1)
@@ -38,7 +39,7 @@ test('unknown IPC channel is rejected by the preload', async ({ page }) => {
 test('database is created in userData with migrations applied', async ({ page, userDataDir }) => {
   await page.getByRole('button', { name: 'Réglages' }).click()
   await expect(page.getByTestId('ipc-status')).toHaveText('✓ IPC connecté')
-  await expect(page.getByTestId('applied-migrations')).toHaveText('1')
+  await expect(page.getByTestId('applied-migrations')).toHaveText(String(journal.entries.length))
   await expect(page.getByTestId('app-version')).toHaveText(pkg.version)
   expect(existsSync(join(userDataDir, 'shelf.db'))).toBe(true)
 })

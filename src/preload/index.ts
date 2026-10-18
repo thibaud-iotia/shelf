@@ -1,5 +1,5 @@
-import { contextBridge, ipcRenderer } from 'electron'
-import { isIpcChannel, type ShelfApi } from '../shared/ipc'
+import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
+import { EVENT_CHANNEL, isIpcChannel, isIpcEvent, type ShelfApi } from '../shared/ipc'
 
 const api: ShelfApi = {
   invoke(channel, ...args) {
@@ -10,6 +10,15 @@ const api: ShelfApi = {
       })
     }
     return ipcRenderer.invoke(channel, ...args)
+  },
+
+  on(event, listener) {
+    if (!isIpcEvent(event)) throw new Error(`Unknown event: ${String(event)}`)
+    const wrapped = (_: IpcRendererEvent, name: unknown, payload: unknown) => {
+      if (name === event) listener(payload as Parameters<typeof listener>[0])
+    }
+    ipcRenderer.on(EVENT_CHANNEL, wrapped)
+    return () => ipcRenderer.removeListener(EVENT_CHANNEL, wrapped)
   }
 }
 

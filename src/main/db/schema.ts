@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm'
 import { index, integer, primaryKey, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 import { GAME_SOURCES, INSTALL_STATES, OWNERSHIPS } from '../../shared/domain'
+import type { AccountKind, SmartRules } from '../../shared/models'
 
 const now = sql`(unixepoch() * 1000)`
 
@@ -19,9 +20,17 @@ export const games = sqliteTable(
     launchArgs: text('launch_args'),
     coverPath: text('cover_path'),
     heroPath: text('hero_path'),
+    logoPath: text('logo_path'),
+    // JSON array of file names in the covers cache.
+    screenshots: text('screenshots', { mode: 'json' }).$type<string[]>(),
     description: text('description'),
     releaseDate: text('release_date'),
+    developer: text('developer'),
+    genres: text('genres', { mode: 'json' }).$type<string[]>(),
     igdbId: integer('igdb_id'),
+    externalPlaytimeMin: integer('external_playtime_min'),
+    savePath: text('save_path'),
+    useRunner: integer('use_runner', { mode: 'boolean' }).notNull().default(false),
     favorite: integer('favorite', { mode: 'boolean' }).notNull().default(false),
     hidden: integer('hidden', { mode: 'boolean' }).notNull().default(false),
     addedAt: integer('added_at', { mode: 'timestamp_ms' }).notNull().default(now),
@@ -34,12 +43,14 @@ export const accounts = sqliteTable(
   'accounts',
   {
     id: text('id').primaryKey(),
+    kind: text('kind').$type<AccountKind>().notNull().default('steam'),
     source: text('source', { enum: GAME_SOURCES }).notNull(),
     displayName: text('display_name').notNull(),
     externalUserId: text('external_user_id').notNull(),
     // Key of the secret stored through safeStorage — never the secret itself.
     credentialsRef: text('credentials_ref'),
-    lastSyncAt: integer('last_sync_at', { mode: 'timestamp_ms' })
+    lastSyncAt: integer('last_sync_at', { mode: 'timestamp_ms' }),
+    lastError: text('last_error')
   },
   (t) => [uniqueIndex('accounts_source_external_unique').on(t.source, t.externalUserId)]
 )
@@ -79,6 +90,8 @@ export const gameTags = sqliteTable(
 export const collections = sqliteTable('collections', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   name: text('name').notNull().unique(),
+  // Smart collection criteria (JSON SmartRules); null = manual collection.
+  rules: text('rules', { mode: 'json' }).$type<SmartRules>(),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull().default(now)
 })
 

@@ -8,3 +8,17 @@ export type Ownership = (typeof OWNERSHIPS)[number]
 
 export const INSTALL_STATES = ['installed', 'not_installed', 'unknown'] as const
 export type InstallState = (typeof INSTALL_STATES)[number]
+
+export const SOURCE_LABELS: Record<GameSourceId, string> = {
+  steam: 'Steam',
+  epic: 'Epic',
+  gog: 'GOG',
+  itch: 'itch.io',
+  manual: 'Manuel'
+}
+
+export const INSTALL_STATE_LABELS: Record<InstallState, string> = {
+  installed: 'installé',
+  not_installed: 'non installé',
+  unknown: 'état inconnu'
+}

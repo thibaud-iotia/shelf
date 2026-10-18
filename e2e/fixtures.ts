@@ -44,3 +44,28 @@ export const test = base.extend<Fixtures>({
 })
 
 export { expect } from '@playwright/test'
+
+/** Makes the next native "open" dialogs return `paths` (one per call, last one repeats). */
+export async function stubOpenDialog(app: ElectronApplication, ...paths: string[]): Promise<void> {
+  await app.evaluate(({ dialog }, queue) => {
+    const pending = [...queue]
+    dialog.showOpenDialog = (async () => {
+      const next = pending.length > 1 ? pending.shift()! : pending[0]!
+      return { canceled: false, filePaths: [next] }
+    }) as typeof dialog.showOpenDialog
+  }, paths)
+}
+
+/** Makes the next native "save" dialog return `path`. */
+export async function stubSaveDialog(app: ElectronApplication, path: string): Promise<void> {
+  await app.evaluate(({ dialog }, target) => {
+    dialog.showSaveDialog = (async () => ({
+      canceled: false,
+      filePath: target
+    })) as typeof dialog.showSaveDialog
+  }, path)
+}
+
+/** Stand-in game: `node fake-game.cjs <ms>` (see tests/fixtures). */
+export const FAKE_GAME_SCRIPT = resolve('tests/fixtures/fake-game.cjs')
+export const NODE_PATH = process.execPath

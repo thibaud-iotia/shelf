@@ -16,6 +16,8 @@ export const paths = {
   userData: (): string => app.getPath('userData'),
   database: (): string => join(app.getPath('userData'), 'shelf.db'),
   covers: (): string => join(app.getPath('userData'), 'covers'),
+  // Wine prefix handed to Proton for non-Steam .exe games (Linux).
+  protonPrefix: (): string => join(app.getPath('userData'), 'proton-prefix'),
   // Packaged: copied via electron-builder extraResources. Dev/e2e: repo root, relative to out/main.
   migrations: (): string =>
     app.isPackaged ? join(process.resourcesPath, 'drizzle') : join(__dirname, '../../drizzle'),
