@@ -1,51 +1,79 @@
 import { useMemo } from 'react'
-import type { Game } from '@shared/models'
+import { SOURCE_LABELS } from '@shared/domain'
 import { pluralize } from '@shared/format'
+import { filterGames } from '@shared/library'
+import type { Game } from '@shared/models'
 import { GameGrid } from '@renderer/components/game/GameGrid'
+import { GameList } from '@renderer/components/game/GameList'
+import { FilterBar } from '@renderer/components/library/FilterBar'
 import { Button } from '@renderer/components/ui/Button'
-import { usePlay, useStartScan } from '@renderer/lib/actions'
-import { useGames } from '@renderer/lib/queries'
+import { useGameContextMenu, usePlay, useStartScan } from '@renderer/lib/actions'
+import { useGames, useSettings } from '@renderer/lib/queries'
 import { useUiStore, type ListRoute } from '@renderer/stores/ui'
 
-const titles: Record<ListRoute['name'], string> = {
-  library: 'Bibliothèque',
-  favorites: 'Favoris',
-  recent: 'Récents',
-  source: 'Source'
-}
-
-function gamesFor(route: ListRoute, games: Game[]): Game[] {
-  const visible = games.filter((g) => !g.hidden)
+function routeTitle(route: ListRoute): string {
   switch (route.name) {
     case 'favorites':
-      return visible.filter((g) => g.favorite)
+      return 'Favoris'
     case 'recent':
-      return visible
-        .filter((g) => g.lastPlayedAt !== null)
-        .sort((a, b) => b.lastPlayedAt! - a.lastPlayedAt!)
+      return 'Récents'
     case 'source':
-      return visible.filter((g) => g.source === route.source)
+      return SOURCE_LABELS[route.source]
     default:
-      return visible
+      return 'Bibliothèque'
   }
 }
 
-// Mockup 01 — library header + cover grid.
+function gamesFor(route: ListRoute, games: Game[]): Game[] {
+  switch (route.name) {
+    case 'favorites':
+      return games.filter((g) => g.favorite)
+    case 'recent':
+      return games
+        .filter((g) => g.lastPlayedAt !== null)
+        .sort((a, b) => b.lastPlayedAt! - a.lastPlayedAt!)
+    case 'source':
+      return games.filter((g) => g.source === route.source)
+    default:
+      return games
+  }
+}
+
+// Mockup 01 — library header, filter bar and cover grid (or list).
 export function LibraryView({ route }: { route: ListRoute }) {
   const games = useGames()
+  const settings = useSettings()
   const navigate = useUiStore((s) => s.navigate)
   const openGameForm = useUiStore((s) => s.openGameForm)
+  const text = useUiStore((s) => s.filterText)
+  const install = useUiStore((s) => s.installFilter)
+  const favoritesOnly = useUiStore((s) => s.favoritesOnly)
+  const tag = useUiStore((s) => s.tagFilter)
+  const layout = useUiStore((s) => s.layout)
   const play = usePlay()
   const scan = useStartScan()
+  const contextMenu = useGameContextMenu()
 
-  const shown = useMemo(() => gamesFor(route, games.data ?? []), [route, games.data])
+  const showHidden = settings.data?.showHidden ?? false
+  const shown = useMemo(
+    () =>
+      filterGames(gamesFor(route, games.data ?? []), {
+        text,
+        install,
+        favoritesOnly,
+        tag,
+        showHidden
+      }),
+    [route, games.data, text, install, favoritesOnly, tag, showHidden]
+  )
   const total = games.data?.length ?? 0
+  const open = (game: Game) => navigate({ name: 'game', id: game.id })
 
   return (
     <section className="flex-1 min-w-0 flex flex-col gap-[18px] px-7 py-6">
       <header className="flex items-baseline gap-3">
         <h1 className="font-display font-bold text-[28px] tracking-[-.02em] text-text-hi">
-          {titles[route.name]}
+          {routeTitle(route)}
         </h1>
         <span data-testid="game-count" className="text-text-lo">
           {pluralize(shown.length, 'jeu', 'jeux')}
@@ -84,12 +112,24 @@ export function LibraryView({ route }: { route: ListRoute }) {
           </div>
         </div>
       ) : (
-        <GameGrid
-          games={shown}
-          coverSize="md"
-          onOpen={(game) => navigate({ name: 'game', id: game.id })}
-          onPlay={play}
-        />
+        <>
+          <FilterBar />
+          {shown.length === 0 ? (
+            <p data-testid="no-match" className="py-10 text-center text-text-lo">
+              Aucun jeu ne correspond à ces filtres.
+            </p>
+          ) : layout === 'list' ? (
+            <GameList games={shown} onOpen={open} onPlay={play} onContextMenu={contextMenu} />
+          ) : (
+            <GameGrid
+              games={shown}
+              coverSize={settings.data?.coverSize ?? 'md'}
+              onOpen={open}
+              onPlay={play}
+              onContextMenu={contextMenu}
+            />
+          )}
+        </>
       )}
     </section>
   )

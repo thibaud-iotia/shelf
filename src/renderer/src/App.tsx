@@ -1,10 +1,14 @@
 import { GameFormDialog } from '@renderer/components/game/GameFormDialog'
 import { Sidebar } from '@renderer/components/layout/Sidebar'
+import { CommandPalette } from '@renderer/components/library/CommandPalette'
+import { ContextMenu } from '@renderer/components/library/ContextMenu'
 import { TitleBar } from '@renderer/components/layout/TitleBar'
 import { Toasts } from '@renderer/components/ui/Toasts'
 import { useEffect } from 'react'
 import { useGames, useMainEvents, useSettings } from '@renderer/lib/queries'
+import { useGlobalShortcuts } from '@renderer/lib/shortcuts'
 import { useUiStore, type Route } from '@renderer/stores/ui'
+import { CollectionView } from '@renderer/views/CollectionView'
 import { GameDetailView } from '@renderer/views/GameDetailView'
 import { ImportView } from '@renderer/views/ImportView'
 import { LibraryView } from '@renderer/views/LibraryView'
@@ -19,6 +23,8 @@ function View({ route }: { route: Route }) {
       return <SettingsView section={route.section} />
     case 'import':
       return <ImportView />
+    case 'collection':
+      return <CollectionView key={route.id} id={route.id} />
     case 'onboarding':
       return <OnboardingView />
     case 'library':
@@ -45,6 +51,7 @@ function useFirstRun() {
 export function App() {
   useMainEvents()
   useFirstRun()
+  useGlobalShortcuts()
   const route = useUiStore((s) => s.route)
 
   return (
@@ -55,6 +62,8 @@ export function App() {
         <View route={route} />
       </main>
       <GameFormDialog />
+      <CommandPalette />
+      <ContextMenu />
       <Toasts />
     </div>
   )

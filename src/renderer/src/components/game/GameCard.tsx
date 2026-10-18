@@ -45,6 +45,7 @@ export function GameCard({
       <button
         type="button"
         data-card-button
+        aria-label={game.title}
         tabIndex={tabIndex}
         draggable
         onDragStart={(e) => {
@@ -63,7 +64,11 @@ export function GameCard({
           {game.title}
         </span>
         {game.favorite && (
-          <span aria-label="Favori" className="absolute top-2.5 right-3 text-red-300">
+          <span
+            aria-hidden
+            data-testid="favorite-mark"
+            className="absolute top-2.5 right-3 text-red-300"
+          >
             ♥
           </span>
         )}

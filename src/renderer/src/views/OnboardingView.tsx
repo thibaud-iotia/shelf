@@ -95,7 +95,7 @@ export function OnboardingView() {
   }
 
   return (
-    <section className="flex-1 min-h-full flex justify-center bg-grad-hero px-10 py-10">
+    <section className="flex-1 min-h-[calc(100%+var(--title-bar))] -mt-[var(--title-bar)] flex justify-center bg-grad-hero px-10 pt-[calc(var(--title-bar)+40px)] pb-10">
       <div className="w-full max-w-[860px] flex flex-col gap-8">
         <div className="flex items-center">
           <Stepper step={step} />

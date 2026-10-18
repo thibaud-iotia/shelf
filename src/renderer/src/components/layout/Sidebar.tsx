@@ -4,6 +4,7 @@ import type { Game } from '@shared/models'
 import { useGames } from '@renderer/lib/queries'
 import { useRunningStore } from '@renderer/stores/running'
 import { useUiStore, type Route } from '@renderer/stores/ui'
+import { SidebarCollections } from './SidebarCollections'
 
 // Mockup 01 — "navigation hybride" sidebar (248px, ink-900).
 
@@ -74,7 +75,7 @@ function RunningGames({ games }: { games: Game[] }) {
   )
 }
 
-export function Sidebar({ extra }: { extra?: ReactNode }) {
+export function Sidebar() {
   const games = useGames()
   const setPaletteOpen = useUiStore((s) => s.setPaletteOpen)
   const all = (games.data ?? []).filter((g) => !g.hidden)
@@ -126,7 +127,7 @@ export function Sidebar({ extra }: { extra?: ReactNode }) {
         </>
       )}
 
-      {extra}
+      <SidebarCollections games={games.data ?? []} />
 
       <div className="mt-auto pt-3 flex flex-col">
         <RunningGames games={games.data ?? []} />

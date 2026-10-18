@@ -8,6 +8,7 @@ import type {
   ApiKeysInput,
   AppSettings,
   CacheInfo,
+  Collection,
   ConnectInput,
   ConnectionTest,
   Game,
@@ -22,7 +23,9 @@ import type {
   PickedExecutable,
   ScanResult,
   SettingsView,
-  SyncReport
+  SmartRules,
+  SyncReport,
+  Tag
 } from './models'
 
 export interface ScanOptions {
@@ -62,6 +65,19 @@ export interface IpcChannels {
   'games:openFolder': { args: [id: number]; result: null }
   /** Opens the launcher's install page (owned, not installed). */
   'games:install': { args: [id: number]; result: null }
+
+  'tags:list': { args: []; result: Tag[] }
+  'tags:delete': { args: [id: number]; result: null }
+  'games:setTags': { args: [gameId: number, names: string[]]; result: Game }
+  'collections:list': { args: []; result: Collection[] }
+  'collections:create': { args: [name: string, rules?: SmartRules | null]; result: Collection }
+  'collections:update': {
+    args: [id: number, patch: { name?: string; rules?: SmartRules | null }]
+    result: Collection
+  }
+  'collections:delete': { args: [id: number]; result: null }
+  'collections:addGames': { args: [id: number, gameIds: number[]]; result: Collection }
+  'collections:removeGame': { args: [id: number, gameId: number]; result: Collection }
 
   'launchers:list': { args: []; result: LauncherStatus[] }
   'import:scan': { args: [options?: ScanOptions]; result: ScanResult }
@@ -114,6 +130,15 @@ const CHANNELS: Record<IpcChannel, true> = {
   'accounts:connect': true,
   'accounts:disconnect': true,
   'accounts:sync': true,
+  'tags:list': true,
+  'tags:delete': true,
+  'games:setTags': true,
+  'collections:list': true,
+  'collections:create': true,
+  'collections:update': true,
+  'collections:delete': true,
+  'collections:addGames': true,
+  'collections:removeGame': true,
   'launchers:list': true,
   'import:scan': true,
   'import:apply': true,

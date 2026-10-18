@@ -8,7 +8,8 @@ import type {
   ConnectInput,
   GameInput,
   GamePatch,
-  ImportDecision
+  ImportDecision,
+  SmartRules
 } from '@shared/models'
 import { useRunningStore } from '@renderer/stores/running'
 import { toast } from '@renderer/stores/toasts'
@@ -22,6 +23,8 @@ export const queryKeys = {
   settings: ['settings'] as const,
   launchers: ['launchers'] as const,
   accounts: ['games', 'accounts'] as const,
+  tags: ['games', 'tags'] as const,
+  collections: ['games', 'collections'] as const,
   metadataSearch: (title: string) => ['metadata', 'search', title] as const,
   cache: ['cache'] as const
 }
@@ -87,6 +90,50 @@ export function useOpenFolder() {
     mutationFn: (id: number) => call('games:openFolder', id),
     onError: (error) => toast.error(error)
   })
+}
+
+// Tags & collections (keys under 'games' so a library refresh updates them too)
+
+export function useTags() {
+  return useQuery({ queryKey: queryKeys.tags, queryFn: () => call('tags:list') })
+}
+
+export function useSetTags() {
+  return useLibraryMutation((gameId: number, names: string[]) =>
+    call('games:setTags', gameId, names)
+  )
+}
+
+export function useCollections() {
+  return useQuery({ queryKey: queryKeys.collections, queryFn: () => call('collections:list') })
+}
+
+export function useCreateCollection() {
+  return useLibraryMutation((name: string, rules?: SmartRules | null) =>
+    call('collections:create', name, rules ?? null)
+  )
+}
+
+export function useUpdateCollection() {
+  return useLibraryMutation((id: number, patch: { name?: string; rules?: SmartRules | null }) =>
+    call('collections:update', id, patch)
+  )
+}
+
+export function useDeleteCollection() {
+  return useLibraryMutation((id: number) => call('collections:delete', id))
+}
+
+export function useAddToCollection() {
+  return useLibraryMutation((id: number, gameIds: number[]) =>
+    call('collections:addGames', id, gameIds)
+  )
+}
+
+export function useRemoveFromCollection() {
+  return useLibraryMutation((id: number, gameId: number) =>
+    call('collections:removeGame', id, gameId)
+  )
 }
 
 // Settings

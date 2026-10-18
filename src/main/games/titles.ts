@@ -25,7 +25,7 @@ export function titleFromExecutable(path: string): string {
 export function normalizeTitle(title: string): string {
   return title
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\p{M}/gu, '')
     .toLowerCase()
     .replace(/[™®©]/g, '')
     .replace(/\b(the|a|an)\b/g, '')

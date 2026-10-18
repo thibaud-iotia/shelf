@@ -4,6 +4,7 @@ import { formatDay, formatLastSession, formatPlaytime, yearOf } from '@shared/fo
 import type { Game } from '@shared/models'
 import { heroGradient } from '@renderer/lib/artwork'
 import { MetadataDialog } from '@renderer/components/game/MetadataDialog'
+import { TagEditor } from '@renderer/components/game/TagEditor'
 import { Button } from '@renderer/components/ui/Button'
 import { Chip } from '@renderer/components/ui/Chip'
 import { usePlay } from '@renderer/lib/actions'
@@ -212,6 +213,7 @@ export function GameDetailView({ gameId }: { gameId: number }) {
               {game.description}
             </p>
           )}
+          <TagEditor game={game} />
           {game.screenshotUrls.length > 0 && (
             <div className="flex gap-3.5 mt-1.5 overflow-x-auto">
               {game.screenshotUrls.map((url) => (

@@ -1,4 +1,4 @@
-import { useCallback } from 'react'
+import { useCallback, type MouseEvent } from 'react'
 import type { Game } from '@shared/models'
 import type { ScanOptions } from '@shared/ipc'
 import { useImportStore } from '@renderer/stores/import'
@@ -54,4 +54,14 @@ export function useScanFolder() {
     if (folder) await run({ includeLaunchers: false, folders: [folder] })
   }, [run])
   return { pick, isPending }
+}
+
+/** Opens the context menu of mockup 07 at the pointer. */
+export function useGameContextMenu() {
+  const open = useUiStore((s) => s.openContextMenu)
+  const select = useUiStore((s) => s.select)
+  return (event: MouseEvent, game: Game) => {
+    select(game.id)
+    open({ gameId: game.id, x: event.clientX, y: event.clientY })
+  }
 }
