@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { basename, dirname, extname } from 'node:path'
+import { dirname } from 'node:path'
 import { and, desc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm'
 import { AppError } from '../../shared/errors'
 import type { Game, GameDetail, GameInput, GamePatch, PlaySession } from '../../shared/models'
@@ -186,20 +186,6 @@ export function getGameDetail(db: ShelfDatabase, id: number, sessionLimit = 20):
       durationSec: s.durationSec
     }))
   return { game, sessions }
-}
-
-/** "D:\Games\hollow_knight\hollow_knight.exe" → "Hollow Knight". */
-export function titleFromExecutable(path: string): string {
-  const name = basename(path, extname(path))
-  const words = name
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .replace(/[_.-]+/g, ' ')
-    .replace(/\b(x64|x86|win64|win32|64|32|bit)\b/gi, '')
-    .trim()
-    .split(/\s+/)
-    .filter(Boolean)
-  const title = words.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')
-  return title || name
 }
 
 export function createManualGame(db: ShelfDatabase, input: Required<GameInput>): Game {

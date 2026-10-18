@@ -9,9 +9,9 @@ import {
   getGameDetail,
   getGameRow,
   listGames,
-  titleFromExecutable,
   updateGame
 } from '../games/repository'
+import { titleFromExecutable } from '../games/titles'
 import { validateGameId, validateGameInput, validateGamePatch } from '../games/validation'
 import { buildLaunchPlan } from '../launch/plan'
 import { paths } from '../platform/paths'

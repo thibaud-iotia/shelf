@@ -9,3 +9,4 @@ playwright-report/
 package-lock.json
 src/renderer/src/styles/certflix-tokens.css
 .idea/
+tests/fixtures/

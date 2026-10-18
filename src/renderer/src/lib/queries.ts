@@ -1,6 +1,7 @@
 import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
-import type { GameInput, GamePatch } from '@shared/models'
+import type { ScanOptions } from '@shared/ipc'
+import type { AppSettings, GameInput, GamePatch, ImportDecision } from '@shared/models'
 import { useRunningStore } from '@renderer/stores/running'
 import { toast } from '@renderer/stores/toasts'
 import { call } from './ipc'
@@ -9,7 +10,9 @@ export const queryKeys = {
   ping: ['app', 'ping'] as const,
   appInfo: ['app', 'info'] as const,
   games: ['games'] as const,
-  game: (id: number) => ['games', id] as const
+  game: (id: number) => ['games', id] as const,
+  settings: ['settings'] as const,
+  launchers: ['launchers'] as const
 }
 
 export function usePing() {
@@ -65,6 +68,41 @@ export function useOpenFolder() {
     mutationFn: (id: number) => call('games:openFolder', id),
     onError: (error) => toast.error(error)
   })
+}
+
+// Settings
+
+export function useSettings() {
+  return useQuery({ queryKey: queryKeys.settings, queryFn: () => call('settings:get') })
+}
+
+export function useUpdateSettings() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (patch: Partial<AppSettings>) => call('settings:update', patch),
+    onSuccess: (view) => {
+      client.setQueryData(queryKeys.settings, view)
+      void client.invalidateQueries({ queryKey: queryKeys.launchers })
+    },
+    onError: (error) => toast.error(error)
+  })
+}
+
+// Detection & import
+
+export function useLaunchers() {
+  return useQuery({ queryKey: queryKeys.launchers, queryFn: () => call('launchers:list') })
+}
+
+export function useScan() {
+  return useMutation({
+    mutationFn: (options: ScanOptions = {}) => call('import:scan', options),
+    onError: (error) => toast.error(error)
+  })
+}
+
+export function useApplyImport() {
+  return useLibraryMutation((decisions: ImportDecision[]) => call('import:apply', decisions))
 }
 
 /** Keeps the renderer in sync with pushes from the main process. Mount once. */

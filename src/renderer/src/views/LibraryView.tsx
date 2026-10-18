@@ -3,7 +3,7 @@ import type { Game } from '@shared/models'
 import { pluralize } from '@shared/format'
 import { GameGrid } from '@renderer/components/game/GameGrid'
 import { Button } from '@renderer/components/ui/Button'
-import { usePlay } from '@renderer/lib/actions'
+import { usePlay, useStartScan } from '@renderer/lib/actions'
 import { useGames } from '@renderer/lib/queries'
 import { useUiStore, type ListRoute } from '@renderer/stores/ui'
 
@@ -36,6 +36,7 @@ export function LibraryView({ route }: { route: ListRoute }) {
   const navigate = useUiStore((s) => s.navigate)
   const openGameForm = useUiStore((s) => s.openGameForm)
   const play = usePlay()
+  const scan = useStartScan()
 
   const shown = useMemo(() => gamesFor(route, games.data ?? []), [route, games.data])
   const total = games.data?.length ?? 0
@@ -50,6 +51,14 @@ export function LibraryView({ route }: { route: ListRoute }) {
           {pluralize(shown.length, 'jeu', 'jeux')}
         </span>
         <span className="ml-auto self-center flex gap-2">
+          <Button
+            variant="secondary"
+            size="sm"
+            disabled={scan.isPending}
+            onClick={() => void scan.run()}
+          >
+            {scan.isPending ? 'Détection…' : 'Détecter les jeux'}
+          </Button>
           <Button size="sm" onClick={() => openGameForm({ mode: 'create' })}>
             + Ajouter un jeu
           </Button>
@@ -65,9 +74,14 @@ export function LibraryView({ route }: { route: ListRoute }) {
             Aucun jeu pour l’instant
           </div>
           <p className="max-w-md text-text-mid">
-            Ajoutez un jeu à la main en choisissant son exécutable.
+            Détectez les jeux de vos launchers et dossiers, ou ajoutez-en un à la main.
           </p>
-          <Button onClick={() => openGameForm({ mode: 'create' })}>Ajouter un jeu</Button>
+          <div className="flex gap-2.5">
+            <Button onClick={() => void scan.run()}>Détecter mes jeux</Button>
+            <Button variant="secondary" onClick={() => openGameForm({ mode: 'create' })}>
+              Ajouter un jeu
+            </Button>
+          </div>
         </div>
       ) : (
         <GameGrid

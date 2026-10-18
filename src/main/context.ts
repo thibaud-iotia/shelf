@@ -1,4 +1,5 @@
 import type { DatabaseHandle } from './db/client'
+import type { ImportService } from './import/service'
 import type { GameRunner } from './launch/runner'
 import type { SettingsStore } from './settings/store'
 
@@ -7,4 +8,5 @@ export interface AppContext {
   database: DatabaseHandle
   settings: SettingsStore
   runner: GameRunner
+  importer: ImportService
 }

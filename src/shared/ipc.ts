@@ -3,13 +3,26 @@
 
 import type { SerializedAppError } from './errors'
 import type {
+  AppSettings,
   Game,
   GameDetail,
   GameInput,
   GamePatch,
+  ImportDecision,
+  ImportReport,
+  LauncherStatus,
   LaunchResult,
-  PickedExecutable
+  PickedExecutable,
+  ScanResult,
+  SettingsView
 } from './models'
+
+export interface ScanOptions {
+  /** Default true. */
+  includeLaunchers?: boolean
+  /** Default: the folders saved in the settings. */
+  folders?: string[]
+}
 
 export interface PingResult {
   message: 'pong'
@@ -39,6 +52,14 @@ export interface IpcChannels {
   'games:launch': { args: [id: number]; result: LaunchResult }
   'games:running': { args: []; result: number[] }
   'games:openFolder': { args: [id: number]; result: null }
+
+  'launchers:list': { args: []; result: LauncherStatus[] }
+  'import:scan': { args: [options?: ScanOptions]; result: ScanResult }
+  'import:apply': { args: [decisions: ImportDecision[]]; result: ImportReport }
+  'import:pickFolder': { args: []; result: string | null }
+
+  'settings:get': { args: []; result: SettingsView }
+  'settings:update': { args: [patch: Partial<AppSettings>]; result: SettingsView }
 }
 
 export type IpcChannel = keyof IpcChannels
@@ -57,7 +78,13 @@ const CHANNELS: Record<IpcChannel, true> = {
   'games:pickExecutable': true,
   'games:launch': true,
   'games:running': true,
-  'games:openFolder': true
+  'games:openFolder': true,
+  'launchers:list': true,
+  'import:scan': true,
+  'import:apply': true,
+  'import:pickFolder': true,
+  'settings:get': true,
+  'settings:update': true
 }
 export const IPC_CHANNELS = Object.keys(CHANNELS) as IpcChannel[]
 

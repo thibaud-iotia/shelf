@@ -1,0 +1,10 @@
+{
+  "FormatVersion": 0,
+  "bIsIncompleteInstall": false,
+  "LaunchExecutable": "Celeste.exe",
+  "DisplayName": "Celeste",
+  "InstallLocation": "C:\\Program Files\\Epic Games\\Celeste",
+  "AppName": "Salt",
+  "MainGameAppName": "Salt",
+  "AppCategories": ["public", "games", "applications"]
+}

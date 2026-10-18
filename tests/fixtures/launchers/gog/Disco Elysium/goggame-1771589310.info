@@ -1,0 +1,9 @@
+{
+  "gameId": "1771589310",
+  "rootGameId": "1771589310",
+  "name": "Disco Elysium",
+  "playTasks": [
+    { "category": "document", "type": "FileTask", "path": "manual.pdf" },
+    { "category": "game", "isPrimary": true, "type": "FileTask", "path": "disco.exe" }
+  ]
+}

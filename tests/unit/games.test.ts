@@ -10,9 +10,9 @@ import {
   getGameDetail,
   listGames,
   openSession,
-  titleFromExecutable,
   updateGame
 } from '../../src/main/games/repository'
+import { normalizeTitle, titleFromExecutable } from '../../src/main/games/titles'
 import { validateGameInput, validateGamePatch } from '../../src/main/games/validation'
 import { SettingsStore } from '../../src/main/settings/store'
 
@@ -118,6 +118,12 @@ describe('titleFromExecutable', () => {
     ['C:\\Games\\Doom\\doom-x64.exe', 'Doom']
   ])('%s → %s', (path, title) => {
     expect(titleFromExecutable(path)).toBe(title)
+  })
+
+  it('normalizes titles for de-duplication', () => {
+    expect(normalizeTitle('DOOM (2016)™')).toBe(normalizeTitle('Doom 2016'))
+    expect(normalizeTitle('The Witcher 3: Wild Hunt')).toBe(normalizeTitle('Witcher 3 Wild Hunt'))
+    expect(normalizeTitle('Pokémon')).toBe('pokemon')
   })
 })
 

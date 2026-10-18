@@ -1,0 +1,12 @@
+HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\GOG.com\Games\1207658924
+    gameID    REG_SZ    1207658924
+    gameName    REG_SZ    Unreal Tournament 2004
+    exe    REG_SZ    C:\GOG Games\UT2004\System\UT2004.exe
+    path    REG_SZ    C:\GOG Games\UT2004
+    dependsOn    REG_SZ
+
+HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\GOG.com\Games\1207658925
+    gameID    REG_SZ    1207658925
+    gameName    REG_SZ    UT2004 Bonus Pack
+    path    REG_SZ    C:\GOG Games\UT2004
+    dependsOn    REG_SZ    1207658924

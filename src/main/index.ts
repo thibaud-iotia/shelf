@@ -4,9 +4,11 @@ import { openDatabase } from './db/client'
 import { broadcast } from './events'
 import { closeSession, discardUnfinishedSessions, openSession } from './games/repository'
 import { registerIpcHandlers } from './ipc/handlers'
+import { ImportService } from './import/service'
 import { GameRunner } from './launch/runner'
-import { applyUserDataOverride, paths } from './platform/paths'
+import { applyUserDataOverride, launcherLocations, paths } from './platform/paths'
 import { SettingsStore } from './settings/store'
+import { createSources } from './sources'
 import { createMainWindow } from './window'
 
 app.setName('Shelf')
@@ -30,7 +32,9 @@ function createContext(): AppContext {
   })
   runner.on('change', (ids) => broadcast('games:running', ids))
 
-  return { database, settings: new SettingsStore(db), runner }
+  const settings = new SettingsStore(db)
+  const importer = new ImportService(db, settings, createSources(launcherLocations))
+  return { database, settings, runner, importer }
 }
 
 if (!app.requestSingleInstanceLock()) {
@@ -51,6 +55,11 @@ if (!app.requestSingleInstanceLock()) {
       ctx = createContext()
       registerIpcHandlers(ctx)
       createMainWindow()
+      // Keep install states fresh: launcher games installed/removed while Shelf was closed.
+      void ctx.importer
+        .refreshInstalled()
+        .then((report) => report && broadcast('library:changed', { reason: 'refresh' }))
+        .catch((error: unknown) => console.warn('[startup] refresh failed', error))
 
       app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) createMainWindow()

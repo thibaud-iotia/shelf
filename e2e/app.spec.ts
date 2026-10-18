@@ -38,6 +38,7 @@ test('unknown IPC channel is rejected by the preload', async ({ page }) => {
 
 test('database is created in userData with migrations applied', async ({ page, userDataDir }) => {
   await page.getByRole('button', { name: 'Réglages' }).click()
+  await page.getByRole('button', { name: 'À propos' }).click()
   await expect(page.getByTestId('ipc-status')).toHaveText('✓ IPC connecté')
   await expect(page.getByTestId('applied-migrations')).toHaveText(String(journal.entries.length))
   await expect(page.getByTestId('app-version')).toHaveText(pkg.version)
