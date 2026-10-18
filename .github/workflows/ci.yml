@@ -1,6 +1,4 @@
-# Optional CI: checks, unit + e2e tests and installers for the three OSes.
-# Artifacts are attached to the run; nothing is published (auto-update disabled).
-name: build
+name: CI
 
 on:
   push:
@@ -9,13 +7,16 @@ on:
   pull_request:
   workflow_dispatch:
 
+# Releases go to vars.RELEASES_REPO (a dedicated repository, e.g. when the code repository is
+# private) or, by default, to this repository. Installers are uploaded straight to the release:
+# no GitHub Actions artifact, so no storage quota used.
+env:
+  RELEASES_REPO: ${{ vars.RELEASES_REPO || github.repository }}
+
 jobs:
-  build:
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, ubuntu-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+  checks:
+    name: Checks and tests
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -23,27 +24,92 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      # A tag must match package.json: the installer names come from its version.
+      - name: Tag matches package.json
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: test "$GITHUB_REF_NAME" = "v$(node -p "require('./package.json').version")"
       - run: npm run check
       - run: npm run format:check
-
       # Electron needs a display on Linux.
-      - name: e2e (Linux)
-        if: runner.os == 'Linux'
-        run: xvfb-run --auto-servernum npm run test:e2e
-      - name: e2e
-        if: runner.os != 'Linux'
-        run: npm run test:e2e
-
-      - name: Installers
-        run: npm run dist
-        env:
-          CSC_IDENTITY_AUTO_DISCOVERY: false
+      - run: xvfb-run --auto-servernum npm run test:e2e
+      # Traces and screenshots of the failed tests only, kept a week.
       - uses: actions/upload-artifact@v4
+        if: failure()
         with:
-          name: shelf-${{ matrix.os }}
-          path: |
-            release/*.exe
-            release/*.AppImage
-            release/*.deb
-            release/*.dmg
+          name: e2e-results
+          retention-days: 7
+          path: test-results
           if-no-files-found: ignore
+
+  # Draft until the three installers are in: "latest" never points to an incomplete release.
+  draft:
+    name: Release draft
+    needs: [checks]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      # Re-run: the draft already exists, keep it.
+      - run: >
+          gh release view "$GITHUB_REF_NAME" --repo "$RELEASES_REPO" > /dev/null 2>&1 ||
+          gh release create "$GITHUB_REF_NAME"
+          --repo "$RELEASES_REPO"
+          --title "Shelf ${GITHUB_REF_NAME#v}"
+          --notes ""
+          --draft
+        env:
+          # Other repository: fine-grained token, "Contents: Read and write" on it only.
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN || github.token }}
+
+  installers:
+    name: Installer ${{ matrix.os }}
+    needs: [draft]
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            files: release/*.exe
+          - os: macos-latest
+            files: release/*.dmg
+          - os: ubuntu-latest
+            files: release/*.AppImage release/*.deb
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - run: npm run dist
+        env:
+          # Personal build, unsigned. Signing: CSC_LINK / CSC_KEY_PASSWORD (Windows, macOS).
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      # Smoke test of the packaged app before publishing it (asar, native module, migrations).
+      - name: Packaged app starts
+        if: runner.os == 'Windows'
+        run: npm run test:packaged
+        env:
+          SHELF_PACKAGED: release/win-unpacked/Shelf.exe
+      - run: >
+          gh release upload "$GITHUB_REF_NAME" ${{ matrix.files }}
+          --repo "$RELEASES_REPO"
+          --clobber
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN || github.token }}
+
+  release:
+    name: Publish the release
+    needs: [installers]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - run: gh release edit "$GITHUB_REF_NAME" --repo "$RELEASES_REPO" --draft=false
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_TOKEN || github.token }}

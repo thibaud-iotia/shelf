@@ -24,6 +24,7 @@ Identité : `productName: Shelf`, `appId: fr.perso.shelf`, données dans `app.ge
 | Installeur de l'OS courant (release/)           | `npm run dist` (`npm run dist:dir` : dossier non empaqueté)           |
 | Test de fumée de l'app packagée                 | `SHELF_PACKAGED=release/win-unpacked/Shelf.exe npm run test:packaged` |
 | Régénérer les icônes (resources/)               | `npm run icons`                                                       |
+| Publier une version (CI : 3 installeurs)        | `git tag v<version de package.json> && git push --tags`               |
 
 Node 24, npm. `better-sqlite3` v13 fournit des prebuilds N-API : même binaire pour Node (Vitest) et Electron, pas de rebuild (`npmRebuild: false`).
 
