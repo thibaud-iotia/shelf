@@ -35,7 +35,7 @@ export function Sidebar({ gameCount }: { gameCount: number }) {
   return (
     <nav
       aria-label="Navigation principale"
-      className="w-[248px] flex-none flex flex-col gap-[3px] px-3.5 py-[18px] bg-ink-900 border-r border-ink-600"
+      className="w-[248px] flex-none flex flex-col gap-[3px] px-3.5 pt-[var(--sidebar-top)] pb-[18px] bg-ink-900 border-r border-ink-600"
     >
       <div className="flex items-center gap-2.5 mb-3.5 px-1.5">
         <div className="w-[30px] h-[30px] rounded-[9px] bg-grad-brand flex items-center justify-center font-display font-bold text-base text-white">

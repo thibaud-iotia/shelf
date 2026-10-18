@@ -1,7 +1,24 @@
-import { BrowserWindow, shell } from 'electron'
+import { BrowserWindow, shell, type BrowserWindowConstructorOptions } from 'electron'
+import { TITLE_BAR_HEIGHT, WINDOW_BACKGROUND, WINDOW_SYMBOL_COLOR } from '../shared/constants'
 import { paths } from './platform/paths'
 
 export const WINDOW_TITLE = 'Shelf'
+
+// Frameless look: the native title bar is hidden and the window controls are drawn
+// over the page background, so the app's own surfaces run up to the top edge.
+function titleBarOptions(): BrowserWindowConstructorOptions {
+  if (process.platform === 'darwin') {
+    return { titleBarStyle: 'hiddenInset', trafficLightPosition: { x: 16, y: 11 } }
+  }
+  return {
+    titleBarStyle: 'hidden',
+    titleBarOverlay: {
+      color: WINDOW_BACKGROUND,
+      symbolColor: WINDOW_SYMBOL_COLOR,
+      height: TITLE_BAR_HEIGHT
+    }
+  }
+}
 
 export function createMainWindow(): BrowserWindow {
   const window = new BrowserWindow({
@@ -11,8 +28,9 @@ export function createMainWindow(): BrowserWindow {
     minWidth: 960,
     minHeight: 600,
     show: false,
-    backgroundColor: '#08080C',
+    backgroundColor: WINDOW_BACKGROUND,
     autoHideMenuBar: true,
+    ...titleBarOptions(),
     webPreferences: {
       preload: paths.preload(),
       contextIsolation: true,

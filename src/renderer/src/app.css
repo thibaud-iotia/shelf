@@ -69,7 +69,24 @@
   background: var(--grad-hero);
 }
 
+/* Frameless window: regions that move the window, and interactive islands inside them. */
+@utility app-drag {
+  -webkit-app-region: drag;
+}
+@utility app-no-drag {
+  -webkit-app-region: no-drag;
+}
+
 @layer base {
+  :root {
+    --title-bar: 36px; /* = TITLE_BAR_HEIGHT */
+    --sidebar-top: 18px;
+  }
+  /* macOS draws the traffic lights over the top-left corner of the sidebar. */
+  :root[data-platform='mac'] {
+    --sidebar-top: 44px;
+  }
+
   html,
   body,
   #root {

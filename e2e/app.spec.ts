@@ -42,3 +42,16 @@ test('database is created in userData with migrations applied', async ({ page, u
   await expect(page.getByTestId('app-version')).toHaveText(pkg.version)
   expect(existsSync(join(userDataDir, 'shelf.db'))).toBe(true)
 })
+
+test('title bar is frameless and draggable', async ({ app, page }) => {
+  const region = await page
+    .getByTestId('title-bar')
+    .evaluate((el) => getComputedStyle(el).getPropertyValue('-webkit-app-region'))
+  expect(region).toBe('drag')
+  // The native frame is gone: content starts at the very top of the window.
+  const contentY = await app.evaluate(({ BrowserWindow }) => {
+    const win = BrowserWindow.getAllWindows()[0]!
+    return win.getContentBounds().y - win.getBounds().y
+  })
+  expect(contentY).toBe(0)
+})

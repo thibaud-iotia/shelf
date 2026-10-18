@@ -11,6 +11,10 @@ const queryClient = new QueryClient({
   }
 })
 
+document.documentElement.dataset.platform = navigator.userAgent.includes('Mac OS X')
+  ? 'mac'
+  : 'other'
+
 const root = document.getElementById('root')
 if (!root) throw new Error('#root missing')
 
