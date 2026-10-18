@@ -30,8 +30,15 @@ jobs:
         run: test "$GITHUB_REF_NAME" = "v$(node -p "require('./package.json').version")"
       - run: npm run check
       - run: npm run format:check
-      # Electron needs a display on Linux.
-      - run: xvfb-run --auto-servernum npm run test:e2e
+      # Electron needs a display on Linux, and safeStorage a keyring (API keys are never stored
+      # in clear): an unlocked GNOME keyring, as on a desktop session.
+      - run: sudo apt-get update -q && sudo apt-get install -yq gnome-keyring
+      - run: >
+          dbus-run-session -- sh -c
+          'echo -n "" | gnome-keyring-daemon --unlock --components=secrets > /dev/null &&
+          xvfb-run --auto-servernum npm run test:e2e'
+        env:
+          XDG_CURRENT_DESKTOP: GNOME
       # Traces and screenshots of the failed tests only, kept a week.
       - uses: actions/upload-artifact@v4
         if: failure()
