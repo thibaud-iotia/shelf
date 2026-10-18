@@ -4,8 +4,12 @@
 import type { SerializedAppError } from './errors'
 import type {
   Account,
+  ApiKeyService,
+  ApiKeysInput,
   AppSettings,
+  CacheInfo,
   ConnectInput,
+  ConnectionTest,
   Game,
   GameDetail,
   GameInput,
@@ -14,6 +18,7 @@ import type {
   ImportReport,
   LauncherStatus,
   LaunchResult,
+  MetadataMatch,
   PickedExecutable,
   ScanResult,
   SettingsView,
@@ -72,6 +77,17 @@ export interface IpcChannels {
   /** Syncs one account, or all of them when no id is given. */
   'accounts:sync': { args: [id?: string]; result: SyncReport[] }
 
+  'metadata:search': { args: [title: string]; result: MetadataMatch[] }
+  /** igdbId null = keep the text metadata, refresh the artwork only. */
+  'metadata:apply': { args: [gameId: number, igdbId: number | null]; result: Game }
+  'metadata:refreshArtwork': { args: [gameId: number]; result: Game }
+  'games:pickCover': { args: [gameId: number]; result: Game | null }
+  'keys:set': { args: [input: ApiKeysInput]; result: SettingsView }
+  'keys:clear': { args: [service: ApiKeyService]; result: SettingsView }
+  'keys:test': { args: [service: ApiKeyService]; result: ConnectionTest }
+  'cache:info': { args: []; result: CacheInfo }
+  'cache:clear': { args: []; result: CacheInfo }
+
   'settings:get': { args: []; result: SettingsView }
   'settings:update': { args: [patch: Partial<AppSettings>]; result: SettingsView }
 }
@@ -102,6 +118,15 @@ const CHANNELS: Record<IpcChannel, true> = {
   'import:scan': true,
   'import:apply': true,
   'import:pickFolder': true,
+  'metadata:search': true,
+  'metadata:apply': true,
+  'metadata:refreshArtwork': true,
+  'games:pickCover': true,
+  'keys:set': true,
+  'keys:clear': true,
+  'keys:test': true,
+  'cache:info': true,
+  'cache:clear': true,
   'settings:get': true,
   'settings:update': true
 }

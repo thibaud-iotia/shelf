@@ -2,6 +2,8 @@ import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import type { ScanOptions } from '@shared/ipc'
 import type {
+  ApiKeyService,
+  ApiKeysInput,
   AppSettings,
   ConnectInput,
   GameInput,
@@ -19,7 +21,9 @@ export const queryKeys = {
   game: (id: number) => ['games', id] as const,
   settings: ['settings'] as const,
   launchers: ['launchers'] as const,
-  accounts: ['games', 'accounts'] as const
+  accounts: ['games', 'accounts'] as const,
+  metadataSearch: (title: string) => ['metadata', 'search', title] as const,
+  cache: ['cache'] as const
 }
 
 export function usePing() {
@@ -136,6 +140,70 @@ export function useDisconnectAccount() {
 
 export function useSyncAccounts() {
   return useLibraryMutation((id?: string) => call('accounts:sync', id))
+}
+
+// Metadata & artwork
+
+export function useMetadataSearch(title: string, enabled = true) {
+  const query = title.trim()
+  return useQuery({
+    queryKey: queryKeys.metadataSearch(query),
+    queryFn: () => call('metadata:search', query),
+    enabled: enabled && query.length > 0,
+    staleTime: 10 * 60_000
+  })
+}
+
+export function useApplyMetadata() {
+  return useLibraryMutation((gameId: number, igdbId: number | null) =>
+    call('metadata:apply', gameId, igdbId)
+  )
+}
+
+export function useRefreshArtwork() {
+  return useLibraryMutation((gameId: number) => call('metadata:refreshArtwork', gameId))
+}
+
+export function usePickCover() {
+  return useLibraryMutation((gameId: number) => call('games:pickCover', gameId))
+}
+
+export function useSetKeys() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (input: ApiKeysInput) => call('keys:set', input),
+    onSuccess: (view) => client.setQueryData(queryKeys.settings, view),
+    onError: (error) => toast.error(error)
+  })
+}
+
+export function useClearKeys() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (service: ApiKeyService) => call('keys:clear', service),
+    onSuccess: (view) => client.setQueryData(queryKeys.settings, view),
+    onError: (error) => toast.error(error)
+  })
+}
+
+export function useTestKey() {
+  return useMutation({ mutationFn: (service: ApiKeyService) => call('keys:test', service) })
+}
+
+export function useCacheInfo() {
+  return useQuery({ queryKey: queryKeys.cache, queryFn: () => call('cache:info') })
+}
+
+export function useClearCache() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: () => call('cache:clear'),
+    onSuccess: (info) => {
+      client.setQueryData(queryKeys.cache, info)
+      void invalidateLibrary(client)
+    },
+    onError: (error) => toast.error(error)
+  })
 }
 
 /** Keeps the renderer in sync with pushes from the main process. Mount once. */

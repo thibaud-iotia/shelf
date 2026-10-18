@@ -2,6 +2,7 @@ import { useState, type ReactNode } from 'react'
 import type { GameSourceId } from '@shared/domain'
 import { FolderList } from '@renderer/components/import/FolderList'
 import { LauncherCards } from '@renderer/components/import/LauncherCards'
+import { MetadataKeysForm } from '@renderer/components/settings/MetadataKeysForm'
 import { Button } from '@renderer/components/ui/Button'
 import { useStartScan } from '@renderer/lib/actions'
 import { call } from '@renderer/lib/ipc'
@@ -45,13 +46,15 @@ function StepTitle({ title, subtitle }: { title: string; subtitle: ReactNode }) 
   )
 }
 
-/** Hook point for the metadata keys form (phase 3). */
-export function MetadataStep() {
+function MetadataStep() {
   return (
-    <StepTitle
-      title="Métadonnées et jaquettes"
-      subtitle="Les clés IGDB et SteamGridDB se configurent dans Réglages › Métadonnées."
-    />
+    <>
+      <StepTitle
+        title="Métadonnées et jaquettes"
+        subtitle="Facultatif : avec IGDB (descriptions, genres, dates) et SteamGridDB (jaquettes, héros, logos), Shelf habille la bibliothèque automatiquement."
+      />
+      <MetadataKeysForm compact />
+    </>
   )
 }
 

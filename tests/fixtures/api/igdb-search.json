@@ -1,0 +1,17 @@
+[
+  {
+    "id": 113112,
+    "name": "Hades",
+    "summary": "Defy the god of the dead as you hack and slash out of the Underworld.",
+    "first_release_date": 1600300800,
+    "genres": [{ "id": 12, "name": "Role-playing (RPG)" }, { "id": 31, "name": "Adventure" }],
+    "cover": { "id": 1, "image_id": "co39vc" },
+    "screenshots": [{ "id": 2, "image_id": "sc8a1" }, { "id": 3, "image_id": "sc8a2" }],
+    "artworks": [{ "id": 4, "image_id": "ar5xyz" }],
+    "involved_companies": [
+      { "id": 5, "developer": false, "company": { "id": 1, "name": "Private Division" } },
+      { "id": 6, "developer": true, "company": { "id": 2, "name": "Supergiant Games" } }
+    ]
+  },
+  { "id": 207, "name": "Hades II", "first_release_date": 1715212800 }
+]

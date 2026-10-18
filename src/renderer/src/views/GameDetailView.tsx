@@ -1,12 +1,22 @@
-import type { ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { INSTALL_STATE_LABELS, SOURCE_LABELS } from '@shared/domain'
 import { formatDay, formatLastSession, formatPlaytime, yearOf } from '@shared/format'
 import type { Game } from '@shared/models'
 import { heroGradient } from '@renderer/lib/artwork'
+import { MetadataDialog } from '@renderer/components/game/MetadataDialog'
 import { Button } from '@renderer/components/ui/Button'
 import { Chip } from '@renderer/components/ui/Chip'
 import { usePlay } from '@renderer/lib/actions'
-import { useGameDetail, useInstallGame, useOpenFolder, useUpdateGame } from '@renderer/lib/queries'
+import {
+  useGameDetail,
+  useInstallGame,
+  useOpenFolder,
+  usePickCover,
+  useRefreshArtwork,
+  useSettings,
+  useUpdateGame
+} from '@renderer/lib/queries'
+import { toast } from '@renderer/stores/toasts'
 import { useIsRunning } from '@renderer/stores/running'
 import { useUiStore } from '@renderer/stores/ui'
 
@@ -54,6 +64,47 @@ function SideCard({ game, children }: { game: Game; children?: ReactNode }) {
       )}
       {children}
     </aside>
+  )
+}
+
+function SideAction({ children, onClick }: { children: ReactNode; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="text-left text-sm text-text-mid hover:text-text-hi cursor-pointer"
+    >
+      {children}
+    </button>
+  )
+}
+
+function ArtworkActions({ game }: { game: Game }) {
+  const settings = useSettings()
+  const pickCover = usePickCover()
+  const refresh = useRefreshArtwork()
+  const [searching, setSearching] = useState(false)
+  const canFetch = settings.data?.igdbConfigured || settings.data?.steamGridDbConfigured
+
+  return (
+    <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-ink-600">
+      {settings.data?.igdbConfigured && (
+        <SideAction onClick={() => setSearching(true)}>Rechercher les métadonnées…</SideAction>
+      )}
+      {canFetch && (
+        <SideAction
+          onClick={() =>
+            refresh.mutate([game.id], {
+              onSuccess: () => toast.success('Visuels actualisés')
+            })
+          }
+        >
+          {refresh.isPending ? 'Téléchargement…' : 'Actualiser les visuels'}
+        </SideAction>
+      )}
+      <SideAction onClick={() => pickCover.mutate([game.id])}>Changer la jaquette…</SideAction>
+      {searching && <MetadataDialog game={game} onClose={() => setSearching(false)} />}
+    </div>
   )
 }
 
@@ -197,7 +248,9 @@ export function GameDetailView({ gameId }: { gameId: number }) {
             </div>
           )}
         </div>
-        <SideCard game={game} />
+        <SideCard game={game}>
+          <ArtworkActions game={game} />
+        </SideCard>
       </div>
     </section>
   )

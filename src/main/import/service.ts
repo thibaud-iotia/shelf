@@ -24,9 +24,10 @@ interface LastScan {
   scanned: Map<GameSourceId, Set<string>>
 }
 
+/** number = chosen IGDB match, null = none wanted, undefined = automatic. */
 export interface ImportedGame {
   id: number
-  igdbId: number | null
+  igdbId?: number | null
 }
 
 /** Detection of launchers and folders, then application of the user's decisions. */
@@ -145,7 +146,7 @@ export class ImportService {
             .where(eq(games.id, target.id))
             .run()
           report.merged++
-          touched.push({ id: target.id, igdbId })
+          touched.push({ id: target.id, igdbId: decision.igdbId })
           continue
         }
 
@@ -165,7 +166,7 @@ export class ImportService {
             .returning()
             .get()
           report.imported++
-          touched.push({ id: row.id, igdbId })
+          touched.push({ id: row.id, igdbId: decision.igdbId })
           continue
         }
 
@@ -194,7 +195,10 @@ export class ImportService {
           .get()
         if (candidate.status === 'update') report.updated++
         else report.imported++
-        touched.push({ id: row.id, igdbId: igdbId ?? row.igdbId })
+        touched.push({
+          id: row.id,
+          igdbId: decision.igdbId !== undefined ? decision.igdbId : (row.igdbId ?? undefined)
+        })
       }
 
       // Launcher games that disappeared from a successful scan are no longer installed,

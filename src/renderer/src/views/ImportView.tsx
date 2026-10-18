@@ -4,9 +4,10 @@ import { pluralize } from '@shared/format'
 import type { ImportCandidate } from '@shared/models'
 import { Badge } from '@renderer/components/ui/Badge'
 import { Button } from '@renderer/components/ui/Button'
+import { MatchPicker } from '@renderer/components/import/MatchPicker'
 import { Input } from '@renderer/components/ui/Input'
 import { useStartScan, useScanFolder } from '@renderer/lib/actions'
-import { useApplyImport } from '@renderer/lib/queries'
+import { useApplyImport, useSettings } from '@renderer/lib/queries'
 import {
   buildDecisions,
   defaultAction,
@@ -21,6 +22,7 @@ const fileName = (path: string | null) => path?.split(/[\\/]/).pop() ?? ''
 function ReviewCard({ candidate }: { candidate: ImportCandidate }) {
   const choice = useImportStore((s) => s.choices[candidate.key])
   const choose = useImportStore((s) => s.choose)
+  const settings = useSettings()
   const action = choice?.action ?? defaultAction(candidate)
   const duplicate = candidate.status === 'duplicate'
 
@@ -73,12 +75,26 @@ function ReviewCard({ candidate }: { candidate: ImportCandidate }) {
           {candidate.duplicateOf!.title}). Fusionner ou ignorer ?
         </p>
       ) : (
-        <Input
-          label="Titre"
-          size="sm"
-          value={choice?.title ?? candidate.title}
-          onChange={(e) => choose(candidate.key, { title: e.target.value })}
-        />
+        <>
+          <Input
+            label="Titre"
+            size="sm"
+            value={choice?.title ?? candidate.title}
+            onChange={(e) => choose(candidate.key, { title: e.target.value })}
+          />
+          {settings.data?.igdbConfigured && (
+            <MatchPicker
+              title={choice?.title ?? candidate.title}
+              selected={choice?.igdbId}
+              onSelect={(igdbId, name) =>
+                choose(candidate.key, {
+                  igdbId,
+                  ...(name && !choice?.title ? { title: name } : {})
+                })
+              }
+            />
+          )}
+        </>
       )}
 
       <div className="flex gap-2">

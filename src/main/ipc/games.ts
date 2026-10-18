@@ -6,6 +6,7 @@ import { broadcast } from '../events'
 import {
   createManualGame,
   deleteGame,
+  getGame,
   getGameDetail,
   getGameRow,
   listGames,
@@ -67,6 +68,32 @@ export function registerGameHandlers(ctx: AppContext): void {
   })
 
   handle('games:running', () => ctx.runner.runningIds())
+
+  handle('metadata:search', (title) => ctx.metadata.search(String(title ?? '')))
+  handle('metadata:apply', async (id, igdbId) => {
+    const gameId = validateGameId(id)
+    if (igdbId !== null && (typeof igdbId !== 'number' || !Number.isInteger(igdbId))) {
+      throw new AppError('VALIDATION', 'Identifiant IGDB invalide.')
+    }
+    await ctx.metadata.apply(gameId, igdbId)
+    return getGame(db, gameId)
+  })
+  handle('metadata:refreshArtwork', async (id) => {
+    const gameId = validateGameId(id)
+    await ctx.metadata.refreshArtwork(gameId)
+    return getGame(db, gameId)
+  })
+  handle('games:pickCover', async (id) => {
+    const gameId = validateGameId(id)
+    const file = await pickPath({
+      title: 'Choisir une jaquette',
+      properties: ['openFile'],
+      filters: [{ name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'webp', 'gif'] }]
+    })
+    if (!file) return null
+    ctx.metadata.setCustomCover(gameId, file)
+    return getGame(db, gameId)
+  })
 
   handle('games:install', async (id) => {
     const game = getGameRow(db, validateGameId(id))

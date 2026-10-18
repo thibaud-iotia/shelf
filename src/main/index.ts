@@ -8,6 +8,9 @@ import { closeSession, discardUnfinishedSessions, openSession } from './games/re
 import { registerIpcHandlers } from './ipc/handlers'
 import { ImportService } from './import/service'
 import { GameRunner } from './launch/runner'
+import { MediaCache } from './media/cache'
+import { handleMediaProtocol, registerMediaScheme } from './media/protocol'
+import { MetadataService, type EnrichTarget } from './metadata/service'
 import { applyUserDataOverride, launcherLocations, paths } from './platform/paths'
 import { SecretStore } from './secrets/store'
 import { SettingsStore } from './settings/store'
@@ -17,6 +20,7 @@ import { createMainWindow } from './window'
 app.setName('Shelf')
 applyUserDataOverride()
 app.enableSandbox()
+registerMediaScheme()
 
 let ctx: AppContext | undefined
 
@@ -36,17 +40,33 @@ function createContext(): AppContext {
   runner.on('change', (ids) => broadcast('games:running', ids))
 
   const settings = new SettingsStore(db)
-  const importer = new ImportService(db, settings, createSources(launcherLocations))
   const secrets = new SecretStore(paths.secrets(), {
     isAvailable: () => safeStorage.isEncryptionAvailable(),
     encrypt: (plain) => safeStorage.encryptString(plain),
     decrypt: (data) => safeStorage.decryptString(data)
   })
+  const metadata = new MetadataService(db, secrets, new MediaCache(paths.covers()))
+
+  // Metadata enrichment runs in the background, one batch at a time.
+  let queue = Promise.resolve()
+  const enqueue = (job: () => Promise<number>) => {
+    queue = queue
+      .then(job)
+      .then((count) => {
+        if (count) broadcast('library:changed', { reason: 'metadata' })
+      })
+      .catch((error: unknown) => console.warn('[metadata] background job failed', error))
+  }
+  const progress = () => broadcast('library:changed', { reason: 'metadata' })
+  const enrich = (targets: EnrichTarget[]) => enqueue(() => metadata.enrich(targets, progress))
+
+  const importer = new ImportService(db, settings, createSources(launcherLocations), enrich)
   const accounts = new AccountService(db, secrets, createProviders(launcherLocations), {
     // GOG option B stays behind its flag.
     isEnabled: (kind) => kind !== 'gog-oauth' || settings.get('gogOAuthEnabled')
   })
-  return { database, settings, runner, importer, secrets, accounts }
+  const onSynced = () => enqueue(() => metadata.enrichMissing(100, progress))
+  return { database, settings, runner, importer, secrets, accounts, metadata, onSynced }
 }
 
 if (!app.requestSingleInstanceLock()) {
@@ -65,6 +85,7 @@ if (!app.requestSingleInstanceLock()) {
     .whenReady()
     .then(() => {
       ctx = createContext()
+      handleMediaProtocol(paths.covers)
       registerIpcHandlers(ctx)
       createMainWindow()
       // Keep install states fresh: launcher games installed/removed while Shelf was closed.
@@ -75,7 +96,11 @@ if (!app.requestSingleInstanceLock()) {
       // Owned libraries: automatic sync when the last one is older than 24 h.
       void ctx.accounts
         .syncDue()
-        .then((reports) => reports.length && broadcast('library:changed', { reason: 'sync' }))
+        .then((reports) => {
+          if (!reports.length) return
+          broadcast('library:changed', { reason: 'sync' })
+          ctx?.onSynced()
+        })
         .catch((error: unknown) => console.warn('[startup] sync failed', error))
 
       app.on('activate', () => {

@@ -3,6 +3,7 @@ import { useAppInfo, usePing } from '@renderer/lib/queries'
 import { useUiStore, type SettingsSection } from '@renderer/stores/ui'
 import { Card, Row, SectionTitle, StatusPill } from './settings/common'
 import { AccountsSection } from './settings/AccountsSection'
+import { CacheSection, MetadataSection } from './settings/MetadataSections'
 import { FoldersSection, LaunchersSection } from './settings/LibrarySections'
 
 const NAV: { id: SettingsSection; label: string }[] = [
@@ -53,7 +54,9 @@ function AboutSection() {
 }
 
 const SECTIONS: Partial<Record<SettingsSection, () => ReactNode>> = {
+  metadata: () => <MetadataSection />,
   accounts: () => <AccountsSection />,
+  cache: () => <CacheSection />,
   launchers: () => <LaunchersSection />,
   folders: () => <FoldersSection />,
   about: () => <AboutSection />
