@@ -2,6 +2,8 @@ import { AppError } from '../../shared/errors'
 import type { ApiKeyService, SettingsView } from '../../shared/models'
 import type { AppContext } from '../context'
 import { broadcast } from '../events'
+import { applyLaunchAtStartup } from '../system'
+import { pickPath } from './dialogs'
 import { handle } from './handle'
 
 export function settingsView(ctx: AppContext): SettingsView {
@@ -18,6 +20,17 @@ export function registerSettingsHandlers(ctx: AppContext): void {
   handle('settings:get', () => settingsView(ctx))
   handle('settings:update', (patch) => {
     ctx.settings.update(patch)
+    if (patch && 'launchAtStartup' in patch)
+      applyLaunchAtStartup(ctx.settings.get('launchAtStartup'))
+    return settingsView(ctx)
+  })
+  handle('settings:pickRunner', async () => {
+    const runner = await pickPath({
+      title: 'Choisir Wine ou Proton',
+      properties: ['openFile']
+    })
+    if (!runner) return null
+    ctx.settings.update({ runnerPath: runner })
     return settingsView(ctx)
   })
 

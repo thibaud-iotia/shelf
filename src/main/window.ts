@@ -1,4 +1,4 @@
-import { BrowserWindow, shell, type BrowserWindowConstructorOptions } from 'electron'
+import { app, BrowserWindow, shell, type BrowserWindowConstructorOptions } from 'electron'
 import { TITLE_BAR_HEIGHT, WINDOW_BACKGROUND, WINDOW_SYMBOL_COLOR } from '../shared/constants'
 import { paths } from './platform/paths'
 
@@ -20,7 +20,18 @@ function titleBarOptions(): BrowserWindowConstructorOptions {
   }
 }
 
-export function createMainWindow(): BrowserWindow {
+export interface WindowOptions {
+  /** Close hides the window (tray) instead of quitting. */
+  hideOnClose?: () => boolean
+  startHidden?: boolean
+}
+
+let quitting = false
+app.on('before-quit', () => {
+  quitting = true
+})
+
+export function createMainWindow(options: WindowOptions = {}): BrowserWindow {
   const window = new BrowserWindow({
     title: WINDOW_TITLE,
     width: 1280,
@@ -29,6 +40,7 @@ export function createMainWindow(): BrowserWindow {
     minHeight: 600,
     show: false,
     backgroundColor: WINDOW_BACKGROUND,
+    icon: paths.appIcon(),
     autoHideMenuBar: true,
     ...titleBarOptions(),
     webPreferences: {
@@ -40,7 +52,15 @@ export function createMainWindow(): BrowserWindow {
     }
   })
 
-  window.once('ready-to-show', () => window.show())
+  window.once('ready-to-show', () => {
+    if (!options.startHidden) window.show()
+  })
+  window.on('close', (event) => {
+    if (!quitting && options.hideOnClose?.()) {
+      event.preventDefault()
+      window.hide()
+    }
+  })
 
   // Keep the HTML <title> from overriding the window title.
   window.on('page-title-updated', (event) => event.preventDefault())

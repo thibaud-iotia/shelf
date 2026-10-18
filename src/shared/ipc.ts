@@ -28,6 +28,12 @@ import type {
   Tag
 } from './models'
 
+export interface BackupResult {
+  path: string
+  files: number
+  bytes: number
+}
+
 export interface ScanOptions {
   /** Default true. */
   includeLaunchers?: boolean
@@ -65,6 +71,10 @@ export interface IpcChannels {
   'games:openFolder': { args: [id: number]; result: null }
   /** Opens the launcher's install page (owned, not installed). */
   'games:install': { args: [id: number]; result: null }
+  /** Opens the launcher's uninstall flow (Steam). */
+  'games:uninstall': { args: [id: number]; result: null }
+  'games:pickSaveFolder': { args: [id: number]; result: Game | null }
+  'games:exportSaves': { args: [id: number]; result: BackupResult | null }
 
   'tags:list': { args: []; result: Tag[] }
   'tags:delete': { args: [id: number]; result: null }
@@ -106,6 +116,7 @@ export interface IpcChannels {
 
   'settings:get': { args: []; result: SettingsView }
   'settings:update': { args: [patch: Partial<AppSettings>]; result: SettingsView }
+  'settings:pickRunner': { args: []; result: SettingsView | null }
 }
 
 export type IpcChannel = keyof IpcChannels
@@ -126,6 +137,10 @@ const CHANNELS: Record<IpcChannel, true> = {
   'games:running': true,
   'games:openFolder': true,
   'games:install': true,
+  'games:uninstall': true,
+  'games:pickSaveFolder': true,
+  'games:exportSaves': true,
+  'settings:pickRunner': true,
   'accounts:list': true,
   'accounts:connect': true,
   'accounts:disconnect': true,

@@ -16,8 +16,9 @@ import { titleFromExecutable } from '../games/titles'
 import { validateGameId, validateGameInput, validateGamePatch } from '../games/validation'
 import { buildLaunchPlan } from '../launch/plan'
 import { paths } from '../platform/paths'
-import { installUri } from '../sources/uris'
-import { pickPath } from './dialogs'
+import { exportSaves, backupFileName } from '../saves/backup'
+import { installUri, uninstallUri } from '../sources/uris'
+import { pickPath, pickSavePath } from './dialogs'
 import { handle } from './handle'
 
 function executableFilters(): OpenDialogOptions['filters'] {
@@ -68,6 +69,40 @@ export function registerGameHandlers(ctx: AppContext): void {
   })
 
   handle('games:running', () => ctx.runner.runningIds())
+
+  handle('games:uninstall', async (id) => {
+    const game = getGameRow(db, validateGameId(id))
+    const uri = uninstallUri(game)
+    if (!uri) {
+      throw new AppError('NOT_FOUND', 'Désinstallez ce jeu depuis son launcher ou son dossier.')
+    }
+    await shell.openExternal(uri)
+    return null
+  })
+
+  handle('games:pickSaveFolder', async (id) => {
+    const game = getGameRow(db, validateGameId(id))
+    const folder = await pickPath({
+      title: `Dossier de sauvegardes de ${game.title}`,
+      properties: ['openDirectory'],
+      defaultPath: game.savePath ?? undefined
+    })
+    if (!folder) return null
+    return updateGame(db, game.id, validateGamePatch({ savePath: folder }))
+  })
+
+  handle('games:exportSaves', async (id) => {
+    const game = getGameRow(db, validateGameId(id))
+    if (!game.savePath) {
+      throw new AppError('VALIDATION', 'Choisissez d’abord le dossier de sauvegardes du jeu.')
+    }
+    const target = await pickSavePath({
+      title: 'Exporter les sauvegardes',
+      defaultPath: backupFileName(game.title),
+      filters: [{ name: 'Archive zip', extensions: ['zip'] }]
+    })
+    return target ? exportSaves(game.savePath, target) : null
+  })
 
   handle('metadata:search', (title) => ctx.metadata.search(String(title ?? '')))
   handle('metadata:apply', async (id, igdbId) => {

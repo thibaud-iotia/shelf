@@ -12,7 +12,10 @@ import {
   useGameDetail,
   useInstallGame,
   useOpenFolder,
+  useExportSaves,
   usePickCover,
+  usePickSaveFolder,
+  useUninstallGame,
   useRefreshArtwork,
   useSettings,
   useUpdateGame
@@ -105,6 +108,34 @@ function ArtworkActions({ game }: { game: Game }) {
       )}
       <SideAction onClick={() => pickCover.mutate([game.id])}>Changer la jaquette…</SideAction>
       {searching && <MetadataDialog game={game} onClose={() => setSearching(false)} />}
+    </div>
+  )
+}
+
+function SavesActions({ game }: { game: Game }) {
+  const pick = usePickSaveFolder()
+  const exportSaves = useExportSaves()
+  const uninstall = useUninstallGame()
+  return (
+    <div data-testid="saves" className="flex flex-col gap-2 mt-4 pt-4 border-t border-ink-600">
+      <span className="text-[11px] font-semibold tracking-[.12em] text-text-lo">SAUVEGARDES</span>
+      <span
+        data-testid="save-path"
+        className="font-mono text-xs text-text-lo break-all select-text"
+      >
+        {game.savePath ?? 'Aucun dossier défini'}
+      </span>
+      <SideAction onClick={() => pick.mutate([game.id])}>
+        {game.savePath ? 'Changer le dossier…' : 'Choisir le dossier…'}
+      </SideAction>
+      {game.savePath && (
+        <SideAction onClick={() => exportSaves.mutate(game.id)}>
+          {exportSaves.isPending ? 'Export…' : 'Exporter (.zip)…'}
+        </SideAction>
+      )}
+      {game.canUninstall && (
+        <SideAction onClick={() => uninstall.mutate(game.id)}>Désinstaller…</SideAction>
+      )}
     </div>
   )
 }
@@ -252,6 +283,7 @@ export function GameDetailView({ gameId }: { gameId: number }) {
         </div>
         <SideCard game={game}>
           <ArtworkActions game={game} />
+          <SavesActions game={game} />
         </SideCard>
       </div>
     </section>

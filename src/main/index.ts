@@ -1,10 +1,17 @@
-import { app, BrowserWindow, dialog, safeStorage, shell } from 'electron'
+import { app, dialog, safeStorage, shell } from 'electron'
 import { createProviders } from './accounts'
 import { AccountService } from './accounts/service'
 import type { AppContext } from './context'
 import { openDatabase } from './db/client'
-import { broadcast } from './events'
-import { closeSession, discardUnfinishedSessions, openSession } from './games/repository'
+import { broadcast, onBroadcast } from './events'
+import {
+  closeSession,
+  discardUnfinishedSessions,
+  getGameRow,
+  listGames,
+  openSession
+} from './games/repository'
+import { buildLaunchPlan } from './launch/plan'
 import { registerIpcHandlers } from './ipc/handlers'
 import { ImportService } from './import/service'
 import { GameRunner } from './launch/runner'
@@ -15,6 +22,7 @@ import { applyUserDataOverride, launcherLocations, paths } from './platform/path
 import { SecretStore } from './secrets/store'
 import { SettingsStore } from './settings/store'
 import { createSources } from './sources'
+import { applyLaunchAtStartup, ShelfTray, showMainWindow, startedHidden } from './system'
 import { createMainWindow } from './window'
 
 app.setName('Shelf')
@@ -23,6 +31,40 @@ app.enableSandbox()
 registerMediaScheme()
 
 let ctx: AppContext | undefined
+let tray: ShelfTray | undefined
+
+function openWindow() {
+  return createMainWindow({ hideOnClose: () => !!ctx?.settings.get('minimizeToTray') })
+}
+
+function createTray(context: AppContext): ShelfTray {
+  const { db } = context.database
+  const shelfTray = new ShelfTray({
+    show: () => showMainWindow(openWindow),
+    recentGames: () =>
+      listGames(db)
+        .filter((g) => g.lastPlayedAt && g.installState !== 'not_installed' && !g.hidden)
+        .sort((a, b) => b.lastPlayedAt! - a.lastPlayedAt!)
+        .slice(0, 5),
+    play: (gameId) => {
+      const game = getGameRow(db, gameId)
+      const plan = buildLaunchPlan(game, {
+        platform: process.platform,
+        runnerPath: context.settings.get('runnerPath'),
+        protonPrefix: paths.protonPrefix()
+      })
+      context.runner
+        .launch(gameId, plan)
+        .catch((error: unknown) => console.warn('[tray] launch failed', error))
+    },
+    quit: () => app.quit()
+  })
+  shelfTray.create()
+  onBroadcast((event) => {
+    if (event === 'library:changed') shelfTray.refresh()
+  })
+  return shelfTray
+}
 
 function createContext(): AppContext {
   const database = openDatabase(paths.database(), paths.migrations())
@@ -72,14 +114,7 @@ function createContext(): AppContext {
 if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
-  app.on('second-instance', () => {
-    const [window] = BrowserWindow.getAllWindows()
-    if (window) {
-      if (window.isMinimized()) window.restore()
-      window.show()
-      window.focus()
-    }
-  })
+  app.on('second-instance', () => showMainWindow(openWindow))
 
   app
     .whenReady()
@@ -87,7 +122,17 @@ if (!app.requestSingleInstanceLock()) {
       ctx = createContext()
       handleMediaProtocol(paths.covers)
       registerIpcHandlers(ctx)
-      createMainWindow()
+      createMainWindow({
+        hideOnClose: () => !!ctx?.settings.get('minimizeToTray'),
+        startHidden: startedHidden() && ctx.settings.get('minimizeToTray')
+      })
+      try {
+        tray = createTray(ctx)
+      } catch (error) {
+        // No system tray (some Linux desktops): everything else keeps working.
+        console.warn('[startup] tray unavailable', error)
+      }
+      applyLaunchAtStartup(ctx.settings.get('launchAtStartup'))
       // Keep install states fresh: launcher games installed/removed while Shelf was closed.
       void ctx.importer
         .refreshInstalled()
@@ -104,7 +149,7 @@ if (!app.requestSingleInstanceLock()) {
         .catch((error: unknown) => console.warn('[startup] sync failed', error))
 
       app.on('activate', () => {
-        if (BrowserWindow.getAllWindows().length === 0) createMainWindow()
+        showMainWindow(openWindow)
       })
     })
     .catch((error: unknown) => {
@@ -118,10 +163,12 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 app.on('window-all-closed', () => {
+  // With the tray, closing the window only hides it (handled in window.ts).
   if (process.platform !== 'darwin') app.quit()
 })
 
 app.on('will-quit', () => {
+  tray?.destroy()
   ctx?.runner.dispose()
   ctx?.database.close()
 })

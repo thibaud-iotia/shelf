@@ -85,6 +85,37 @@ export function useInstallGame() {
   })
 }
 
+export function useUninstallGame() {
+  return useMutation({
+    mutationFn: (id: number) => call('games:uninstall', id),
+    onSuccess: () => toast.info('Ouverture du launcher pour la désinstallation…'),
+    onError: (error) => toast.error(error)
+  })
+}
+
+export function usePickSaveFolder() {
+  return useLibraryMutation((id: number) => call('games:pickSaveFolder', id))
+}
+
+export function useExportSaves() {
+  return useMutation({
+    mutationFn: (id: number) => call('games:exportSaves', id),
+    onSuccess: (result) => {
+      if (result) toast.success(`Sauvegardes exportées (${result.files} fichiers) : ${result.path}`)
+    },
+    onError: (error) => toast.error(error)
+  })
+}
+
+export function usePickRunner() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: () => call('settings:pickRunner'),
+    onSuccess: (view) => view && client.setQueryData(queryKeys.settings, view),
+    onError: (error) => toast.error(error)
+  })
+}
+
 export function useOpenFolder() {
   return useMutation({
     mutationFn: (id: number) => call('games:openFolder', id),

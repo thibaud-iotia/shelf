@@ -6,6 +6,7 @@ import { AccountsSection } from './settings/AccountsSection'
 import { AppearanceSection, ShortcutsSection } from './settings/AppearanceSections'
 import { CacheSection, MetadataSection } from './settings/MetadataSections'
 import { FoldersSection, LaunchersSection } from './settings/LibrarySections'
+import { SystemSection } from './settings/SystemSection'
 
 const NAV: { id: SettingsSection; label: string }[] = [
   { id: 'metadata', label: 'Métadonnées' },
@@ -60,6 +61,7 @@ const SECTIONS: Partial<Record<SettingsSection, () => ReactNode>> = {
   cache: () => <CacheSection />,
   appearance: () => <AppearanceSection />,
   shortcuts: () => <ShortcutsSection />,
+  system: () => <SystemSection />,
   launchers: () => <LaunchersSection />,
   folders: () => <FoldersSection />,
   about: () => <AboutSection />
