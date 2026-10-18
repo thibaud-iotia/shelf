@@ -7,7 +7,7 @@ export function settingsView(ctx: AppContext): SettingsView {
     ...ctx.settings.all(),
     igdbConfigured: false,
     steamGridDbConfigured: false,
-    secretsAvailable: false,
+    secretsAvailable: ctx.secrets.available(),
     platform: process.platform
   }
 }

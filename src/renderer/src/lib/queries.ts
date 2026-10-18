@@ -1,7 +1,13 @@
 import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import type { ScanOptions } from '@shared/ipc'
-import type { AppSettings, GameInput, GamePatch, ImportDecision } from '@shared/models'
+import type {
+  AppSettings,
+  ConnectInput,
+  GameInput,
+  GamePatch,
+  ImportDecision
+} from '@shared/models'
 import { useRunningStore } from '@renderer/stores/running'
 import { toast } from '@renderer/stores/toasts'
 import { call } from './ipc'
@@ -12,7 +18,8 @@ export const queryKeys = {
   games: ['games'] as const,
   game: (id: number) => ['games', id] as const,
   settings: ['settings'] as const,
-  launchers: ['launchers'] as const
+  launchers: ['launchers'] as const,
+  accounts: ['games', 'accounts'] as const
 }
 
 export function usePing() {
@@ -63,6 +70,14 @@ export function useLaunchGame() {
   return useLibraryMutation((id: number) => call('games:launch', id))
 }
 
+export function useInstallGame() {
+  return useMutation({
+    mutationFn: (id: number) => call('games:install', id),
+    onSuccess: () => toast.info('Ouverture du launcher pour l’installation…'),
+    onError: (error) => toast.error(error)
+  })
+}
+
 export function useOpenFolder() {
   return useMutation({
     mutationFn: (id: number) => call('games:openFolder', id),
@@ -103,6 +118,24 @@ export function useScan() {
 
 export function useApplyImport() {
   return useLibraryMutation((decisions: ImportDecision[]) => call('import:apply', decisions))
+}
+
+// Accounts (owned libraries)
+
+export function useAccounts() {
+  return useQuery({ queryKey: queryKeys.accounts, queryFn: () => call('accounts:list') })
+}
+
+export function useConnectAccount() {
+  return useLibraryMutation((input: ConnectInput) => call('accounts:connect', input))
+}
+
+export function useDisconnectAccount() {
+  return useLibraryMutation((id: string) => call('accounts:disconnect', id))
+}
+
+export function useSyncAccounts() {
+  return useLibraryMutation((id?: string) => call('accounts:sync', id))
 }
 
 /** Keeps the renderer in sync with pushes from the main process. Mount once. */

@@ -3,7 +3,9 @@
 
 import type { SerializedAppError } from './errors'
 import type {
+  Account,
   AppSettings,
+  ConnectInput,
   Game,
   GameDetail,
   GameInput,
@@ -14,7 +16,8 @@ import type {
   LaunchResult,
   PickedExecutable,
   ScanResult,
-  SettingsView
+  SettingsView,
+  SyncReport
 } from './models'
 
 export interface ScanOptions {
@@ -52,11 +55,22 @@ export interface IpcChannels {
   'games:launch': { args: [id: number]; result: LaunchResult }
   'games:running': { args: []; result: number[] }
   'games:openFolder': { args: [id: number]; result: null }
+  /** Opens the launcher's install page (owned, not installed). */
+  'games:install': { args: [id: number]; result: null }
 
   'launchers:list': { args: []; result: LauncherStatus[] }
   'import:scan': { args: [options?: ScanOptions]; result: ScanResult }
   'import:apply': { args: [decisions: ImportDecision[]]; result: ImportReport }
   'import:pickFolder': { args: []; result: string | null }
+
+  'accounts:list': { args: []; result: Account[] }
+  'accounts:connect': {
+    args: [input: ConnectInput]
+    result: { account: Account; sync: SyncReport }
+  }
+  'accounts:disconnect': { args: [id: string]; result: null }
+  /** Syncs one account, or all of them when no id is given. */
+  'accounts:sync': { args: [id?: string]; result: SyncReport[] }
 
   'settings:get': { args: []; result: SettingsView }
   'settings:update': { args: [patch: Partial<AppSettings>]; result: SettingsView }
@@ -79,6 +93,11 @@ const CHANNELS: Record<IpcChannel, true> = {
   'games:launch': true,
   'games:running': true,
   'games:openFolder': true,
+  'games:install': true,
+  'accounts:list': true,
+  'accounts:connect': true,
+  'accounts:disconnect': true,
+  'accounts:sync': true,
   'launchers:list': true,
   'import:scan': true,
   'import:apply': true,

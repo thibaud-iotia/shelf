@@ -1,0 +1,10 @@
+{
+  "response": {
+    "game_count": 3,
+    "games": [
+      { "appid": 1145360, "name": "Hades", "playtime_forever": 2535, "img_icon_url": "abc" },
+      { "appid": 379720, "name": "DOOM", "playtime_forever": 0 },
+      { "appid": 620, "name": "Portal 2", "playtime_forever": 610 }
+    ]
+  }
+}

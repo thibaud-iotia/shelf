@@ -1,7 +1,19 @@
 // Errors crossing the IPC boundary are serialized as { code, message } so the UI
 // can show a clear message without parsing Electron's "Error invoking remote method" prefix.
 
-export type AppErrorCode = 'INTERNAL' | 'FORBIDDEN' | 'NOT_FOUND' | 'VALIDATION' | 'UNKNOWN_CHANNEL'
+export type AppErrorCode =
+  | 'INTERNAL'
+  | 'FORBIDDEN'
+  | 'NOT_FOUND'
+  | 'VALIDATION'
+  | 'UNKNOWN_CHANNEL'
+  /** Credentials refused by a remote service. */
+  | 'AUTH'
+  | 'RATE_LIMITED'
+  /** Remote service unreachable or answering garbage. */
+  | 'NETWORK'
+  /** A local prerequisite is missing (system keychain, Legendary…). */
+  | 'UNAVAILABLE'
 
 export interface SerializedAppError {
   code: AppErrorCode

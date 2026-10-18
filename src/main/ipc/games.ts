@@ -15,6 +15,7 @@ import { titleFromExecutable } from '../games/titles'
 import { validateGameId, validateGameInput, validateGamePatch } from '../games/validation'
 import { buildLaunchPlan } from '../launch/plan'
 import { paths } from '../platform/paths'
+import { installUri } from '../sources/uris'
 import { pickPath } from './dialogs'
 import { handle } from './handle'
 
@@ -66,6 +67,14 @@ export function registerGameHandlers(ctx: AppContext): void {
   })
 
   handle('games:running', () => ctx.runner.runningIds())
+
+  handle('games:install', async (id) => {
+    const game = getGameRow(db, validateGameId(id))
+    const uri = installUri(game)
+    if (!uri) throw new AppError('NOT_FOUND', 'Ce jeu ne peut pas être installé depuis Shelf.')
+    await shell.openExternal(uri)
+    return null
+  })
 
   handle('games:openFolder', async (id) => {
     const game = getGameRow(db, validateGameId(id))

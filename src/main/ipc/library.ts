@@ -15,6 +15,22 @@ export function registerLibraryHandlers(ctx: AppContext): void {
     return report
   })
 
+  handle('accounts:list', () => ctx.accounts.list())
+  handle('accounts:connect', async (input) => {
+    const result = await ctx.accounts.connect(input)
+    broadcast('library:changed', { reason: 'sync' })
+    return result
+  })
+  handle('accounts:disconnect', (id) => {
+    ctx.accounts.disconnect(String(id))
+    return null
+  })
+  handle('accounts:sync', async (id) => {
+    const reports = id ? [await ctx.accounts.sync(String(id))] : await ctx.accounts.syncAll()
+    broadcast('library:changed', { reason: 'sync' })
+    return reports
+  })
+
   handle('import:pickFolder', () =>
     pickPath({ title: 'Choisir un dossier de jeux', properties: ['openDirectory'] })
   )

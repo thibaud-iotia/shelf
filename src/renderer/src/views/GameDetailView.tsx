@@ -6,7 +6,7 @@ import { heroGradient } from '@renderer/lib/artwork'
 import { Button } from '@renderer/components/ui/Button'
 import { Chip } from '@renderer/components/ui/Chip'
 import { usePlay } from '@renderer/lib/actions'
-import { useGameDetail, useOpenFolder, useUpdateGame } from '@renderer/lib/queries'
+import { useGameDetail, useInstallGame, useOpenFolder, useUpdateGame } from '@renderer/lib/queries'
 import { useIsRunning } from '@renderer/stores/running'
 import { useUiStore } from '@renderer/stores/ui'
 
@@ -64,6 +64,7 @@ export function GameDetailView({ gameId }: { gameId: number }) {
   const running = useIsRunning(gameId)
   const play = usePlay()
   const openFolder = useOpenFolder()
+  const install = useInstallGame()
   const update = useUpdateGame()
 
   if (detail.isError) {
@@ -112,7 +113,9 @@ export function GameDetailView({ gameId }: { gameId: number }) {
         {game.logoUrl && <h1 className="sr-only">{game.title}</h1>}
         <div className="absolute right-10 bottom-[34px] flex items-center gap-2.5">
           {game.installState === 'not_installed' && game.canInstall ? (
-            <Button size="lg">Installer</Button>
+            <Button size="lg" onClick={() => install.mutate(game.id)}>
+              Installer
+            </Button>
           ) : (
             <Button size="lg" disabled={running} onClick={() => void play(game)}>
               {running ? '● En cours…' : '▶ Jouer'}

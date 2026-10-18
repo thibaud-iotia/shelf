@@ -1,0 +1,8 @@
+{
+  "page": 1,
+  "per_page": 2,
+  "owned_keys": [
+    { "id": 1, "game_id": 10, "game": { "id": 10, "title": "Baba Is You", "classification": "game" } },
+    { "id": 2, "game_id": 11, "game": { "id": 11, "title": "Some OST", "classification": "soundtrack" } }
+  ]
+}

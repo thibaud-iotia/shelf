@@ -1,4 +1,6 @@
-import { app, BrowserWindow, dialog, shell } from 'electron'
+import { app, BrowserWindow, dialog, safeStorage, shell } from 'electron'
+import { createProviders } from './accounts'
+import { AccountService } from './accounts/service'
 import type { AppContext } from './context'
 import { openDatabase } from './db/client'
 import { broadcast } from './events'
@@ -7,6 +9,7 @@ import { registerIpcHandlers } from './ipc/handlers'
 import { ImportService } from './import/service'
 import { GameRunner } from './launch/runner'
 import { applyUserDataOverride, launcherLocations, paths } from './platform/paths'
+import { SecretStore } from './secrets/store'
 import { SettingsStore } from './settings/store'
 import { createSources } from './sources'
 import { createMainWindow } from './window'
@@ -34,7 +37,16 @@ function createContext(): AppContext {
 
   const settings = new SettingsStore(db)
   const importer = new ImportService(db, settings, createSources(launcherLocations))
-  return { database, settings, runner, importer }
+  const secrets = new SecretStore(paths.secrets(), {
+    isAvailable: () => safeStorage.isEncryptionAvailable(),
+    encrypt: (plain) => safeStorage.encryptString(plain),
+    decrypt: (data) => safeStorage.decryptString(data)
+  })
+  const accounts = new AccountService(db, secrets, createProviders(launcherLocations), {
+    // GOG option B stays behind its flag.
+    isEnabled: (kind) => kind !== 'gog-oauth' || settings.get('gogOAuthEnabled')
+  })
+  return { database, settings, runner, importer, secrets, accounts }
 }
 
 if (!app.requestSingleInstanceLock()) {
@@ -60,6 +72,11 @@ if (!app.requestSingleInstanceLock()) {
         .refreshInstalled()
         .then((report) => report && broadcast('library:changed', { reason: 'refresh' }))
         .catch((error: unknown) => console.warn('[startup] refresh failed', error))
+      // Owned libraries: automatic sync when the last one is older than 24 h.
+      void ctx.accounts
+        .syncDue()
+        .then((reports) => reports.length && broadcast('library:changed', { reason: 'sync' }))
+        .catch((error: unknown) => console.warn('[startup] sync failed', error))
 
       app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) createMainWindow()
