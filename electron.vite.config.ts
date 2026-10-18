@@ -16,6 +16,8 @@ export default defineConfig({
     resolve: {
       alias: { ...shared, '@renderer': resolve('src/renderer/src') }
     },
-    plugins: [react(), tailwindcss()]
+    plugins: [react(), tailwindcss()],
+    // electron-vite leaves the renderer unminified by default.
+    build: { minify: true }
   }
 })

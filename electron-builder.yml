@@ -1,26 +1,49 @@
-# Packaging is finalised in Phase 6 (icons, CI). Auto-update stays disabled (personal use).
+# Packaging for the three OSes. Auto-update stays disabled (personal use): publish: null.
 appId: fr.perso.shelf
 productName: Shelf
+copyright: Copyright © 2026 Thibaud
 directories:
   output: release
-  buildResources: build
+  # icon.png (1024 px) is converted to .ico / .icns by electron-builder.
+  buildResources: resources
 files:
   - out/**
   - package.json
+  - '!**/*.map'
 extraResources:
+  # SQL migrations, applied at startup (paths.migrations()).
   - from: drizzle
     to: drizzle
+  # Tray and window icons (paths.trayIcon(), paths.appIcon()).
+  - from: resources
+    to: resources
+    filter: ['*.png']
 asarUnpack:
   - node_modules/better-sqlite3/**
+# better-sqlite3 ships N-API prebuilds that already match Electron: no native rebuild.
+npmRebuild: false
+artifactName: ${productName}-${version}-${os}-${arch}.${ext}
 win:
-  target: nsis
+  target:
+    - target: nsis
+      arch: [x64]
 nsis:
   oneClick: false
+  perMachine: false
   allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  shortcutName: Shelf
 linux:
   target: [AppImage, deb]
   category: Game
+  maintainer: Thibaud
+  synopsis: Bibliothèque de jeux multi-launchers
+  desktop:
+    entry:
+      StartupWMClass: Shelf
 mac:
   target: dmg
   category: public.app-category.games
+  # Personal build: unsigned. Gatekeeper asks once (right click › Open).
+  identity: null
 publish: null

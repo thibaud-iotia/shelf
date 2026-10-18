@@ -54,6 +54,9 @@
     "test:e2e": "electron-vite build && playwright test",
     "db:generate": "drizzle-kit generate",
     "check": "npm run typecheck && npm run lint && npm run test",
-    "dist": "electron-vite build && electron-builder"
+    "dist": "electron-vite build && electron-builder",
+    "dist:dir": "electron-vite build && electron-builder --dir",
+    "test:packaged": "playwright test e2e/packaged.spec.ts",
+    "icons": "electron scripts/make-icons.cjs"
   }
 }

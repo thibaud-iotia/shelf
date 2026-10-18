@@ -27,6 +27,10 @@ Polices (auto-hébergées, `src/renderer/src/assets/fonts/`) : **Space Grotesk**
 Rayons : cartes 14px (`rounded-md`), panneaux 20px (`rounded-lg`), chips `rounded-full`.
 
 Composants du DS portés : `Button` (primary · accent · secondary · ghost · outline ; sm · md · lg), `Input` (label, hint, error).
+Composants maison dans le même esprit : `Chip`, `Badge`, `Modal`, `Toasts`, cartes de réglages.
+
+Fenêtre : barre de titre native masquée, contrôles en overlay sur `--surface-page`, bande de drag de 36 px.
+Tous les écrans 01 à 08 sont implémentés (état : voir PROGRESS.md).
 
 ## Écrans (1280×800)
 

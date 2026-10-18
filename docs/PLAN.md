@@ -158,6 +158,12 @@ Exigences communes :
 - Auto-update désactivé (usage perso).
 - Script de build CI GitHub Actions optionnel.
 
+## Écarts assumés (voir docs/PROGRESS.md)
+
+- Le lancement est décidé par `main/launch/plan.ts` plutôt que par `GameSource.launch()`.
+- Désinstallation par URI uniquement pour Steam.
+- Phases 1 à 6 livrées d'une traite à la demande de l'utilisateur, un commit par phase.
+
 ## Consignes de développement
 
 - Avancer phase par phase et demander validation à la fin de chacune.
