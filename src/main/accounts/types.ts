@@ -9,6 +9,10 @@ export interface OwnedGame {
   title: string
   /** Launcher-side playtime (Steam `playtime_forever`, GOG Galaxy `GameTimes`), when exposed. */
   playtimeMin?: number | null
+  /** Add-on (DLC, cosmetic pack, expansion): sourceId of its base game, same source. */
+  dlcOf?: string
+  /** Owned but not a game to list (hidden duplicate edition, add-on of a game not owned…). */
+  unlisted?: boolean
 }
 
 export interface ConnectedAccount {
@@ -29,6 +33,8 @@ export interface ProviderDeps {
 export interface AccountProvider<I = unknown> {
   kind: AccountKind
   source: GameSourceId
+  /** Reads a local file only (no network, no quota): synced at every startup. */
+  local?: boolean
   connect(input: I): Promise<ConnectedAccount>
   /** May return a rotated secret (OAuth refresh) to store instead of the old one. */
   fetchOwned(

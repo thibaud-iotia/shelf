@@ -78,9 +78,16 @@ export interface PlaySession {
   durationSec: number | null
 }
 
+/** Add-on owned for a game (DLC, cosmetic pack, expansion): shown on its page only. */
+export interface GameDlc {
+  id: number
+  title: string
+}
+
 export interface GameDetail {
   game: Game
   sessions: PlaySession[]
+  dlcs: GameDlc[]
 }
 
 export interface PickedExecutable {

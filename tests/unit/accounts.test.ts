@@ -15,8 +15,14 @@ import {
   steamProvider
 } from '../../src/main/accounts/steam'
 import { openDatabase, type DatabaseHandle } from '../../src/main/db/client'
-import { games } from '../../src/main/db/schema'
-import { closeSession, listGames, openSession } from '../../src/main/games/repository'
+import { gameDlcs, games } from '../../src/main/db/schema'
+import {
+  closeSession,
+  deleteGame,
+  getGameDetail,
+  listGames,
+  openSession
+} from '../../src/main/games/repository'
 import { assertAllowed, requestJson } from '../../src/main/net/http'
 import { SecretStore } from '../../src/main/secrets/store'
 import { apiFixture, fakeCipher, fakeFetch, json, MIGRATIONS, tempDir } from './helpers'
@@ -179,6 +185,69 @@ describe('GOG', () => {
     await expect(gogGalaxyProvider(() => []).connect({})).rejects.toThrow(/GOG Galaxy introuvable/)
   })
 
+  it('Galaxy: add-ons are attached to their base game, hidden editions left out', () => {
+    const file = join(tempDir(), 'galaxy-2.0.db')
+    const db = new Database(file)
+    db.exec(`
+      CREATE TABLE LibraryReleases (releaseKey TEXT, userId INTEGER);
+      CREATE TABLE GamePieceTypes (id INTEGER PRIMARY KEY, type TEXT);
+      CREATE TABLE GamePieces (releaseKey TEXT, gamePieceTypeId INTEGER, userId INTEGER, value TEXT);
+      CREATE TABLE ReleaseProperties (releaseKey TEXT, isDlc INTEGER, isVisibleInLibrary INTEGER, gameId TEXT);
+      INSERT INTO GamePieceTypes VALUES (1, 'title'), (2, 'dlcs'), (3, 'allGameReleases');
+      INSERT INTO LibraryReleases VALUES
+        ('gog_1', 1), ('gog_10', 1), ('gog_11', 1), ('gog_12', 1), ('gog_13', 1), ('gog_14', 1),
+        ('gog_2', 1), ('gog_20', 1);
+      INSERT INTO GamePieces VALUES
+        ('gog_1', 1, 1, '{"title":"The Witcher 3: Wild Hunt"}'),
+        ('gog_1', 2, 1, '{"dlcs":["gog_10","gog_11"]}'),
+        ('gog_1', 3, 1, '{"releases":["gog_1","gog_9","steam_292030"]}'),
+        -- Another edition, not owned, listing the "[A]" copies of the same add-ons.
+        ('gog_9', 2, 1, '{"dlcs":["gog_12","gog_13","gog_14"]}'),
+        ('gog_10', 1, 1, '{"title":"Alternative Look for Ciri"}'),
+        ('gog_11', 1, 1, '{"title":"Hearts of Stone"}'),
+        ('gog_12', 1, 1, '{"title":"Alternative Look for Ciri [A]"}'),
+        ('gog_13', 1, 1, '{"title":"dlc_15_a"}'),
+        ('gog_14', 1, 1, '{"title":"Temerian Armor Set [A]"}'),
+        ('gog_2', 1, 1, '{"title":"The Witcher 3: Wild Hunt"}'),
+        ('gog_20', 1, 1, '{"title":"Cyberpunk 2077 Goodies Collection"}');
+      INSERT INTO ReleaseProperties VALUES
+        ('gog_1', 0, 1, 'a'), ('gog_10', 1, 1, 'b'), ('gog_11', 1, 1, 'c'), ('gog_12', 1, 1, 'd'),
+        ('gog_13', 1, 1, 'e'), ('gog_14', 1, 1, 'f'), ('gog_2', 0, 0, 'g'), ('gog_20', 1, 1, 'h');
+    `)
+    db.close()
+    const owned = readGalaxyOwned(file).sort((a, b) => a.sourceId.localeCompare(b.sourceId))
+    expect(
+      owned.map(({ sourceId, title, dlcOf, unlisted }) => ({ sourceId, title, dlcOf, unlisted }))
+    ).toEqual([
+      { sourceId: '1', title: 'The Witcher 3: Wild Hunt', dlcOf: undefined, unlisted: undefined },
+      { sourceId: '10', title: 'Alternative Look for Ciri', dlcOf: '1', unlisted: undefined },
+      { sourceId: '11', title: 'Hearts of Stone', dlcOf: '1', unlisted: undefined },
+      // Same add-on bought with another edition: kept once.
+      { sourceId: '12', title: 'Alternative Look for Ciri [A]', dlcOf: undefined, unlisted: true },
+      // Internal placeholder name.
+      { sourceId: '13', title: 'dlc_15_a', dlcOf: undefined, unlisted: true },
+      // Only the "[A]" copy is owned: attached through the edition, suffix dropped.
+      { sourceId: '14', title: 'Temerian Armor Set', dlcOf: '1', unlisted: undefined },
+      // Edition hidden by Galaxy itself.
+      { sourceId: '2', title: 'The Witcher 3: Wild Hunt', dlcOf: undefined, unlisted: true },
+      // Add-on of a game not owned.
+      {
+        sourceId: '20',
+        title: 'Cyberpunk 2077 Goodies Collection',
+        dlcOf: undefined,
+        unlisted: true
+      }
+    ])
+
+    // Older databases without ReleaseProperties: the `dlcs` piece is enough.
+    const old = new Database(file)
+    old.exec('DROP TABLE ReleaseProperties')
+    old.close()
+    const fallback = readGalaxyOwned(file)
+    expect(fallback.find((g) => g.sourceId === '10')).toMatchObject({ dlcOf: '1' })
+    expect(fallback.find((g) => g.sourceId === '2')).not.toHaveProperty('unlisted')
+  })
+
   it('OAuth (option B): code, token rotation, paginated products', async () => {
     expect(codeFromRedirect('https://embed.gog.com/on_login_success?origin=client&code=ABC')).toBe(
       'ABC'
@@ -284,12 +353,66 @@ describe('AccountService', () => {
       ],
       new Date()
     )
-    expect(result).toEqual({ added: 1, updated: 1 })
+    expect(result).toEqual({ added: 1, updated: 1, dlcs: 0 })
     const rows = handle.db.select().from(games).all()
     expect(rows.map((r) => [r.title, r.installState, r.externalPlaytimeMin])).toEqual([
       ['Hades', 'installed', 2535],
       ['Portal 2', 'not_installed', 10]
     ])
+  })
+
+  it('attaches add-ons to their game and removes them from the library', () => {
+    // A previous sync imported add-ons and a hidden edition as games.
+    upsertOwned(
+      handle.db,
+      [
+        { source: 'gog', sourceId: '1', title: 'The Witcher 3' },
+        { source: 'gog', sourceId: '10', title: 'Alternative Look for Ciri' },
+        { source: 'gog', sourceId: '2', title: 'The Witcher 3' },
+        { source: 'gog', sourceId: '30', title: 'Goodies Collection' }
+      ],
+      new Date()
+    )
+    // …but one the user set up by hand is kept.
+    handle.db
+      .update(games)
+      .set({ executablePath: 'C:/Games/goodies.exe' })
+      .where(eq(games.sourceId, '30'))
+      .run()
+
+    const result = upsertOwned(
+      handle.db,
+      [
+        { source: 'gog', sourceId: '10', title: 'Alternative Look for Ciri', dlcOf: '1' },
+        { source: 'gog', sourceId: '1', title: 'The Witcher 3' },
+        { source: 'gog', sourceId: '11', title: 'Hearts of Stone', dlcOf: '1' },
+        { source: 'gog', sourceId: '12', title: 'Base not owned', dlcOf: '999' },
+        { source: 'gog', sourceId: '2', title: 'The Witcher 3', unlisted: true },
+        { source: 'gog', sourceId: '30', title: 'Goodies Collection', unlisted: true }
+      ],
+      new Date()
+    )
+    expect(result).toEqual({ added: 0, updated: 1, dlcs: 2 })
+    expect(listGames(handle.db).map((g) => g.title)).toEqual([
+      'Goodies Collection',
+      'The Witcher 3'
+    ])
+
+    const witcher = listGames(handle.db).find((g) => g.sourceId === '1')!
+    expect(getGameDetail(handle.db, witcher.id).dlcs.map((d) => d.title)).toEqual([
+      'Alternative Look for Ciri',
+      'Hearts of Stone'
+    ])
+
+    // Re-sync: same rows, no duplicates; deleting the game drops its add-ons.
+    upsertOwned(
+      handle.db,
+      [{ source: 'gog', sourceId: '10', title: 'Alternative Look for Ciri', dlcOf: '1' }],
+      new Date()
+    )
+    expect(handle.db.select().from(gameDlcs).all()).toHaveLength(2)
+    deleteGame(handle.db, witcher.id)
+    expect(handle.db.select().from(gameDlcs).all()).toHaveLength(0)
   })
 
   it('shows the launcher playtime, plus what Shelf measured outside of it', () => {
@@ -340,6 +463,24 @@ describe('AccountService', () => {
     service.disconnect(account.id)
     expect(service.list()).toEqual([])
     expect(secrets.has('account:steam:76561197960287930')).toBe(false)
+  })
+
+  it('resyncs local libraries (GOG Galaxy) at every startup', async () => {
+    const galaxy = {
+      kind: 'gog-galaxy',
+      source: 'gog',
+      local: true,
+      connect: async () => ({
+        displayName: 'GOG Galaxy (local)',
+        externalUserId: 'g',
+        secret: null
+      }),
+      fetchOwned: async () => ({ games: [{ source: 'gog', sourceId: '1', title: 'UT2004' }] })
+    } as const
+    const service = new AccountService(handle.db, secrets, [galaxy as never])
+    await service.connect({ kind: 'gog-galaxy' })
+    // Synced just now, still due: a local read costs nothing.
+    expect(await service.syncDue()).toMatchObject([{ accountId: 'gog-galaxy:g', error: null }])
   })
 
   it('keeps sync errors on the account instead of throwing', async () => {

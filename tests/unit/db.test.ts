@@ -28,6 +28,7 @@ describe('database', () => {
       'accounts',
       'collection_games',
       'collections',
+      'game_dlcs',
       'game_tags',
       'games',
       'play_sessions',

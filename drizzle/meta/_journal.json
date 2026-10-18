@@ -15,6 +15,13 @@
       "when": 1792337221486,
       "tag": "0001_library",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1792351553311,
+      "tag": "0002_dlcs",
+      "breakpoints": true
     }
   ]
 }

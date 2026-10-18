@@ -1,10 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import { dirname } from 'node:path'
-import { and, desc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm'
 import { AppError } from '../../shared/errors'
 import type { Game, GameDetail, GameInput, GamePatch, PlaySession } from '../../shared/models'
 import type { ShelfDatabase } from '../db/client'
-import { collectionGames, gameTags, games, playSessions, tags } from '../db/schema'
+import { collectionGames, gameDlcs, gameTags, games, playSessions, tags } from '../db/schema'
 import { mediaUrl } from '../media/urls'
 import { installUri, uninstallUri } from '../sources/uris'
 
@@ -187,7 +187,13 @@ export function getGameDetail(db: ShelfDatabase, id: number, sessionLimit = 20):
       endedAt: s.endedAt?.getTime() ?? null,
       durationSec: s.durationSec
     }))
-  return { game, sessions }
+  const dlcs = db
+    .select({ id: gameDlcs.id, title: gameDlcs.title })
+    .from(gameDlcs)
+    .where(eq(gameDlcs.gameId, id))
+    .orderBy(asc(sql`${gameDlcs.title} COLLATE NOCASE`))
+    .all()
+  return { game, sessions, dlcs }
 }
 
 export function createManualGame(db: ShelfDatabase, input: Required<GameInput>): Game {

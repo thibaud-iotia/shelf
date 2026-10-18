@@ -19,7 +19,7 @@ Journal de bord : état de chaque phase, décisions prises, points ouverts.
 Phases 1 à 6 réalisées d'une traite à la demande de l'utilisateur (« fais toutes les phases d'un
 coup, je veux voir le résultat final »), un commit par phase, toutes fusionnées dans `main`.
 
-Bilan des tests : 119 unitaires, 24 e2e (+ 1 test de fumée de l'app packagée).
+Bilan des tests : 122 unitaires, 25 e2e (+ 1 test de fumée de l'app packagée).
 
 ## Phase 0 — Squelette
 
@@ -77,7 +77,7 @@ Bilan des tests : 119 unitaires, 24 e2e (+ 1 test de fumée de l'app packagée).
 ## Phase 6 — Packaging
 
 - electron-builder : NSIS (Windows), AppImage + deb (Linux), dmg non signé (macOS), icônes générées, `publish: null`.
-- Renderer minifié (350 kB au lieu de 900 kB). Workflow GitHub Actions (check, e2e, installeurs) optionnel.
+- Renderer minifié (350 kB au lieu de 900 kB). Workflow GitHub Actions (check, e2e, installeurs publiés sur tag).
 - Installeur Windows vérifié localement : `release/Shelf-0.1.0-win-x64.exe` ; test de fumée de l'app packagée vert.
 
 ## Retours après le premier jet
@@ -92,6 +92,23 @@ Bilan des tests : 119 unitaires, 24 e2e (+ 1 test de fumée de l'app packagée).
   (registre Windows `HKCU\Software\Valve\Steam`, `registry.vdf` sous Linux/macOS), sondé toutes les 5 s
   (`launch/steam-watch.ts`). Le jeu apparaît « En cours » ; à sa fermeture, les comptes Steam sont
   synchronisés 60 s plus tard (délai de mise à jour de l'API). Abandon si le jeu ne démarre pas en 10 min.
+
+- Contenus additionnels (retour : « "Alternative look for Ciri" n'est pas un jeu, mets-le dans le vrai jeu ») :
+  table `game_dlcs` (migration 0002) rattachée au jeu de base, section « CONTENUS ADDITIONNELS » de la fiche,
+  jamais dans la bibliothèque. GOG Galaxy : `ReleaseProperties.isDlc` (à défaut, la pièce `dlcs` du jeu
+  parent) ; parent résolu aussi via une autre édition (`allGameReleases`). Écartés : éditions masquées par
+  Galaxy (`isVisibleInLibrary = 0`), noms internes (`dlc_15_a`), copies « [A] » d'un même DLC, DLC d'un jeu
+  non possédé. La synchro supprime les lignes importées à tort comme jeux, sauf si installées ou configurées
+  (exécutable). Galaxy étant une lecture locale, il est resynchronisé à chaque démarrage (les autres
+  comptes : > 24 h). Epic (Legendary) et GOG option B écartaient déjà les DLC, sans parent connu.
+
+- CI (`.github/workflows/ci.yml`, retour : « ça évite de release 1 exe et après ne plus avoir de place
+  sur GitHub ») : vérifications + e2e sous Linux à chaque push/PR, sans artefact (sauf traces des e2e en
+  échec, 7 jours). Sur un tag `v*` (qui doit égaler la version de `package.json`) : version en brouillon,
+  installeurs des trois OS envoyés directement dedans (`gh release upload`, aucun quota de stockage
+  Actions), test de fumée de l'app packagée sous Windows avant envoi, publication seulement quand les
+  trois sont là. Dépôt cible : variable `RELEASES_REPO` (dépôt dédié, jeton `RELEASES_TOKEN`), sinon ce
+  dépôt avec `GITHUB_TOKEN`.
 
 ## Décisions et écarts au plan
 

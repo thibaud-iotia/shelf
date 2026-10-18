@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { INSTALL_STATE_LABELS, SOURCE_LABELS } from '@shared/domain'
 import { formatDay, formatLastSession, formatPlaytime, yearOf } from '@shared/format'
-import type { Game } from '@shared/models'
+import type { Game, GameDlc } from '@shared/models'
 import { heroGradient } from '@renderer/lib/artwork'
 import { MetadataDialog } from '@renderer/components/game/MetadataDialog'
 import { TagEditor } from '@renderer/components/game/TagEditor'
@@ -31,6 +31,37 @@ function Label({ children, first = false }: { children: ReactNode; first?: boole
     >
       {children}
     </span>
+  )
+}
+
+const DLC_PREVIEW = 6
+
+/** Add-ons owned for this game: listed here, never as games of their own. */
+function DlcList({ dlcs }: { dlcs: GameDlc[] }) {
+  const [expanded, setExpanded] = useState(false)
+  const shown = expanded ? dlcs : dlcs.slice(0, DLC_PREVIEW)
+  return (
+    <div className="flex flex-col gap-2 mt-2">
+      <span className="text-[11px] font-semibold tracking-[.12em] text-text-lo">
+        CONTENUS ADDITIONNELS · {dlcs.length}
+      </span>
+      <ul data-testid="dlcs" className="flex flex-col gap-1 max-w-[640px]">
+        {shown.map((dlc) => (
+          <li key={dlc.id} className="text-sm text-text-mid truncate" title={dlc.title}>
+            {dlc.title}
+          </li>
+        ))}
+      </ul>
+      {dlcs.length > DLC_PREVIEW && (
+        <button
+          type="button"
+          onClick={() => setExpanded(!expanded)}
+          className="self-start text-xs text-text-lo hover:text-text-hi cursor-pointer"
+        >
+          {expanded ? 'Réduire' : `Afficher les ${dlcs.length}`}
+        </button>
+      )}
+    </div>
   )
 }
 
@@ -160,7 +191,7 @@ export function GameDetailView({ gameId }: { gameId: number }) {
     )
   }
   if (!detail.data) return null
-  const { game, sessions } = detail.data
+  const { game, sessions, dlcs } = detail.data
   const year = yearOf(game.releaseDate)
   const meta = [year, game.developer].filter(Boolean).join(' · ')
 
@@ -259,6 +290,7 @@ export function GameDetailView({ gameId }: { gameId: number }) {
               ))}
             </div>
           )}
+          {dlcs.length > 0 && <DlcList dlcs={dlcs} />}
           {sessions.length > 0 && (
             <div className="flex flex-col gap-2 mt-2">
               <span className="text-[11px] font-semibold tracking-[.12em] text-text-lo">

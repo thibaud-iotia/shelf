@@ -39,6 +39,25 @@ export const games = sqliteTable(
   (t) => [uniqueIndex('games_source_source_id_unique').on(t.source, t.sourceId)]
 )
 
+// Add-ons (DLC, cosmetic packs, expansions) owned on a launcher account: shown on their base
+// game's page, never listed as games. Same (source, sourceId) identity as games.
+export const gameDlcs = sqliteTable(
+  'game_dlcs',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    gameId: integer('game_id')
+      .notNull()
+      .references(() => games.id, { onDelete: 'cascade' }),
+    source: text('source', { enum: GAME_SOURCES }).notNull(),
+    sourceId: text('source_id').notNull(),
+    title: text('title').notNull()
+  },
+  (t) => [
+    uniqueIndex('game_dlcs_source_source_id_unique').on(t.source, t.sourceId),
+    index('game_dlcs_game_id_idx').on(t.gameId)
+  ]
+)
+
 export const accounts = sqliteTable(
   'accounts',
   {

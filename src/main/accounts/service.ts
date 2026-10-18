@@ -1,10 +1,10 @@
-import { and, eq, inArray, sql } from 'drizzle-orm'
+import { and, eq, inArray, isNull, ne, sql } from 'drizzle-orm'
 import type { GameSourceId } from '../../shared/domain'
 import { AppError, toSerializedError } from '../../shared/errors'
 import type { Account, AccountKind, ConnectInput, SyncReport } from '../../shared/models'
 import { ACCOUNT_KINDS } from '../../shared/models'
 import type { ShelfDatabase } from '../db/client'
-import { accounts, games } from '../db/schema'
+import { accounts, gameDlcs, games } from '../db/schema'
 import type { SecretStore } from '../secrets/store'
 import type { AccountProvider, OwnedGame } from './types'
 
@@ -15,17 +15,23 @@ type AccountRow = typeof accounts.$inferSelect
 /**
  * Inserts owned games as "not installed" and refreshes the ones already known through
  * local detection: same (source, sourceId) → one row, owned + installed.
+ * Add-ons are attached to their base game (`game_dlcs`), never listed as games; an add-on
+ * whose base game is unknown is dropped like any unlisted entry. Rows an earlier sync
+ * imported for them as games are removed, unless the user installed or set them up.
  */
 export function upsertOwned(
   db: ShelfDatabase,
   owned: OwnedGame[],
   now: Date
-): { added: number; updated: number } {
+): { added: number; updated: number; dlcs: number } {
   let added = 0
   let updated = 0
+  let dlcs = 0
   db.transaction((tx) => {
     for (const source of new Set(owned.map((g) => g.source))) {
-      const ids = owned.filter((g) => g.source === source).map((g) => g.sourceId)
+      const entries = owned.filter((g) => g.source === source)
+      const listed = entries.filter((g) => !g.unlisted && g.dlcOf === undefined)
+      const ids = listed.map((g) => g.sourceId)
       const known = new Set<string>()
       for (let i = 0; i < ids.length; i += 500) {
         tx.select({ sourceId: games.sourceId })
@@ -34,7 +40,7 @@ export function upsertOwned(
           .all()
           .forEach((r) => known.add(r.sourceId))
       }
-      for (const game of owned.filter((g) => g.source === source)) {
+      for (const game of listed) {
         const playtime = game.playtimeMin ?? null
         tx.insert(games)
           .values({
@@ -59,9 +65,49 @@ export function upsertOwned(
         if (known.has(game.sourceId)) updated++
         else added++
       }
+
+      const baseIds = new Map<string, number>()
+      const baseOf = (sourceId: string) => {
+        if (!baseIds.has(sourceId)) {
+          const row = tx
+            .select({ id: games.id })
+            .from(games)
+            .where(and(eq(games.source, source), eq(games.sourceId, sourceId)))
+            .get()
+          baseIds.set(sourceId, row?.id ?? 0)
+        }
+        return baseIds.get(sourceId) || null
+      }
+      const notGames = entries.filter((g) => g.unlisted || g.dlcOf !== undefined)
+      for (const entry of notGames) {
+        const gameId = !entry.unlisted && entry.dlcOf ? baseOf(entry.dlcOf) : null
+        if (gameId && entry.dlcOf !== entry.sourceId) {
+          tx.insert(gameDlcs)
+            .values({ gameId, source, sourceId: entry.sourceId, title: entry.title })
+            .onConflictDoUpdate({
+              target: [gameDlcs.source, gameDlcs.sourceId],
+              set: { gameId, title: entry.title }
+            })
+            .run()
+          dlcs++
+        }
+      }
+      const stale = notGames.map((g) => g.sourceId)
+      for (let i = 0; i < stale.length; i += 500) {
+        tx.delete(games)
+          .where(
+            and(
+              eq(games.source, source),
+              inArray(games.sourceId, stale.slice(i, i + 500)),
+              ne(games.installState, 'installed'),
+              isNull(games.executablePath)
+            )
+          )
+          .run()
+      }
     }
   })
-  return { added, updated }
+  return { added, updated, dlcs }
 }
 
 export class AccountService {
@@ -176,7 +222,8 @@ export class AccountService {
         .set({ lastSyncAt: now, lastError: null })
         .where(eq(accounts.id, id))
         .run()
-      return { accountId: id, added, updated, total: result.games.length, error: null }
+      const total = result.games.filter((g) => !g.unlisted && g.dlcOf === undefined).length
+      return { accountId: id, added, updated, total, error: null }
     } catch (error) {
       const message = toSerializedError(error).message
       this.db.update(accounts).set({ lastError: message }).where(eq(accounts.id, id)).run()
@@ -184,14 +231,16 @@ export class AccountService {
     }
   }
 
-  /** Accounts never synced, or synced more than `maxAgeMs` ago. */
+  /** Local accounts, and the others never synced or synced more than `maxAgeMs` ago. */
   async syncDue(maxAgeMs = SYNC_MAX_AGE_MS): Promise<SyncReport[]> {
     const limit = this.now().getTime() - maxAgeMs
     const due = this.db
       .select()
       .from(accounts)
       .all()
-      .filter((a) => !a.lastSyncAt || a.lastSyncAt.getTime() < limit)
+      .filter(
+        (a) => this.providers.get(a.kind)?.local || !a.lastSyncAt || a.lastSyncAt.getTime() < limit
+      )
     const reports: SyncReport[] = []
     for (const account of due) reports.push(await this.sync(account.id))
     return reports
