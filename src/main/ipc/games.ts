@@ -14,8 +14,7 @@ import {
 } from '../games/repository'
 import { titleFromExecutable } from '../games/titles'
 import { validateGameId, validateGameInput, validateGamePatch } from '../games/validation'
-import { buildLaunchPlan } from '../launch/plan'
-import { paths } from '../platform/paths'
+import { launchGame, runningGameIds } from '../launch/launch-game'
 import { exportSaves, backupFileName } from '../saves/backup'
 import { installUri, uninstallUri } from '../sources/uris'
 import { pickPath, pickSavePath } from './dialogs'
@@ -57,18 +56,12 @@ export function registerGameHandlers(ctx: AppContext): void {
   })
 
   handle('games:launch', async (id) => {
-    const game = getGameRow(db, validateGameId(id))
-    const plan = buildLaunchPlan(game, {
-      platform: process.platform,
-      runnerPath: ctx.settings.get('runnerPath'),
-      protonPrefix: paths.protonPrefix()
-    })
-    const result = await ctx.runner.launch(game.id, plan)
+    const result = await launchGame(ctx, validateGameId(id))
     broadcast('library:changed', { reason: 'launch' })
     return result
   })
 
-  handle('games:running', () => ctx.runner.runningIds())
+  handle('games:running', () => runningGameIds(ctx))
 
   handle('games:uninstall', async (id) => {
     const game = getGameRow(db, validateGameId(id))

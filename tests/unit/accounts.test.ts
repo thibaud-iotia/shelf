@@ -333,6 +333,9 @@ describe('AccountService', () => {
     expect(await service.syncDue()).toEqual([]) // synced just now
     now = new Date('2026-10-19T11:00:00Z')
     expect(await service.syncDue()).toHaveLength(1)
+    // After a Steam session: only Steam accounts.
+    expect((await service.syncSource('steam')).map((r) => r.accountId)).toEqual([account.id])
+    expect(await service.syncSource('gog')).toEqual([])
 
     service.disconnect(account.id)
     expect(service.list()).toEqual([])

@@ -1,4 +1,5 @@
 import { and, eq, inArray, sql } from 'drizzle-orm'
+import type { GameSourceId } from '../../shared/domain'
 import { AppError, toSerializedError } from '../../shared/errors'
 import type { Account, AccountKind, ConnectInput, SyncReport } from '../../shared/models'
 import { ACCOUNT_KINDS } from '../../shared/models'
@@ -193,6 +194,14 @@ export class AccountService {
       .filter((a) => !a.lastSyncAt || a.lastSyncAt.getTime() < limit)
     const reports: SyncReport[] = []
     for (const account of due) reports.push(await this.sync(account.id))
+    return reports
+  }
+
+  /** Accounts of one launcher (Steam after a game session, to fetch its new playtime). */
+  async syncSource(source: GameSourceId): Promise<SyncReport[]> {
+    const rows = this.db.select().from(accounts).where(eq(accounts.source, source)).all()
+    const reports: SyncReport[] = []
+    for (const account of rows) reports.push(await this.sync(account.id))
     return reports
   }
 

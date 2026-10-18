@@ -19,7 +19,7 @@ Journal de bord : état de chaque phase, décisions prises, points ouverts.
 Phases 1 à 6 réalisées d'une traite à la demande de l'utilisateur (« fais toutes les phases d'un
 coup, je veux voir le résultat final »), un commit par phase, toutes fusionnées dans `main`.
 
-Bilan des tests : 114 unitaires, 24 e2e (+ 1 test de fumée de l'app packagée).
+Bilan des tests : 119 unitaires, 24 e2e (+ 1 test de fumée de l'app packagée).
 
 ## Phase 0 — Squelette
 
@@ -87,6 +87,11 @@ Bilan des tests : 114 unitaires, 24 e2e (+ 1 test de fumée de l'app packagée).
   Pas de double compte : un lancement par URI (`steam://`, Epic) n'ouvre jamais de session Shelf, et
   Galaxy ne voit pas un exécutable GOG lancé directement par Shelf. Fiche : « Selon Steam ».
   Epic (Legendary) et itch n'exposent pas de temps : seul le temps mesuré par Shelf compte.
+
+- Synchro Steam après chaque partie : un jeu lancé par `steam://` est suivi via le `RunningAppID` de Steam
+  (registre Windows `HKCU\Software\Valve\Steam`, `registry.vdf` sous Linux/macOS), sondé toutes les 5 s
+  (`launch/steam-watch.ts`). Le jeu apparaît « En cours » ; à sa fermeture, les comptes Steam sont
+  synchronisés 60 s plus tard (délai de mise à jour de l'API). Abandon si le jeu ne démarre pas en 10 min.
 
 ## Décisions et écarts au plan
 

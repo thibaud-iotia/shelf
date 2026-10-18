@@ -30,6 +30,20 @@ export function parseRegQuery(output: string): RegistryKey[] {
   return keys
 }
 
+/** Reads one value of a key (Windows only). Resolves to null on any failure. */
+export function queryRegistryValue(key: string, name: string): Promise<string | null> {
+  if (process.platform !== 'win32') return Promise.resolve(null)
+  return new Promise((resolve) => {
+    execFile(
+      'reg',
+      ['query', key, '/v', name],
+      { windowsHide: true, timeout: 5_000 },
+      (error, out) =>
+        resolve(error ? null : (parseRegQuery(out)[0]?.values[name.toLowerCase()] ?? null))
+    )
+  })
+}
+
 /** Reads a registry key recursively (Windows only). Resolves to [] on any failure. */
 export function queryRegistry(key: string): Promise<RegistryKey[]> {
   if (process.platform !== 'win32') return Promise.resolve([])

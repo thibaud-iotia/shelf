@@ -4,17 +4,12 @@ import { AccountService } from './accounts/service'
 import type { AppContext } from './context'
 import { openDatabase } from './db/client'
 import { broadcast, onBroadcast } from './events'
-import {
-  closeSession,
-  discardUnfinishedSessions,
-  getGameRow,
-  listGames,
-  openSession
-} from './games/repository'
-import { buildLaunchPlan } from './launch/plan'
+import { closeSession, discardUnfinishedSessions, listGames, openSession } from './games/repository'
+import { launchGame, runningGameIds } from './launch/launch-game'
 import { registerIpcHandlers } from './ipc/handlers'
 import { ImportService } from './import/service'
 import { GameRunner } from './launch/runner'
+import { SteamWatcher } from './launch/steam-watch'
 import { MediaCache } from './media/cache'
 import { handleMediaProtocol, registerMediaScheme } from './media/protocol'
 import { MetadataService, type EnrichTarget } from './metadata/service'
@@ -29,6 +24,9 @@ app.setName('Shelf')
 applyUserDataOverride()
 app.enableSandbox()
 registerMediaScheme()
+
+/** Delay between the end of a Steam game and the account sync. */
+const STEAM_SYNC_DELAY_MS = 60_000
 
 let ctx: AppContext | undefined
 let tray: ShelfTray | undefined
@@ -47,15 +45,9 @@ function createTray(context: AppContext): ShelfTray {
         .sort((a, b) => b.lastPlayedAt! - a.lastPlayedAt!)
         .slice(0, 5),
     play: (gameId) => {
-      const game = getGameRow(db, gameId)
-      const plan = buildLaunchPlan(game, {
-        platform: process.platform,
-        runnerPath: context.settings.get('runnerPath'),
-        protonPrefix: paths.protonPrefix()
-      })
-      context.runner
-        .launch(gameId, plan)
-        .catch((error: unknown) => console.warn('[tray] launch failed', error))
+      launchGame(context, gameId).catch((error: unknown) =>
+        console.warn('[tray] launch failed', error)
+      )
     },
     quit: () => app.quit()
   })
@@ -79,7 +71,11 @@ function createContext(): AppContext {
       broadcast('library:changed', { reason: 'session' })
     }
   })
-  runner.on('change', (ids) => broadcast('games:running', ids))
+  const locations = launcherLocations()
+  const steamWatch = new SteamWatcher({ readRunningAppId: locations.steamRunningAppId })
+  const running = () => broadcast('games:running', runningGameIds({ runner, steamWatch }))
+  runner.on('change', running)
+  steamWatch.on('change', running)
 
   const settings = new SettingsStore(db)
   const secrets = new SecretStore(paths.secrets(), {
@@ -108,7 +104,29 @@ function createContext(): AppContext {
     isEnabled: (kind) => kind !== 'gog-oauth' || settings.get('gogOAuthEnabled')
   })
   const onSynced = () => enqueue(() => metadata.enrichMissing(100, progress))
-  return { database, settings, runner, importer, secrets, accounts, metadata, onSynced }
+
+  // End of a Steam session: Steam updates its playtime, fetch it (the Web API lags a little).
+  steamWatch.on('ended', () => {
+    setTimeout(() => {
+      void accounts.syncSource('steam').then((reports) => {
+        if (!reports.length) return
+        broadcast('library:changed', { reason: 'sync' })
+        onSynced()
+      })
+    }, STEAM_SYNC_DELAY_MS)
+  })
+
+  return {
+    database,
+    settings,
+    runner,
+    steamWatch,
+    importer,
+    secrets,
+    accounts,
+    metadata,
+    onSynced
+  }
 }
 
 if (!app.requestSingleInstanceLock()) {
@@ -170,5 +188,6 @@ app.on('window-all-closed', () => {
 app.on('will-quit', () => {
   tray?.destroy()
   ctx?.runner.dispose()
+  ctx?.steamWatch.dispose()
   ctx?.database.close()
 })
