@@ -108,7 +108,10 @@ Bilan des tests : 122 unitaires, 25 e2e (+ 1 test de fumée de l'app packagée).
   installeurs des trois OS envoyés directement dedans (`gh release upload`, aucun quota de stockage
   Actions), test de fumée de l'app packagée sous Windows avant envoi, publication seulement quand les
   trois sont là. Dépôt cible : variable `RELEASES_REPO` (dépôt dédié, jeton `RELEASES_TOKEN`), sinon ce
-  dépôt avec `GITHUB_TOKEN`.
+  dépôt avec `GITHUB_TOKEN`. Vérifications et e2e sous Linux et Windows : sans trousseau système
+  (Linux headless), `safeStorage` est indisponible et l'e2e vérifie le refus des clés API ; Windows
+  couvre le stockage chiffré. Chemins Windows lus pareil sur tout OS (`titleFromExecutable`, `isInside`).
+  v0.1.0 publiée : https://github.com/thibaud-iotia/shelf/releases/tag/v0.1.0
 
 ## Décisions et écarts au plan
 
