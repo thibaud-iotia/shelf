@@ -22,6 +22,8 @@ export interface Game {
   developer: string | null
   genres: string[]
   igdbId: number | null
+  /** Steam store appid behind news, videos, reviews… (null: none found yet). */
+  steamAppId: string | null
   favorite: boolean
   hidden: boolean
   addedAt: number
@@ -36,7 +38,9 @@ export interface Game {
   localPlaytimeSec: number
   /** Time reported by the launcher account, null when it exposes none. */
   externalPlaytimeMin: number | null
+  /** Most recent play: Shelf's sessions or the launcher's date, whichever is later. */
   lastPlayedAt: number | null
+  /** Length of that play, null when it comes from the launcher. */
   lastSessionSec: number | null
   sessionCount: number
   tags: string[]
@@ -68,6 +72,8 @@ export interface GamePatch {
   genres?: string[]
   savePath?: string | null
   useRunner?: boolean
+  /** null: found again by a Steam store search. */
+  steamAppId?: string | null
 }
 
 export interface PlaySession {
@@ -268,4 +274,150 @@ export interface SettingsView extends AppSettings {
   steamGridDbConfigured: boolean
   secretsAvailable: boolean
   platform: string
+}
+
+// Game page extras ("comme sur Steam"): news, videos, reviews, community, achievements.
+// Image URLs are `shelf-media://` (proxied by the main process); links are https.
+
+export interface NewsItem {
+  id: string
+  title: string
+  url: string
+  author: string | null
+  /** ms since epoch. */
+  date: number
+  /** Feed name shown next to the date ("Annonce officielle", "Rock, Paper, Shotgun"…). */
+  feed: string
+  /** Posted by the developer on Steam (not a press article). */
+  official: boolean
+  summary: string
+  imageUrl: string | null
+}
+
+export interface GameVideo {
+  id: string
+  title: string
+  kind: 'steam' | 'youtube'
+  posterUrl: string | null
+  /** Steam: mp4 URLs, best first. YouTube: the embed URL. */
+  sources: string[]
+  /** Link opened in the browser (YouTube page, Steam store page). */
+  pageUrl: string
+}
+
+export interface ReviewSummary {
+  /** Steam's label, e.g. « extrêmement positives ». */
+  label: string
+  /** 1 (overwhelmingly negative) … 9 (overwhelmingly positive), 0 = not enough reviews. */
+  score: number
+  percentPositive: number
+  count: number
+  url: string
+}
+
+export const LINK_KINDS = [
+  'official',
+  'steam',
+  'community',
+  'wiki',
+  'discord',
+  'reddit',
+  'twitter',
+  'youtube',
+  'twitch',
+  'other'
+] as const
+export type LinkKind = (typeof LINK_KINDS)[number]
+
+export interface GameLink {
+  kind: LinkKind
+  label: string
+  url: string
+}
+
+/** A block of the Steam "About this game" text. */
+export type AboutBlock =
+  | { kind: 'heading'; text: string }
+  | { kind: 'text'; text: string }
+  | { kind: 'image'; url: string }
+
+export interface StoreScreenshot {
+  thumbUrl: string
+  fullUrl: string
+}
+
+export interface Requirement {
+  label: string
+  value: string
+}
+
+/** Store page details shown on the overview tab (Steam `appdetails`). */
+export interface StoreInfo {
+  shortDescription: string | null
+  about: AboutBlock[]
+  genres: string[]
+  /** Steam features: "Solo", "Succès Steam", "Steam Cloud"… */
+  features: string[]
+  developers: string[]
+  publishers: string[]
+  /** As written by Steam ("17 sept. 2020", "Bientôt disponible"). */
+  releaseDate: string | null
+  comingSoon: boolean
+  platforms: ('windows' | 'mac' | 'linux')[]
+  /** "24,50 €", "Gratuit", or null when not sold. */
+  price: string | null
+  discountPercent: number
+  controller: 'full' | 'partial' | null
+  languages: { name: string; audio: boolean }[]
+  requirements: { minimum: Requirement[]; recommended: Requirement[] }
+  screenshots: StoreScreenshot[]
+}
+
+export interface GameInsights {
+  steamAppId: string | null
+  store: StoreInfo | null
+  reviews: ReviewSummary | null
+  playersOnline: number | null
+  metacritic: { score: number; url: string | null } | null
+  achievementsTotal: number | null
+  videos: GameVideo[]
+  links: GameLink[]
+  /** A Steam account key is available (community shares and achievement progress). */
+  steamKey: boolean
+}
+
+export const COMMUNITY_KINDS = ['screenshots', 'artwork', 'guides'] as const
+export type CommunityKind = (typeof COMMUNITY_KINDS)[number]
+
+export interface CommunityItem {
+  id: string
+  title: string
+  description: string | null
+  previewUrl: string | null
+  url: string
+  votesUp: number
+  /** ms since epoch. */
+  createdAt: number
+}
+
+export interface Achievement {
+  id: string
+  name: string
+  description: string | null
+  iconUrl: string | null
+  hidden: boolean
+  /** null when the player's progress is unknown (no Steam account or not a Steam game). */
+  unlocked: boolean | null
+  unlockedAt: number | null
+  /** Share of Steam players who unlocked it. */
+  percent: number | null
+}
+
+export interface AchievementsView {
+  total: number
+  /** null when the progress is unknown. */
+  unlocked: number | null
+  items: Achievement[]
+  /** Why the progress is missing, shown above the list. */
+  note: string | null
 }

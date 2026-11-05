@@ -1,0 +1,31 @@
+{
+  "response": {
+    "total": 2,
+    "publishedfiledetails": [
+      {
+        "result": 1,
+        "publishedfileid": "3301234567",
+        "creator": "76561197960287930",
+        "creator_appid": 1145360,
+        "consumer_appid": 1145360,
+        "preview_url": "https://images.steamusercontent.com/ugc/1111/AAAA/",
+        "title": "Zagreus au bord du Styx",
+        "short_description": "Capture prise après la 30e évasion.",
+        "time_created": 1729000000,
+        "views": 1520,
+        "favorited": 12,
+        "file_type": 5,
+        "vote_data": { "score": 0.91, "votes_up": 87, "votes_down": 2 }
+      },
+      {
+        "result": 1,
+        "publishedfileid": "3301234568",
+        "creator": "76561197960287931",
+        "preview_url": "https://evil.example.com/tracker.png",
+        "title": "",
+        "time_created": 1728000000,
+        "file_type": 5
+      }
+    ]
+  }
+}

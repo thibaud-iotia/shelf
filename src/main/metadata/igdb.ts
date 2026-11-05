@@ -27,6 +27,16 @@ export interface IgdbGame {
   involved_companies?: { developer?: boolean; company?: { name?: string } }[]
 }
 
+interface IgdbExtrasFields {
+  videos?: { video_id?: string; name?: string }[]
+  websites?: { url?: string }[]
+}
+
+export interface IgdbExtras {
+  videos: { video_id?: string; name?: string }[]
+  websites: string[]
+}
+
 export interface GameMetadata {
   igdbId: number
   title: string
@@ -139,6 +149,18 @@ export class IgdbClient {
   async byId(id: number): Promise<GameMetadata | null> {
     const [game] = await this.query(`fields ${FIELDS}; where id = ${Math.trunc(id)}; limit 1;`)
     return game ? toMetadata(game) : null
+  }
+
+  /** Videos (YouTube ids) and websites shown on the game page. */
+  async extras(id: number): Promise<IgdbExtras> {
+    const [game] = await this.query(
+      `fields videos.video_id,videos.name,websites.url; where id = ${Math.trunc(id)}; limit 1;`
+    )
+    const extras = game as (IgdbGame & IgdbExtrasFields) | undefined
+    return {
+      videos: extras?.videos ?? [],
+      websites: (extras?.websites ?? []).map((w) => w.url).filter((u): u is string => !!u)
+    }
   }
 
   /** Checks the credentials (token + one tiny query). */

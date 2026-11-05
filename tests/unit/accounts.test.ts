@@ -19,6 +19,7 @@ import { gameDlcs, games } from '../../src/main/db/schema'
 import {
   closeSession,
   deleteGame,
+  getGame,
   getGameDetail,
   listGames,
   openSession
@@ -100,8 +101,10 @@ describe('Steam Web API', () => {
       source: 'steam',
       sourceId: '1145360',
       title: 'Hades',
-      playtimeMin: 2535
+      playtimeMin: 2535,
+      lastPlayedAt: 1793800000_000
     })
+    expect(owned[1]).not.toHaveProperty('lastPlayedAt') // rtime_last_played absent or 0
     expect(fetch.calls[0]?.url).toContain('include_appinfo=1&include_played_free_games=1')
     await expect(fetchSteamOwned(KEY, '2', { fetch })).rejects.toThrow(/Détails des jeux/)
     await expect(fetchSteamOwned(KEY, '3', { fetch })).rejects.toThrow(/Clé API Steam refusée/)
@@ -178,10 +181,11 @@ describe('GOG', () => {
     const withTimes = new Database(file)
     withTimes.exec(`
       CREATE TABLE GameTimes (userId INTEGER, releaseKey TEXT, minutesInGame INTEGER, lastSessionEnd INTEGER);
-      INSERT INTO GameTimes VALUES (1, 'gog_1207658924', 95, 0), (1, 'steam_620', 30, 0);
+      INSERT INTO GameTimes VALUES (1, 'gog_1207658924', 95, 1793800000), (1, 'steam_620', 30, 0);
     `)
     withTimes.close()
     expect(owned().map((g) => g.playtimeMin)).toEqual([95, 0])
+    expect(owned().map((g) => g.lastPlayedAt)).toEqual([1793800000_000, undefined])
     await expect(gogGalaxyProvider(() => []).connect({})).rejects.toThrow(/GOG Galaxy introuvable/)
   })
 
@@ -428,6 +432,46 @@ describe('AccountService', () => {
     const t0 = new Date('2026-10-18T20:00:00Z')
     closeSession(handle.db, openSession(handle.db, ut.id, t0), new Date(t0.getTime() + 600_000))
     expect(listGames(handle.db)[0]).toMatchObject({ playtimeSec: 7800, localPlaytimeSec: 600 })
+  })
+
+  it('takes the last play from the launcher when it is more recent than Shelf’s sessions', () => {
+    const owned = (lastPlayedAt?: number) =>
+      upsertOwned(
+        handle.db,
+        [
+          {
+            source: 'steam',
+            sourceId: '1903340',
+            title: 'Clair Obscur',
+            playtimeMin: 3595,
+            lastPlayedAt
+          }
+        ],
+        new Date()
+      )
+    owned()
+    const game = listGames(handle.db)[0]!
+    expect(game).toMatchObject({ lastPlayedAt: null, lastSessionSec: null })
+
+    // Played through Steam: a date without a session length.
+    const yesterday = new Date('2026-11-04T21:00:00Z').getTime()
+    owned(yesterday)
+    expect(getGame(handle.db, game.id)).toMatchObject({
+      lastPlayedAt: yesterday,
+      lastSessionSec: null
+    })
+
+    // A later Shelf session wins, with its length.
+    const t0 = new Date('2026-11-05T10:00:00Z')
+    closeSession(handle.db, openSession(handle.db, game.id, t0), new Date(t0.getTime() + 600_000))
+    expect(listGames(handle.db)[0]).toMatchObject({
+      lastPlayedAt: t0.getTime(),
+      lastSessionSec: 600
+    })
+
+    // A sync without a date keeps the known one.
+    owned()
+    expect(handle.db.select().from(games).get()?.externalLastPlayedAt?.getTime()).toBe(yesterday)
   })
 
   it('connects, syncs, stores the key in the vault only, disconnects', async () => {

@@ -5,7 +5,9 @@ import type {
   ApiKeyService,
   ApiKeysInput,
   AppSettings,
+  CommunityKind,
   ConnectInput,
+  Game,
   GameInput,
   GamePatch,
   ImportDecision,
@@ -26,7 +28,10 @@ export const queryKeys = {
   tags: ['games', 'tags'] as const,
   collections: ['games', 'collections'] as const,
   metadataSearch: (title: string) => ['metadata', 'search', title] as const,
-  cache: ['cache'] as const
+  cache: ['cache'] as const,
+  /** Game page extras, keyed by what they depend on (an edited appid refetches them). */
+  insights: (game: Pick<Game, 'id' | 'steamAppId' | 'igdbId'>, ...part: string[]) =>
+    ['insights', game.id, game.steamAppId, game.igdbId, ...part] as const
 }
 
 export function usePing() {
@@ -221,6 +226,50 @@ export function useSyncAccounts() {
 }
 
 // Metadata & artwork
+
+// Game page extras (main keeps its own 10 min cache)
+
+const INSIGHTS_STALE_MS = 10 * 60_000
+
+/** Undefined while the game itself loads (hooks run before the view's early returns). */
+export function useGameInsights(game: Game | undefined) {
+  return useQuery({
+    queryKey: game ? queryKeys.insights(game, 'overview') : ['insights', 'none'],
+    queryFn: () => call('insights:overview', game!.id),
+    staleTime: INSIGHTS_STALE_MS,
+    enabled: !!game
+  })
+}
+
+export function useGameNews(game: Game, enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.insights(game, 'news'),
+    queryFn: () => call('insights:news', game.id),
+    staleTime: INSIGHTS_STALE_MS,
+    retry: false,
+    enabled
+  })
+}
+
+export function useGameCommunity(game: Game, kind: CommunityKind, enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.insights(game, 'community', kind),
+    queryFn: () => call('insights:community', game.id, kind),
+    staleTime: INSIGHTS_STALE_MS,
+    retry: false,
+    enabled
+  })
+}
+
+export function useGameAchievements(game: Game, enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.insights(game, 'achievements', String(game.playtimeSec)),
+    queryFn: () => call('insights:achievements', game.id),
+    staleTime: INSIGHTS_STALE_MS,
+    retry: false,
+    enabled
+  })
+}
 
 export function useMetadataSearch(title: string, enabled = true) {
   const query = title.trim()

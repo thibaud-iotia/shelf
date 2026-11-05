@@ -1,6 +1,7 @@
 import type { AccountService } from './accounts/service'
 import type { DatabaseHandle } from './db/client'
 import type { ImportService } from './import/service'
+import type { InsightsService } from './insights/service'
 import type { GameRunner } from './launch/runner'
 import type { SteamWatcher } from './launch/steam-watch'
 import type { MetadataService } from './metadata/service'
@@ -18,6 +19,8 @@ export interface AppContext {
   secrets: SecretStore
   accounts: AccountService
   metadata: MetadataService
+  /** News, videos, reviews, community and achievements of the game page. */
+  insights: InsightsService
   /** Queues artwork/metadata for games added by an account sync. */
   onSynced: () => void
 }

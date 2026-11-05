@@ -22,6 +22,20 @@
       "when": 1792351553311,
       "tag": "0002_dlcs",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1793818039784,
+      "tag": "0003_steam_app_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1793911347530,
+      "tag": "0004_external_last_played",
+      "breakpoints": true
     }
   ]
 }

@@ -53,7 +53,8 @@ src/
     import/        candidates (nouveau / màj / doublon / exclu) + ImportService
     accounts/      synchro des jeux possédés : steam, itch, gog-galaxy (option A), gog-oauth (option B), epic-legendary, service
     metadata/      igdb, steamgriddb, service (clés, recherche, enrichissement)
-    media/         cache des images (userData/covers) + protocole shelf-media://
+    insights/      fiche enrichie : steam-store (actus, vidéos, avis, joueurs, communauté, succès), links, service (cache 10 min)
+    media/         cache des images (userData/covers), protocole shelf-media:// (covers/ + remote/ = proxy d'images), embeds (YouTube)
     net/http.ts    ★ seule porte réseau : liste blanche d'hôtes, erreurs claires
     secrets/       SecretStore (safeStorage) — fichier secrets.json chiffré, jamais la DB
     saves/         export zip des sauvegardes
@@ -75,12 +76,12 @@ design/            export de la maquette Claude Design (référence, non buildé
 
 ### Règles
 
-- `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`. Le renderer n'a ni `require` ni `process` (testé en e2e). CSP stricte dans `index.html` (`img-src 'self' data: shelf-media:`).
+- `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`. Le renderer n'a ni `require` ni `process` (testé en e2e). CSP stricte dans `index.html` (`img-src 'self' data: shelf-media:` ; seules exceptions : `media-src` du CDN vidéo Steam, `frame-src` de youtube-nocookie). Une image distante passe par `remoteImageUrl()` (proxy `shelf-media://remote/…`, hôtes `IMAGE_HOSTS`).
 - **Ajouter un canal IPC** : (1) type dans `IpcChannels` + entrée dans `CHANNELS` de `src/shared/ipc.ts`, (2) `handle()` dans le fichier de domaine de `src/main/ipc/`, (3) hook dans `src/renderer/src/lib/queries.ts`. Le preload ne change pas. Même principe pour un événement (`IpcEvents` / `EVENTS`, `broadcast()`, `window.shelf.on`).
 - Les handlers valident leurs arguments et lèvent des `AppError(code, message)` ; le message est affiché tel quel dans l'UI → en français, clair.
 - Aucun chemin en dur hors `src/main/platform/paths.ts`. `SHELF_USER_DATA` et `SHELF_LAUNCHER_ROOT` isolent les données et les launchers (tests).
 - Secrets (clés API, tokens) : uniquement via `SecretStore` (safeStorage) ; la DB ne stocke qu'une référence (`credentialsRef`).
-- Réseau : uniquement via `main/net/http.ts` (liste blanche : Steam Web API, Twitch/IGDB, SteamGridDB, itch.io, GOG). Aucun appel réseau dans les tests : `fetch` injecté + réponses enregistrées (`tests/fixtures/api`).
+- Réseau : uniquement via `main/net/http.ts` (liste blanche : Steam Web API et boutique, Twitch/IGDB, SteamGridDB, itch.io, GOG, CDN d'images). Aucun appel réseau dans les tests : `fetch` injecté + réponses enregistrées (`tests/fixtures/api`) ; en e2e le `fetch` du main échoue par défaut, `stubFetch(app, routes)` rejoue des réponses.
 - Un jeu est unique par `(source, sourceId)` : détection locale, import et synchro font un upsert sur la même ligne. Jeux manuels : `sourceId` = UUID.
 - Intégrations non officielles (Epic via Legendary, GOG option B) isolées dans leur module : une erreur est stockée sur le compte (`lastError`) ou la source, jamais propagée au reste.
 - Imports : `@shared/*` et `@renderer/*` côté renderer ; chemins relatifs dans main/preload/tests (drizzle-kit ne résout pas les alias).

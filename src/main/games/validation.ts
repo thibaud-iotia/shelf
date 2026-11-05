@@ -69,6 +69,17 @@ export function validateGameInput(input: unknown): Required<GameInput> {
   }
 }
 
+/** Steam appid typed by the user: digits only, or empty for an automatic search. */
+export function steamAppId(value: unknown): string | null {
+  if (value === null || value === undefined) return null
+  const text = String(value).trim()
+  if (!text) return null
+  if (!/^\d{1,10}$/.test(text) || Number(text) === 0) {
+    throw new AppError('VALIDATION', 'AppID Steam attendu : un nombre (ex. 1145360).')
+  }
+  return text
+}
+
 export function validateGamePatch(patch: unknown): GamePatch {
   if (!patch || typeof patch !== 'object') throw new AppError('VALIDATION', 'Données invalides.')
   const raw = patch as Record<string, unknown>
@@ -98,5 +109,6 @@ export function validateGamePatch(patch: unknown): GamePatch {
     out.genres = (raw.genres as string[]).map((g) => g.trim()).filter(Boolean)
   }
   if ('savePath' in raw) out.savePath = directory(raw.savePath, 'Dossier de sauvegardes')
+  if ('steamAppId' in raw) out.steamAppId = steamAppId(raw.steamAppId)
   return out
 }

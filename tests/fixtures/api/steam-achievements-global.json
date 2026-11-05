@@ -1,0 +1,9 @@
+{
+  "achievementpercentages": {
+    "achievements": [
+      { "name": "AchClearTartarus", "percent": "81.8" },
+      { "name": "AchClearAsphodel", "percent": "72.2" },
+      { "name": "AchSecretEnding", "percent": 3.4 }
+    ]
+  }
+}

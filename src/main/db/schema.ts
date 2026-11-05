@@ -28,7 +28,12 @@ export const games = sqliteTable(
     developer: text('developer'),
     genres: text('genres', { mode: 'json' }).$type<string[]>(),
     igdbId: integer('igdb_id'),
+    // Steam store appid used for news, videos, reviews… (Steam games: their sourceId).
+    // Found by a Steam store search for the other sources, or set by the user.
+    steamAppId: text('steam_app_id'),
     externalPlaytimeMin: integer('external_playtime_min'),
+    // Last time the launcher saw the game played (Steam `rtime_last_played`, GOG Galaxy).
+    externalLastPlayedAt: integer('external_last_played_at', { mode: 'timestamp_ms' }),
     savePath: text('save_path'),
     useRunner: integer('use_runner', { mode: 'boolean' }).notNull().default(false),
     favorite: integer('favorite', { mode: 'boolean' }).notNull().default(false),

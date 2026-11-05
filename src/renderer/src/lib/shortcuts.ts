@@ -9,6 +9,7 @@ export const SHORTCUTS: [keys: string, action: string][] = [
   ['↵', 'Ouvrir la fiche du jeu sélectionné'],
   ['Ctrl/⌘ ↵', 'Lancer le jeu sélectionné'],
   ['Échap', 'Fermer / revenir à la bibliothèque'],
+  ['Bouton « précédent » de la souris', 'Quitter la fiche d’un jeu'],
   ['Palette : ↵ / Tab', 'Lancer / ouvrir la fiche'],
   ['Clic droit', 'Menu : favori, tags, collections']
 ]
@@ -39,7 +40,18 @@ export function useGlobalShortcuts() {
         ui.back()
       }
     }
+    // Mouse "back" button (button 3) leaves a game page, like Escape.
+    const onMouse = (e: MouseEvent) => {
+      const ui = useUiStore.getState()
+      if (e.button !== 3 || ui.route.name !== 'game' || ui.paletteOpen || ui.gameForm) return
+      e.preventDefault()
+      ui.back()
+    }
     window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
+    window.addEventListener('mouseup', onMouse)
+    return () => {
+      window.removeEventListener('keydown', onKey)
+      window.removeEventListener('mouseup', onMouse)
+    }
   }, [])
 }

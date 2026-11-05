@@ -52,6 +52,9 @@ export const test = base.extend<Fixtures & Options>({
     mkdirSync(noLaunchers, { recursive: true })
     env.SHELF_LAUNCHER_ROOT = launcherRoot ?? noLaunchers
     const app = await electron.launch({ args: [resolve('.')], env })
+    // No test reaches the real network: the main process fetch fails unless a test
+    // replays recorded responses with stubFetch().
+    await stubFetch(app, [])
     await use(app)
     await app.close()
   },
@@ -78,6 +81,50 @@ export async function stubOpenDialog(app: ElectronApplication, ...paths: string[
       return { canceled: false, filePaths: [next] }
     }) as typeof dialog.showOpenDialog
   }, paths)
+}
+
+export interface FetchRoute {
+  /** Substring of the URL. */
+  match: string
+  /** JSON body, or a base64 PNG when `image` is set. */
+  body?: unknown
+  image?: string
+  status?: number
+}
+
+/**
+ * Replaces the main process fetch (used by net/http.ts) with recorded responses: the
+ * first route whose `match` is in the URL answers, anything else fails as offline.
+ * The requested URLs are kept in `globalThis.__shelfFetchCalls`.
+ */
+export async function stubFetch(app: ElectronApplication, routes: FetchRoute[]): Promise<void> {
+  await app.evaluate((_electron, table) => {
+    const calls: string[] = []
+    Object.assign(globalThis, { __shelfFetchCalls: calls })
+    globalThis.fetch = (async (input: string | URL | Request) => {
+      const url = String(input instanceof Request ? input.url : input)
+      calls.push(url)
+      const route = table.find((r) => url.includes(r.match))
+      if (!route) throw new Error('offline (e2e)')
+      if (route.image) {
+        return new Response(Buffer.from(route.image, 'base64'), {
+          status: route.status ?? 200,
+          headers: { 'content-type': 'image/png' }
+        })
+      }
+      return new Response(JSON.stringify(route.body ?? {}), {
+        status: route.status ?? 200,
+        headers: { 'content-type': 'application/json' }
+      })
+    }) as typeof fetch
+  }, routes)
+}
+
+/** URLs requested through the stubbed fetch since the last stubFetch(). */
+export function fetchCalls(app: ElectronApplication): Promise<string[]> {
+  return app.evaluate(
+    () => (globalThis as unknown as { __shelfFetchCalls: string[] }).__shelfFetchCalls
+  )
 }
 
 /** Makes the next native "save" dialog return `path`. */

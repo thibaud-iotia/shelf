@@ -9,6 +9,8 @@ export interface OwnedGame {
   title: string
   /** Launcher-side playtime (Steam `playtime_forever`, GOG Galaxy `GameTimes`), when exposed. */
   playtimeMin?: number | null
+  /** Launcher-side last play time, epoch ms (Steam `rtime_last_played`, Galaxy `lastSessionEnd`). */
+  lastPlayedAt?: number | null
   /** Add-on (DLC, cosmetic pack, expansion): sourceId of its base game, same source. */
   dlcOf?: string
   /** Owned but not a game to list (hidden duplicate edition, add-on of a game not owned…). */

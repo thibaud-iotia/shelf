@@ -1,0 +1,36 @@
+{
+  "game": {
+    "gameName": "Hades",
+    "gameVersion": "12",
+    "availableGameStats": {
+      "achievements": [
+        {
+          "name": "AchClearTartarus",
+          "defaultvalue": 0,
+          "displayName": "Évadé du Tartare",
+          "hidden": 0,
+          "description": "Échappez-vous du Tartare.",
+          "icon": "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/1145360/tartarus.jpg",
+          "icongray": "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/1145360/tartarus_gray.jpg"
+        },
+        {
+          "name": "AchClearAsphodel",
+          "defaultvalue": 0,
+          "displayName": "Évadé de l'Asphodèle",
+          "hidden": 0,
+          "description": "Échappez-vous de l'Asphodèle.",
+          "icon": "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/1145360/asphodel.jpg",
+          "icongray": "https://steamcdn-a.akamaihd.net/steamcommunity/public/images/apps/1145360/asphodel_gray.jpg"
+        },
+        {
+          "name": "AchSecretEnding",
+          "defaultvalue": 0,
+          "displayName": "Fin cachée",
+          "hidden": 1,
+          "icon": "https://evil.example.com/secret.jpg",
+          "icongray": "https://evil.example.com/secret_gray.jpg"
+        }
+      ]
+    }
+  }
+}

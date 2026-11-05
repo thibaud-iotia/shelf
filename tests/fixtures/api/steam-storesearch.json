@@ -1,0 +1,50 @@
+{
+  "total": 3,
+  "items": [
+    {
+      "type": "app",
+      "name": "Portal 2",
+      "id": 620,
+      "price": {
+        "currency": "EUR",
+        "initial": 969,
+        "final": 969
+      },
+      "tiny_image": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/620/bd23943dcd0280aa2cdc066e2f86d2185cfd4cce/capsule_231x87.jpg?t=1790187113",
+      "metascore": "95",
+      "platforms": {
+        "windows": true,
+        "mac": false,
+        "linux": true
+      },
+      "streamingvideo": false,
+      "controller_support": "full"
+    },
+    {
+      "type": "app",
+      "name": "Portal 2 Soundtrack",
+      "id": 323180,
+      "tiny_image": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/323180/capsule_231x87.jpg?t=1759273301",
+      "metascore": "",
+      "platforms": {
+        "windows": true,
+        "mac": true,
+        "linux": true
+      },
+      "streamingvideo": false
+    },
+    {
+      "type": "app",
+      "name": "Portal 2: Community Edition",
+      "id": 440000,
+      "tiny_image": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/440000/6d4bf0da5da1cd60a6c0bd2c02821352bc6e4eaa/capsule_231x87.jpg?t=1776622356",
+      "metascore": "",
+      "platforms": {
+        "windows": true,
+        "mac": false,
+        "linux": true
+      },
+      "streamingvideo": false
+    }
+  ]
+}

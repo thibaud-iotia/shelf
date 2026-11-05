@@ -55,7 +55,7 @@ test('custom cover is cached and served through shelf-media://', async ({ app, p
 
   await stubOpenDialog(app, COVER)
   await page.getByRole('button', { name: 'Changer la jaquette…' }).click()
-  await page.getByRole('button', { name: '← Bibliothèque' }).click()
+  await page.getByRole('button', { name: 'Retour : Bibliothèque' }).click()
 
   const img = page.getByTestId('game-card').filter({ hasText: 'Cover Test' }).locator('img')
   await expect(img).toHaveAttribute('src', /^shelf-media:\/\/covers\//)

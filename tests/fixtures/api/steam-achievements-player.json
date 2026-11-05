@@ -1,0 +1,12 @@
+{
+  "playerstats": {
+    "steamID": "76561197960287930",
+    "gameName": "Hades",
+    "achievements": [
+      { "apiname": "AchClearTartarus", "achieved": 1, "unlocktime": 1600346400 },
+      { "apiname": "AchClearAsphodel", "achieved": 0, "unlocktime": 0 },
+      { "apiname": "AchSecretEnding", "achieved": 0, "unlocktime": 0 }
+    ],
+    "success": true
+  }
+}

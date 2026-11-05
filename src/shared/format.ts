@@ -40,13 +40,17 @@ export function formatDay(time: number, now: number = Date.now()): string {
   })
 }
 
-/** "Hier, 1 h 20" — or "Jamais" when the game was never played through Shelf. */
+/**
+ * "Hier, 1 h 20"; "Hier" alone when the length is unknown (date from the launcher);
+ * "Jamais" when no play is known at all.
+ */
 export function formatLastSession(
   playedAt: number | null,
   durationSec: number | null,
   now: number = Date.now()
 ): string {
   if (playedAt === null) return 'Jamais'
+  if (durationSec === null) return formatDay(playedAt, now)
   return `${formatDay(playedAt, now)}, ${formatPlaytime(durationSec)}`
 }
 
@@ -70,4 +74,18 @@ export function pluralize(count: number, singular: string, plural = `${singular}
 export function yearOf(date: string | null): number | null {
   const year = date ? Number.parseInt(date.slice(0, 4), 10) : NaN
   return Number.isFinite(year) ? year : null
+}
+
+/** 287755 → "287 755" (French grouping). */
+export function formatCount(value: number): string {
+  return value.toLocaleString('fr-FR')
+}
+
+/** "17 sept. 2025". */
+export function formatFullDate(time: number): string {
+  return new Date(time).toLocaleDateString('fr-FR', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric'
+  })
 }

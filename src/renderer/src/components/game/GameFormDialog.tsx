@@ -21,6 +21,7 @@ interface Fields {
   launchArgs: string
   installPath: string
   useRunner: boolean
+  steamAppId: string
 }
 
 function initialFields(game: Game | undefined): Fields {
@@ -29,7 +30,9 @@ function initialFields(game: Game | undefined): Fields {
     executablePath: game?.executablePath ?? '',
     launchArgs: game?.launchArgs ?? '',
     installPath: game?.installPath ?? '',
-    useRunner: game?.useRunner ?? false
+    useRunner: game?.useRunner ?? false,
+    // Steam games keep their own appid; only the other sources can point at a Steam page.
+    steamAppId: game && game.source !== 'steam' ? (game.steamAppId ?? '') : ''
   }
 }
 
@@ -87,7 +90,10 @@ function GameFormBody({ form, game }: { form: GameForm; game: Game | undefined }
             ...(isManual || fields.executablePath
               ? { executablePath: fields.executablePath || null }
               : {}),
-            ...(info.data?.platform === 'linux' ? { useRunner: fields.useRunner } : {})
+            ...(info.data?.platform === 'linux' ? { useRunner: fields.useRunner } : {}),
+            ...(game && game.source !== 'steam'
+              ? { steamAppId: fields.steamAppId.trim() || null }
+              : {})
           }
         ])
       }
@@ -172,6 +178,16 @@ function GameFormBody({ form, game }: { form: GameForm; game: Game | undefined }
           onChange={(e) => set('installPath', e.target.value)}
           spellCheck={false}
         />
+        {isEdit && game && game.source !== 'steam' && (
+          <Input
+            label="AppID Steam"
+            hint="Actualités, vidéos et avis viennent de cette page Steam. Vide : recherche automatique par titre."
+            value={fields.steamAppId}
+            onChange={(e) => set('steamAppId', e.target.value)}
+            inputMode="numeric"
+            spellCheck={false}
+          />
+        )}
         {info.data?.platform === 'linux' && (
           <label className="flex items-center gap-2.5 text-sm text-text-mid">
             <input

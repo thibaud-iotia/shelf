@@ -42,6 +42,7 @@ export function upsertOwned(
       }
       for (const game of listed) {
         const playtime = game.playtimeMin ?? null
+        const lastPlayed = game.lastPlayedAt ? new Date(game.lastPlayedAt) : null
         tx.insert(games)
           .values({
             title: game.title,
@@ -50,6 +51,7 @@ export function upsertOwned(
             ownership: 'owned',
             installState: 'not_installed',
             externalPlaytimeMin: playtime,
+            externalLastPlayedAt: lastPlayed,
             lastSyncedAt: now
           })
           .onConflictDoUpdate({
@@ -58,7 +60,8 @@ export function upsertOwned(
               ownership: 'owned',
               lastSyncedAt: now,
               installState: sql`CASE WHEN ${games.installState} = 'unknown' THEN 'not_installed' ELSE ${games.installState} END`,
-              ...(playtime !== null ? { externalPlaytimeMin: playtime } : {})
+              ...(playtime !== null ? { externalPlaytimeMin: playtime } : {}),
+              ...(lastPlayed ? { externalLastPlayedAt: lastPlayed } : {})
             }
           })
           .run()
@@ -244,6 +247,15 @@ export class AccountService {
     const reports: SyncReport[] = []
     for (const account of due) reports.push(await this.sync(account.id))
     return reports
+  }
+
+  /** Web API key and SteamID64 of the first Steam account (game page extras). */
+  steamCredentials(): { apiKey: string; steamId: string } | null {
+    for (const row of this.db.select().from(accounts).where(eq(accounts.kind, 'steam')).all()) {
+      const apiKey = row.credentialsRef ? this.secrets.get(row.credentialsRef) : null
+      if (apiKey) return { apiKey, steamId: row.externalUserId }
+    }
+    return null
   }
 
   /** Accounts of one launcher (Steam after a game session, to fetch its new playtime). */

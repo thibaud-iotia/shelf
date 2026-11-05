@@ -19,7 +19,7 @@ Journal de bord : état de chaque phase, décisions prises, points ouverts.
 Phases 1 à 6 réalisées d'une traite à la demande de l'utilisateur (« fais toutes les phases d'un
 coup, je veux voir le résultat final »), un commit par phase, toutes fusionnées dans `main`.
 
-Bilan des tests : 122 unitaires, 25 e2e (+ 1 test de fumée de l'app packagée).
+Bilan des tests : 154 unitaires, 29 e2e (+ 1 test de fumée de l'app packagée).
 
 ## Phase 0 — Squelette
 
@@ -113,6 +113,29 @@ Bilan des tests : 122 unitaires, 25 e2e (+ 1 test de fumée de l'app packagée).
   couvre le stockage chiffré. Chemins Windows lus pareil sur tout OS (`titleFromExecutable`, `isInside`).
   v0.1.0 publiée : https://github.com/thibaud-iotia/shelf/releases/tag/v0.1.0
 
+- Fiche enrichie « comme sur Steam » (branche `feature/game-insights`, détail et choix dans
+  [feature/game-insights.md](../feature/game-insights.md)) : onglets Aperçu · Actualités · Vidéos ·
+  Communauté · Succès ; carte latérale avec évaluations Steam, joueurs en ligne, Metacritic, liens.
+  Appid Steam des jeux non Steam trouvé par la recherche de la boutique (titre exact), mémorisé
+  (`games.steam_app_id`, migration 0003) et modifiable dans « Modifier ». Communauté et succès
+  utilisent la clé du compte Steam connecté. Images distantes via le proxy `shelf-media://remote/`
+  (CSP `img-src` inchangée) ; vidéos lues dans la fiche (mp4 Steam, iframe youtube-nocookie).
+  `appreviews` de Steam redirige désormais vers l'accueil : résumé des avis via `IStoreBrowseService`.
+  e2e : le `fetch` du main échoue par défaut (aucun test ne sort sur le réseau), `stubFetch()`.
+  Aperçu complété par la page boutique Steam quand IGDB manque ou en plus : galerie (bande-annonce
+  - captures, plein écran ← / → / Échap), description courte, fiche (studio, sortie, plateformes,
+    manettes, prix), caractéristiques Steam, 3 dernières actus, « À propos du jeu » repliable,
+    configuration requise, langues. IGDB reste prioritaire pour description, genres, studio.
+
+- « Dernière session » affichait « Jamais » pour un jeu joué via son launcher (ex. Clair Obscur
+  lancé depuis Steam : aucune session Shelf). La synchro garde maintenant la date du launcher
+  (`games.external_last_played_at`, migration 0004 : Steam `rtime_last_played`, GOG Galaxy
+  `GameTimes.lastSessionEnd`) ; la date affichée est la plus récente des deux, sans durée quand elle
+  vient du launcher (« Hier »). Profite aussi à « Récents » et au menu de la barre système.
+- Fiche d'un jeu : retour plus visible, pastille « ‹ Bibliothèque · Échap | titre du jeu » (fond sombre flouté, lisible sur toute image) épinglée sous la barre de
+  titre pendant le défilement, libellé selon la vue d'origine (collection, favoris, source…) ; le
+  bouton « précédent » de la souris quitte aussi la fiche.
+
 ## Décisions et écarts au plan
 
 - `GameSource.launch()` n'existe pas : le lancement est décidé par `launch/plan.ts` depuis la ligne en base
@@ -131,3 +154,6 @@ Bilan des tests : 122 unitaires, 25 e2e (+ 1 test de fumée de l'app packagée).
 - Polices : sous-ensemble latin uniquement.
 - Thème clair non exposé (le DS le fournit, l'UI utilise les tokens sombres).
 - Synchro GOG option B et Legendary non testées contre les vrais services (fixtures uniquement).
+- Fiche enrichie : communauté (`QueryFiles`) et succès (`GetSchemaForGame`, `GetPlayerAchievements`)
+  demandent une clé Steam ; leurs fixtures suivent la documentation, pas une réponse réelle enregistrée.
+  Lecture YouTube intégrée non vérifiée dans l'app packagée (en-tête `Referer` ajouté pour l'erreur 153).

@@ -1,0 +1,178 @@
+{
+  "1145360": {
+    "success": true,
+    "data": {
+      "type": "game",
+      "name": "Hades",
+      "steam_appid": 1145360,
+      "short_description": "Défiez le dieu des morts et frayez-vous un chemin hors des Enfers dans ce rogue-like en mode dungeon crawler développé par les créateurs de Bastion, Transistor et Pyre.",
+      "website": "http://www.supergiantgames.com",
+      "metacritic": {
+        "score": 93,
+        "url": "https://www.metacritic.com/game/pc/hades?ftag=MCD-06-10aaa1f"
+      },
+      "recommendations": {
+        "total": 287755
+      },
+      "achievements": {
+        "total": 49,
+        "highlighted": [
+          {
+            "icon": "062a2b7bdc156af9438bdc440a19833addd2ae38.jpg",
+            "localized_name": "Échappé du Tartare",
+            "archived": 0,
+            "hidden": 0,
+            "name": "Échappé du Tartare",
+            "path": "https://shared.akamai.steamstatic.com/community_assets/images/apps/1145360/062a2b7bdc156af9438bdc440a19833addd2ae38.jpg"
+          },
+          {
+            "icon": "202d5cd97dd3b727e0eaa8ffc02a62dcf67cd5d7.jpg",
+            "localized_name": "Échappé de l'Asphodèle",
+            "archived": 0,
+            "hidden": 0,
+            "name": "Échappé de l'Asphodèle",
+            "path": "https://shared.akamai.steamstatic.com/community_assets/images/apps/1145360/202d5cd97dd3b727e0eaa8ffc02a62dcf67cd5d7.jpg"
+          }
+        ]
+      },
+      "movies": [
+        {
+          "id": 256801252,
+          "name": "Hades - v1.0 Launch Trailer",
+          "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/256801252/movie.293x165.jpg?t=1600353465",
+          "dash_av1": "https://video.akamai.steamstatic.com/store_trailers/1145360/312686/b0312c49135823cc34946e98148abfb8da71f0fb/1750627549/dash_av1.mpd?t=1600353465",
+          "dash_h264": "https://video.akamai.steamstatic.com/store_trailers/1145360/312686/b0312c49135823cc34946e98148abfb8da71f0fb/1750627549/dash_h264.mpd?t=1600353465",
+          "hls_h264": "https://video.akamai.steamstatic.com/store_trailers/1145360/312686/b0312c49135823cc34946e98148abfb8da71f0fb/1750627549/hls_264_master.m3u8?t=1600353465",
+          "highlight": true
+        },
+        {
+          "id": 256801288,
+          "name": "Hades - v1.0 Gameplay Showcase",
+          "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/256801288/movie.293x165.jpg?t=1600353474",
+          "dash_av1": "https://video.akamai.steamstatic.com/store_trailers/1145360/312747/37b96035b5c9c7b12455eadc7bbc7d2b3afbd2fd/1750627553/dash_av1.mpd?t=1600353474",
+          "dash_h264": "https://video.akamai.steamstatic.com/store_trailers/1145360/312747/37b96035b5c9c7b12455eadc7bbc7d2b3afbd2fd/1750627553/dash_h264.mpd?t=1600353474",
+          "hls_h264": "https://video.akamai.steamstatic.com/store_trailers/1145360/312747/37b96035b5c9c7b12455eadc7bbc7d2b3afbd2fd/1750627553/hls_264_master.m3u8?t=1600353474",
+          "highlight": true
+        },
+        {
+          "id": 256759357,
+          "name": "Hades - Early Access Trailer",
+          "thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/256759357/movie.293x165.jpg?t=1593023745",
+          "dash_av1": "https://video.akamai.steamstatic.com/store_trailers/1145360/238757/421575a200646e7cc71ed0cde4553b92cb1b5261/1750627523/dash_av1.mpd?t=1593023745",
+          "dash_h264": "https://video.akamai.steamstatic.com/store_trailers/1145360/238757/421575a200646e7cc71ed0cde4553b92cb1b5261/1750627523/dash_h264.mpd?t=1593023745",
+          "hls_h264": "https://video.akamai.steamstatic.com/store_trailers/1145360/238757/421575a200646e7cc71ed0cde4553b92cb1b5261/1750627523/hls_264_master.m3u8?t=1593023745",
+          "highlight": true
+        }
+      ],
+      "screenshots": [
+        {
+          "id": 0,
+          "path_thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1145360/ss_c0fed447426b69981cf1721756acf75369801b31.600x338.jpg?t=1758127023",
+          "path_full": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1145360/ss_c0fed447426b69981cf1721756acf75369801b31.1920x1080.jpg?t=1758127023"
+        },
+        {
+          "id": 1,
+          "path_thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1145360/ss_14cd1c730da917495730eb07af046f314430fad0.600x338.jpg?t=1758127023",
+          "path_full": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1145360/ss_14cd1c730da917495730eb07af046f314430fad0.1920x1080.jpg?t=1758127023"
+        },
+        {
+          "id": 2,
+          "path_thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1145360/ss_68300459a8c3daacb2ec687adcdbf4442fcc4f47.600x338.jpg?t=1758127023",
+          "path_full": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1145360/ss_68300459a8c3daacb2ec687adcdbf4442fcc4f47.1920x1080.jpg?t=1758127023"
+        },
+        {
+          "id": 3,
+          "path_thumbnail": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1145360/ss_bcb499a0dd001f4101823f99ec5094d2872ba6ee.600x338.jpg?t=1758127023",
+          "path_full": "https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1145360/ss_bcb499a0dd001f4101823f99ec5094d2872ba6ee.1920x1080.jpg?t=1758127023"
+        }
+      ],
+      "is_free": false,
+      "controller_support": "full",
+      "about_the_game": "<span class=\"bb_img_ctn\"><video class=\"bb_img\" autoplay muted loop playsinline poster=\"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1145360/extras/c2cf4c126231549edecb3ef6b350ce5a.poster.avif?t=1758127023\" width=600 height=338 ><source src=\"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1145360/extras/c2cf4c126231549edecb3ef6b350ce5a.webm?t=1758127023\" type=\"video/webm; codecs=vp9\"><source src=\"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1145360/extras/c2cf4c126231549edecb3ef6b350ce5a.mp4?t=1758127023\" type=\"video/mp4\"></video></span><br><strong>Hades</strong> est un rogue-like en mode dungeon crawler qui associe le meilleur des titres de Supergiant salués par la critique. Il combine l'action effrénée de <strong>Bastion</strong>, la profondeur et l'atmosphère très riche de <strong>Transistor</strong>, ainsi que la narration centrée sur les personnages qui caractérise <strong>Pyre</strong>.<h2 class=\"bb_tag\" >LUTTEZ POUR ÉCHAPPER AUX ENFERS</h2>Dans la peau de l'immortel prince des Enfers, vous manierez les pouvoirs et les armes mythiques de l'Olympe pour vous libérer des griffes du dieu des morts en personne, développant vos forces et dévoilant de nouveaux secrets à chaque nouvelle tentative d'évasion.<h2 class=\"bb_tag\" >DÉCHAÎNEZ LA FUREUR DE L'OLYMPE</h2>Les dieux de l'Olympe sont à vos côtés ! Rencontrez Zeus, Athéna, Poséidon et bien d'autres encore, et faites votre choix parmi les dizaines de puissants Bienfaits qu'ils vous offrent pour décupler vos facultés. Découvrez au cours de votre progression des milliers de configurations personnage réalisables.<br><br><br><span class=\"bb_img_ctn\"><video class=\"bb_img\" autoplay muted loop playsinline poster=\"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1145360/extras/be2c018a297716c7e8925b55a2390c8f.poster.avif?t=1758127023\" width=600 height=338 ><source src=\"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1145360/extras/be2c018a297716c7e8925b55a2390c8f.webm?t=1758127023\" type=\"video/webm; codecs=vp9\"><source src=\"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1145360/extras/be2c018a297716c7e8925b55a2390c8f.mp4?t=1758127023\" type=\"video/mp4\"></video></span><h2 class=\"bb_tag\" >DIEUX, FANTÔMES ET MONSTRES SONT DE VOS AMIS</h2>Toute une bande de personnages hauts en couleur et hors du commun vous attend ! Faites évoluer vos relations et découvrez des centaines d'événements narratifs uniques en perçant à jour les motivations cachées de cette famille aussi grande que peu ordinaire.<h2 class=\"bb_tag\" >CONÇU POUR ÊTRE REJOUABLE</h2>De nouvelles surprises vous attendent à chacune de vos descentes dans l'univers changeant des Enfers, et jamais les boss qui en sont les gardiens ne vous oublieront. Utilisez le puissant Miroir de la nuit pour devenir plus fort de manière définitive et gagner un avantage lors de votre prochaine échappée.<h2 class=\"bb_tag\" >RIEN N'EST IMPOSSIBLE</h2>Grâce aux améliorations permanentes, pas besoin d'être un dieu pour vivre les combats électrisants et l'histoire palpitante de cette aventure. Mais si vous en êtes un, relevez des défis toujours plus ardus et préparez-vous à de l'action dont l'intensité mettra vos compétences aiguisées à l'épreuve.<br><br><br><span class=\"bb_img_ctn\"><img class=\"bb_img\" src=\"https://shared.akamai.steamstatic.com/store_item_assets/steam/apps/1145360/extras/a58817e5bddd69ddbf91f349f106e14a.avif?t=1758127023\" width=600 height=210 /></span><h2 class=\"bb_tag\" >LE STYLE CARACTÉRISTIQUE DE SUPERGIANT</h2>L'atmosphère riche et onirique et la fusion gameplay/narration si particulière aux jeux Supergiant prennent ici toute leur ampleur : de spectaculaires décors peints à la main et une bande-son originale exaltante donnent vie aux Enfers.",
+      "supported_languages": "Anglais<strong>*</strong>, Français, Italien, Allemand, Espagnol - Espagne, Coréen, Portugais du Brésil, Russe, Chinois simplifié, Polonais, Japonais<br><strong>*</strong>Langues avec support audio complet",
+      "pc_requirements": {
+        "minimum": "<strong>Minimale :</strong><br><ul class=\"bb_ul\"><li><strong>Système d'exploitation  *:</strong> Windows 7 SP1<br></li><li><strong>Processeur :</strong> Dual Core 2.4 GHz<br></li><li><strong>Mémoire vive :</strong> 4 GB de mémoire<br></li><li><strong>Graphiques :</strong> 1GB VRAM / DirectX 10+ support<br></li><li><strong>Espace disque :</strong> 15 GB d'espace disque disponible</li></ul>",
+        "recommended": "<strong>Recommandée :</strong><br><ul class=\"bb_ul\"><li><strong>Système d'exploitation  *:</strong> Windows 7 SP1<br></li><li><strong>Processeur :</strong> Dual Core 3.0 GHz+<br></li><li><strong>Mémoire vive :</strong> 8 GB de mémoire<br></li><li><strong>Graphiques :</strong> 2GB VRAM / DirectX 10+ support<br></li><li><strong>Espace disque :</strong> 20 GB d'espace disque disponible</li></ul>"
+      },
+      "developers": [
+        "Supergiant Games"
+      ],
+      "publishers": [
+        "Supergiant Games"
+      ],
+      "price_overview": {
+        "currency": "EUR",
+        "initial": 2450,
+        "final": 2450,
+        "discount_percent": 0,
+        "initial_formatted": "",
+        "final_formatted": "24,50€"
+      },
+      "platforms": {
+        "windows": true,
+        "mac": true,
+        "linux": false
+      },
+      "categories": [
+        {
+          "id": 2,
+          "description": "Solo"
+        },
+        {
+          "id": 22,
+          "description": "Succès Steam"
+        },
+        {
+          "id": 28,
+          "description": "Compat. contrôleurs complète"
+        },
+        {
+          "id": 29,
+          "description": "Cartes à échanger Steam"
+        },
+        {
+          "id": 13,
+          "description": "Sous-titres disponibles"
+        },
+        {
+          "id": 23,
+          "description": "Steam Cloud"
+        },
+        {
+          "id": 41,
+          "description": "Remote Play sur téléphone"
+        },
+        {
+          "id": 42,
+          "description": "Remote Play sur tablette"
+        },
+        {
+          "id": 43,
+          "description": "Remote Play sur télévision"
+        },
+        {
+          "id": 62,
+          "description": "Partage familial"
+        }
+      ],
+      "genres": [
+        {
+          "id": "1",
+          "description": "Action"
+        },
+        {
+          "id": "23",
+          "description": "Indépendant"
+        },
+        {
+          "id": "3",
+          "description": "RPG"
+        }
+      ],
+      "release_date": {
+        "coming_soon": false,
+        "date": "17 sept. 2020"
+      }
+    }
+  }
+}

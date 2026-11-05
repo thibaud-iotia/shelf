@@ -42,6 +42,7 @@ function game(partial: Partial<Game> & { id: number; title: string }): Game {
     developer: null,
     genres: [],
     igdbId: null,
+    steamAppId: null,
     favorite: false,
     hidden: false,
     addedAt: 0,

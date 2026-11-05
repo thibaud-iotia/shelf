@@ -96,17 +96,28 @@ export function readGalaxyOwned(file: string): OwnedGame[] {
         if (!owner.has(release)) owner.set(release, key)
     }
 
-    // Time played through Galaxy (absent from older databases).
+    // Time played through Galaxy, and when (absent from older databases).
     const minutes = new Map<string, number>()
+    const lastPlayed = new Map<string, number>()
     const hasTimes = hasTable(db, 'GameTimes')
     if (hasTimes) {
+      const hasEnd = (db.prepare(`PRAGMA table_info(GameTimes)`).all() as { name: string }[]).some(
+        (c) => c.name === 'lastSessionEnd'
+      )
       const times = db
         .prepare(
-          `SELECT releaseKey, sum(minutesInGame) AS minutes FROM GameTimes
+          `SELECT releaseKey, sum(minutesInGame) AS minutes,
+             ${hasEnd ? 'max(lastSessionEnd)' : 'NULL'} AS lastEnd FROM GameTimes
            WHERE releaseKey ${GOG_KEY} GROUP BY releaseKey`
         )
-        .all() as { releaseKey: string; minutes: number | null }[]
-      for (const t of times) minutes.set(t.releaseKey, t.minutes ?? 0)
+        .all() as { releaseKey: string; minutes: number | null; lastEnd: number | null }[]
+      for (const t of times) {
+        minutes.set(t.releaseKey, t.minutes ?? 0)
+        // Unix seconds; tolerate milliseconds.
+        if (t.lastEnd && t.lastEnd > 0) {
+          lastPlayed.set(t.releaseKey, t.lastEnd < 1e12 ? t.lastEnd * 1000 : t.lastEnd)
+        }
+      }
     }
 
     const addOnTitles = new Set<string>()
@@ -133,7 +144,11 @@ export function readGalaxyOwned(file: string): OwnedGame[] {
           owned.push({ ...base, title: name, dlcOf: parent.slice('gog_'.length) })
         }
       } else {
-        owned.push({ ...base, ...(hasTimes ? { playtimeMin: minutes.get(key) ?? 0 } : {}) })
+        owned.push({
+          ...base,
+          ...(hasTimes ? { playtimeMin: minutes.get(key) ?? 0 } : {}),
+          ...(lastPlayed.has(key) ? { lastPlayedAt: lastPlayed.get(key) } : {})
+        })
       }
     }
     return owned

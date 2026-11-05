@@ -90,6 +90,21 @@ function collectionsByGame(db: ShelfDatabase): Map<number, number[]> {
   return groupBy(rows)
 }
 
+/**
+ * Last play: the most recent of Shelf's sessions and the launcher's date (games launched
+ * through Steam, Galaxy… or outside Shelf). A launcher date carries no session length.
+ */
+function lastPlay(
+  row: GameRow,
+  stats: SessionStats
+): Pick<SessionStats, 'lastPlayedAt' | 'lastSessionSec'> {
+  const external = row.externalLastPlayedAt?.getTime() ?? null
+  if (external !== null && (stats.lastPlayedAt === null || external > stats.lastPlayedAt)) {
+    return { lastPlayedAt: external, lastSessionSec: null }
+  }
+  return { lastPlayedAt: stats.lastPlayedAt, lastSessionSec: stats.lastSessionSec }
+}
+
 export function toGame(
   row: GameRow,
   stats: SessionStats = NO_STATS,
@@ -115,11 +130,13 @@ export function toGame(
     developer: row.developer,
     genres: row.genres ?? [],
     igdbId: row.igdbId,
+    steamAppId: row.steamAppId ?? (row.source === 'steam' ? row.sourceId : null),
     favorite: row.favorite,
     hidden: row.hidden,
     addedAt: row.addedAt.getTime(),
     lastSyncedAt: row.lastSyncedAt?.getTime() ?? null,
     ...stats,
+    ...lastPlay(row, stats),
     playtimeSec: (row.externalPlaytimeMin ?? 0) * 60 + stats.playtimeSec,
     localPlaytimeSec: stats.playtimeSec,
     externalPlaytimeMin: row.externalPlaytimeMin,

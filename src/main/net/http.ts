@@ -1,19 +1,39 @@
 import { AppError } from '../../shared/errors'
 
 /**
- * The only hosts Shelf talks to (PLAN: Steam Web API, IGDB/Twitch, SteamGridDB, itch.io,
- * GOG option B). Every outgoing request goes through this module.
+ * Image CDNs the game page may show (Steam store/community, YouTube thumbnails, IGDB,
+ * SteamGridDB). The renderer reaches them only through `shelf-media://remote/…`.
+ */
+export const IMAGE_HOSTS = new Set([
+  'images.igdb.com',
+  'cdn2.steamgriddb.com',
+  'shared.akamai.steamstatic.com',
+  'shared.fastly.steamstatic.com',
+  'cdn.akamai.steamstatic.com',
+  'cdn.fastly.steamstatic.com',
+  'clan.akamai.steamstatic.com',
+  'clan.fastly.steamstatic.com',
+  'steamcdn-a.akamaihd.net',
+  'images.steamusercontent.com',
+  'steamuserimages-a.akamaihd.net',
+  'i.ytimg.com'
+])
+
+/**
+ * The only hosts Shelf talks to (PLAN: Steam Web API and store, IGDB/Twitch, SteamGridDB,
+ * itch.io, GOG option B, plus the image CDNs above). Every outgoing request goes through
+ * this module.
  */
 export const ALLOWED_HOSTS = new Set([
   'api.steampowered.com',
+  'store.steampowered.com',
   'id.twitch.tv',
   'api.igdb.com',
-  'images.igdb.com',
   'www.steamgriddb.com',
-  'cdn2.steamgriddb.com',
   'api.itch.io',
   'auth.gog.com',
-  'embed.gog.com'
+  'embed.gog.com',
+  ...IMAGE_HOSTS
 ])
 
 export type FetchLike = (url: string, init?: RequestInit) => Promise<Response>

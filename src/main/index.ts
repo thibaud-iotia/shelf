@@ -11,7 +11,10 @@ import { ImportService } from './import/service'
 import { GameRunner } from './launch/runner'
 import { SteamWatcher } from './launch/steam-watch'
 import { MediaCache } from './media/cache'
+import { allowYouTubeEmbeds } from './media/embeds'
 import { handleMediaProtocol, registerMediaScheme } from './media/protocol'
+import { RemoteImageCache } from './media/remote'
+import { InsightsService } from './insights/service'
 import { MetadataService, type EnrichTarget } from './metadata/service'
 import { applyUserDataOverride, launcherLocations, paths } from './platform/paths'
 import { SecretStore } from './secrets/store'
@@ -116,6 +119,12 @@ function createContext(): AppContext {
     }, STEAM_SYNC_DELAY_MS)
   })
 
+  const insights = new InsightsService({
+    db,
+    steamCredentials: () => accounts.steamCredentials(),
+    igdbExtras: (igdbId) => metadata.extras(igdbId)
+  })
+
   return {
     database,
     settings,
@@ -125,6 +134,7 @@ function createContext(): AppContext {
     secrets,
     accounts,
     metadata,
+    insights,
     onSynced
   }
 }
@@ -138,7 +148,8 @@ if (!app.requestSingleInstanceLock()) {
     .whenReady()
     .then(() => {
       ctx = createContext()
-      handleMediaProtocol(paths.covers)
+      handleMediaProtocol(paths.covers, new RemoteImageCache())
+      allowYouTubeEmbeds()
       registerIpcHandlers(ctx)
       createMainWindow({
         hideOnClose: () => !!ctx?.settings.get('minimizeToTray'),

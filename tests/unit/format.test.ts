@@ -5,7 +5,9 @@ import {
   formatPlaytime,
   formatPlaytimeShort,
   pluralize,
-  yearOf
+  yearOf,
+  formatCount,
+  formatFullDate
 } from '../../src/shared/format'
 
 describe('format', () => {
@@ -27,6 +29,8 @@ describe('format', () => {
   it('formats the last session relative to now', () => {
     const now = new Date(2026, 9, 18, 15, 0).getTime()
     expect(formatLastSession(null, null, now)).toBe('Jamais')
+    // Date from the launcher: no session length.
+    expect(formatLastSession(new Date(2026, 9, 17, 22, 0).getTime(), null, now)).toBe('Hier')
     expect(formatLastSession(new Date(2026, 9, 17, 22, 0).getTime(), 4800, now)).toBe(
       'Hier, 1 h 20'
     )
@@ -42,5 +46,12 @@ describe('format', () => {
     expect(pluralize(3, 'jeu', 'jeux')).toBe('3 jeux')
     expect(yearOf('2020-09-17')).toBe(2020)
     expect(yearOf(null)).toBeNull()
+  })
+})
+
+describe('game page numbers and dates', () => {
+  it('groups thousands and prints full dates in French', () => {
+    expect(formatCount(287755).replace(/\s/g, ' ')).toBe('287 755')
+    expect(formatFullDate(new Date(2025, 8, 17, 12).getTime())).toBe('17 sept. 2025')
   })
 })

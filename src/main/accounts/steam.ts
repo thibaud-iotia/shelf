@@ -22,7 +22,13 @@ export function parseSteamIdInput(raw: string): SteamIdInput {
 interface OwnedGamesResponse {
   response?: {
     game_count?: number
-    games?: { appid: number; name?: string; playtime_forever?: number }[]
+    games?: {
+      appid: number
+      name?: string
+      playtime_forever?: number
+      /** Unix seconds, 0 when never played. */
+      rtime_last_played?: number
+    }[]
   }
 }
 
@@ -39,7 +45,8 @@ export function parseOwnedGames(data: OwnedGamesResponse): OwnedGame[] {
     source: 'steam' as const,
     sourceId: String(g.appid),
     title: g.name ?? `App ${g.appid}`,
-    playtimeMin: g.playtime_forever ?? 0
+    playtimeMin: g.playtime_forever ?? 0,
+    ...(g.rtime_last_played ? { lastPlayedAt: g.rtime_last_played * 1000 } : {})
   }))
 }
 

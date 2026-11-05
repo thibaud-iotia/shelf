@@ -5,14 +5,18 @@ import type { SerializedAppError } from './errors'
 import type {
   Account,
   ApiKeyService,
+  AchievementsView,
   ApiKeysInput,
   AppSettings,
   CacheInfo,
   Collection,
+  CommunityItem,
+  CommunityKind,
   ConnectInput,
   ConnectionTest,
   Game,
   GameDetail,
+  GameInsights,
   GameInput,
   GamePatch,
   ImportDecision,
@@ -20,6 +24,7 @@ import type {
   LauncherStatus,
   LaunchResult,
   MetadataMatch,
+  NewsItem,
   PickedExecutable,
   ScanResult,
   SettingsView,
@@ -111,6 +116,11 @@ export interface IpcChannels {
   'keys:set': { args: [input: ApiKeysInput]; result: SettingsView }
   'keys:clear': { args: [service: ApiKeyService]; result: SettingsView }
   'keys:test': { args: [service: ApiKeyService]; result: ConnectionTest }
+  /** Game page extras: one call per block, so a failing service only empties its own. */
+  'insights:overview': { args: [gameId: number]; result: GameInsights }
+  'insights:news': { args: [gameId: number]; result: NewsItem[] }
+  'insights:community': { args: [gameId: number, kind: CommunityKind]; result: CommunityItem[] }
+  'insights:achievements': { args: [gameId: number]; result: AchievementsView }
   'cache:info': { args: []; result: CacheInfo }
   'cache:clear': { args: []; result: CacheInfo }
 
@@ -165,6 +175,10 @@ const CHANNELS: Record<IpcChannel, true> = {
   'keys:set': true,
   'keys:clear': true,
   'keys:test': true,
+  'insights:overview': true,
+  'insights:news': true,
+  'insights:community': true,
+  'insights:achievements': true,
   'cache:info': true,
   'cache:clear': true,
   'settings:get': true,

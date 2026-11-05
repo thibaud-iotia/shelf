@@ -1,0 +1,1 @@
+ALTER TABLE `games` ADD `external_last_played_at` integer;

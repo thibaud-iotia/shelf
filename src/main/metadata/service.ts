@@ -14,7 +14,7 @@ import type { MediaCache } from '../media/cache'
 import { mediaUrl } from '../media/urls'
 import type { FetchLike } from '../net/http'
 import type { SecretStore } from '../secrets/store'
-import { IgdbClient, igdbImageUrl, type GameMetadata } from './igdb'
+import { IgdbClient, igdbImageUrl, type GameMetadata, type IgdbExtras } from './igdb'
 import { SteamGridDbClient, type SgdbTarget } from './steamgriddb'
 
 export const SECRET_REFS = {
@@ -204,6 +204,11 @@ export class MetadataService {
       })
       .where(eq(games.id, row.id))
       .run()
+  }
+
+  /** IGDB videos and websites for the game page; null when IGDB is not configured. */
+  async extras(igdbId: number): Promise<IgdbExtras | null> {
+    return this.igdbConfigured() ? this.igdb().extras(igdbId) : null
   }
 
   /** Sets a user-chosen image file as the cover. */
