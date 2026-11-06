@@ -19,7 +19,7 @@ Journal de bord : état de chaque phase, décisions prises, points ouverts.
 Phases 1 à 6 réalisées d'une traite à la demande de l'utilisateur (« fais toutes les phases d'un
 coup, je veux voir le résultat final »), un commit par phase, toutes fusionnées dans `main`.
 
-Bilan des tests : 159 unitaires, 30 e2e (+ 1 test de fumée de l'app packagée).
+Bilan des tests : 200 unitaires, 33 e2e (+ 1 test de fumée de l'app packagée).
 
 ## Phase 0 — Squelette
 
@@ -168,6 +168,26 @@ Bilan des tests : 159 unitaires, 30 e2e (+ 1 test de fumée de l'app packagée).
   dans la barre système ; Steam ouvert reçoit juste la commande. Échec du lancement → repli sur l'URI.
   Suivi `RunningAppID` inchangé. Linux/macOS et e2e (racine de launchers factice) : URI comme avant.
 
+- Boutique (retour : « rajoute la partie achats de jeux (Steam, Epic…), les vrais launchers
+  tournent en fond ») — branche `feature/store`, détail et choix dans
+  [feature/store.md](../feature/store.md). Entrée « Boutique » de la sidebar (et de la palette) :
+  liste de souhaits (Steam importée du compte connecté + liste Shelf, table `wishlist`, migration
+  0006), promotions et recherche CheapShark (prix en $, complétés par les prix en € de Steam et
+  GOG), fiche d'achat par magasin avec plus bas historique. « Acheter » ouvre la page du jeu dans
+  le launcher (`steam://store/<appid>`, `goggalaxy://openGameView/<id>`), sinon le navigateur
+  (Epic, autres magasins, launcher absent) ; le paiement reste dans le launcher. `PurchaseWatcher` :
+  au retour du focus sur Shelf (et toutes les 2 min, 2 h max), synchro du compte du magasin +
+  relecture des launchers ; jeu trouvé → retiré de la liste, toast « Achat détecté ». Nouveaux
+  hôtes : `www.cheapshark.com` (User-Agent descriptif exigé), `catalog.gog.com`, images
+  `cdn1.epicgames.com`, `images.gog-statics.com`.
+  Retours : la Boutique s'ouvre sur un accueil (à la une, liste de souhaits, gratuits,
+  promotions, mieux notés) au lieu d'une liste de souhaits vide ; un clic sur un jeu ouvre une
+  fiche boutique bâtie comme la fiche d'un jeu possédé (héros, galerie, description, actus,
+  vidéos, configuration) avec « Acheter · prix » à la place de « Jouer » et les offres par
+  magasin dans la carte latérale. Actus sans image utilisable (articles de presse hébergés
+  hors liste blanche, patch notes sans image) : l'en-tête Steam du jeu remplace la case noire
+  (`parseNews(data, fallbackImage)`, fiches boutique et bibliothèque).
+
 ## Décisions et écarts au plan
 
 - `GameSource.launch()` n'existe pas : le lancement est décidé par `launch/plan.ts` depuis la ligne en base
@@ -195,3 +215,5 @@ Bilan des tests : 159 unitaires, 30 e2e (+ 1 test de fumée de l'app packagée).
 - Fiche enrichie : communauté (`QueryFiles`) et succès (`GetSchemaForGame`, `GetPlayerAchievements`)
   demandent une clé Steam ; leurs fixtures suivent la documentation, pas une réponse réelle enregistrée.
   Lecture YouTube intégrée non vérifiée dans l'app packagée (en-tête `Referer` ajouté pour l'erreur 153).
+- Boutique : prix CheapShark en dollars seulement ; Epic ouvert dans le navigateur (pas de slug
+  produit fiable) ; liste de souhaits Steam non vérifiée contre un vrai profil public.

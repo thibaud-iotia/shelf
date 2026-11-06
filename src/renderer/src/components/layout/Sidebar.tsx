@@ -9,6 +9,7 @@ import { SidebarCollections } from './SidebarCollections'
 // Mockup 01 — "navigation hybride" sidebar (248px, ink-900).
 
 function isActive(current: Route, target: Route): boolean {
+  if (target.name === 'store' && current.name === 'storeGame') return true
   if (current.name !== target.name) return false
   if (current.name === 'source' && target.name === 'source') return current.source === target.source
   if (current.name === 'collection' && target.name === 'collection') return current.id === target.id
@@ -111,6 +112,7 @@ export function Sidebar() {
       <NavItem route={{ name: 'library' }} label="Bibliothèque" count={all.length} />
       <NavItem route={{ name: 'favorites' }} label="Favoris" count={favorites} />
       <NavItem route={{ name: 'recent' }} label="Récents" />
+      <NavItem route={{ name: 'store' }} label="Boutique" />
 
       {sources.length > 0 && (
         <>

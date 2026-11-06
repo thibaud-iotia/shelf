@@ -15,6 +15,8 @@ import { ImportView } from '@renderer/views/ImportView'
 import { LibraryView } from '@renderer/views/LibraryView'
 import { OnboardingView } from '@renderer/views/OnboardingView'
 import { SettingsView } from '@renderer/views/SettingsView'
+import { StoreGameView } from '@renderer/views/StoreGameView'
+import { StoreView } from '@renderer/views/StoreView'
 
 function View({ route }: { route: Route }) {
   switch (route.name) {
@@ -28,6 +30,10 @@ function View({ route }: { route: Route }) {
       return <CollectionView key={route.id} id={route.id} />
     case 'onboarding':
       return <OnboardingView />
+    case 'store':
+      return <StoreView />
+    case 'storeGame':
+      return <StoreGameView key={JSON.stringify(route.ref)} gameRef={route.ref} />
     case 'library':
     case 'favorites':
     case 'recent':

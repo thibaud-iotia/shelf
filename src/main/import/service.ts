@@ -42,6 +42,12 @@ export class ImportService {
     private readonly onImported: (games: ImportedGame[]) => void = () => {}
   ) {}
 
+  /** The launcher is installed (found on disk), without scanning its games. */
+  async isAvailable(source: GameSourceId): Promise<boolean> {
+    const found = this.sources.find((s) => s.id === source)
+    return !!found && (await found.locate().catch(() => null)) !== null
+  }
+
   async launchers(): Promise<LauncherStatus[]> {
     const enabled = this.settings.get('enabledLaunchers')
     return Promise.all(

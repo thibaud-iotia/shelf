@@ -5,6 +5,7 @@ import { registerInsightsHandlers } from './insights'
 import { registerLibraryHandlers } from './library'
 import { registerOrganizeHandlers } from './organize'
 import { registerSettingsHandlers } from './settings'
+import { registerStoreHandlers } from './store'
 
 export function registerIpcHandlers(ctx: AppContext): void {
   registerAppHandlers(ctx)
@@ -13,4 +14,5 @@ export function registerIpcHandlers(ctx: AppContext): void {
   registerLibraryHandlers(ctx)
   registerOrganizeHandlers(ctx)
   registerSettingsHandlers(ctx)
+  registerStoreHandlers(ctx)
 }

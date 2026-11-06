@@ -427,3 +427,98 @@ export interface AchievementsView {
   /** Why the progress is missing, shown above the list. */
   note: string | null
 }
+
+// Store (wishlist, prices, purchase through the launchers)
+
+/** Where "Acheter" opens: the launcher's store page, or the browser. */
+export type PurchaseOpener = 'steam' | 'gog' | 'browser'
+
+/** A price in euros, as a store displays it. */
+export interface LocalPrice {
+  /** "24,50 €", "Gratuit". */
+  final: string
+  /** Price before the discount, null when not discounted. */
+  base: string | null
+  discountPct: number
+}
+
+/** Cheapest CheapShark deal (prices in US dollars, CheapShark's only currency). */
+export interface BestDeal {
+  storeId: string
+  storeName: string
+  dealId: string
+  price: number
+  retailPrice: number
+  discountPct: number
+}
+
+/** A game in the store views (wishlist, deals, search results). */
+export interface StoreGame {
+  /** Stable key: "steam:<appid>" or "cs:<cheapshark id>". */
+  key: string
+  title: string
+  steamAppId: string | null
+  cheapsharkId: string | null
+  /** Remote image URL (shown through the image proxy). */
+  imageUrl: string | null
+  best: BestDeal | null
+  /** Steam store price in euros. */
+  steamPrice: LocalPrice | null
+  /** Library game matching this one (already owned). */
+  ownedGameId: number | null
+  wishlist: { id: number; fromSteam: boolean; byUser: boolean } | null
+  steamRating: { text: string; percent: number } | null
+}
+
+export interface StoreOffer {
+  storeId: string
+  storeName: string
+  /** CheapShark deal (US dollars); null for an offer only known from the store itself. */
+  dealId: string | null
+  price: number | null
+  retailPrice: number | null
+  discountPct: number
+  /** Price in euros from the store itself (Steam, GOG). */
+  localPrice: LocalPrice | null
+  opensIn: PurchaseOpener
+  /** GOG product found by title: id (Galaxy) and slug (web page). */
+  gog: { id: string; slug: string } | null
+}
+
+export interface StoreGameDetail extends StoreGame {
+  /** Wide artwork for the page header (proxied), null when the store has none. */
+  heroUrl: string | null
+  offers: StoreOffer[]
+  /** Lowest price ever seen by CheapShark, US dollars. */
+  lowestEver: { price: number; date: number } | null
+}
+
+export interface WishlistView {
+  items: StoreGame[]
+  steam: {
+    /** A Steam account is connected (its wishlist is imported). */
+    connected: boolean
+    syncedAt: number | null
+    error: string | null
+  }
+  /** Prices could not be fetched (items are still listed). */
+  pricesError: string | null
+}
+
+/** What identifies a store game across calls (wishlist add, detail, purchase). */
+export interface StoreGameRef {
+  title: string
+  steamAppId: string | null
+  cheapsharkId: string | null
+  imageUrl?: string | null
+}
+
+export interface PurchaseInput extends StoreGameRef {
+  storeId: string
+  dealId: string | null
+  gog: { id: string; slug: string } | null
+}
+
+export interface PurchaseResult {
+  opensIn: PurchaseOpener
+}

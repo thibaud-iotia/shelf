@@ -1,5 +1,6 @@
 import { useState, type ReactNode } from 'react'
-import type { AboutBlock, Game, Requirement, StoreInfo } from '@shared/models'
+import type { UseQueryResult } from '@tanstack/react-query'
+import type { AboutBlock, Game, NewsItem, Requirement, StoreInfo } from '@shared/models'
 import { formatFullDate } from '@shared/format'
 import { Chip } from '@renderer/components/ui/Chip'
 import { useGameNews } from '@renderer/lib/queries'
@@ -160,8 +161,17 @@ export function Languages({ store }: { store: StoreInfo }) {
 const NEWS_PREVIEW = 3
 
 /** The latest news as compact rows, with a link to the news tab. */
-export function LatestNews({ game, onMore }: { game: Game; onMore: () => void }) {
-  const news = useGameNews(game, true)
+export function GameLatestNews({ game, onMore }: { game: Game; onMore: () => void }) {
+  return <LatestNews news={useGameNews(game, true)} onMore={onMore} />
+}
+
+export function LatestNews({
+  news,
+  onMore
+}: {
+  news: UseQueryResult<NewsItem[]>
+  onMore: () => void
+}) {
   const items = news.data?.slice(0, NEWS_PREVIEW) ?? []
   if (!items.length) return null
   return (

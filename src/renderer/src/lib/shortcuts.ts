@@ -20,6 +20,10 @@ function isTyping(target: EventTarget | null): boolean {
 }
 
 /** App-wide keyboard shortcuts. Mount once. */
+
+/** Pages left with Escape or the mouse "back" button: game page, store page of a game. */
+const isDetail = (name: string) => name === 'game' || name === 'storeGame'
+
 export function useGlobalShortcuts() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -36,14 +40,14 @@ export function useGlobalShortcuts() {
           e.preventDefault()
           input.focus()
         }
-      } else if (e.key === 'Escape' && !ui.contextMenu && ui.route.name === 'game') {
+      } else if (e.key === 'Escape' && !ui.contextMenu && isDetail(ui.route.name)) {
         ui.back()
       }
     }
     // Mouse "back" button (button 3) leaves a game page, like Escape.
     const onMouse = (e: MouseEvent) => {
       const ui = useUiStore.getState()
-      if (e.button !== 3 || ui.route.name !== 'game' || ui.paletteOpen || ui.gameForm) return
+      if (e.button !== 3 || !isDetail(ui.route.name) || ui.paletteOpen || ui.gameForm) return
       e.preventDefault()
       ui.back()
     }

@@ -16,13 +16,17 @@ export const IMAGE_HOSTS = new Set([
   'steamcdn-a.akamaihd.net',
   'images.steamusercontent.com',
   'steamuserimages-a.akamaihd.net',
-  'i.ytimg.com'
+  'i.ytimg.com',
+  // Store (CheapShark thumbnails and store icons, Epic and GOG artwork).
+  'www.cheapshark.com',
+  'cdn1.epicgames.com',
+  'images.gog-statics.com'
 ])
 
 /**
  * The only hosts Shelf talks to (PLAN: Steam Web API and store, IGDB/Twitch, SteamGridDB,
- * itch.io, GOG option B, plus the image CDNs above). Every outgoing request goes through
- * this module.
+ * itch.io, GOG option B, CheapShark and the GOG catalog for the store, plus the image CDNs
+ * above). Every outgoing request goes through this module.
  */
 export const ALLOWED_HOSTS = new Set([
   'api.steampowered.com',
@@ -33,6 +37,8 @@ export const ALLOWED_HOSTS = new Set([
   'api.itch.io',
   'auth.gog.com',
   'embed.gog.com',
+  // Store: price comparison (CheapShark) and GOG product lookup (id, price in euros).
+  'catalog.gog.com',
   ...IMAGE_HOSTS
 ])
 

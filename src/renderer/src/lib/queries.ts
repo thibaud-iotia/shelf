@@ -11,7 +11,9 @@ import type {
   GameInput,
   GamePatch,
   ImportDecision,
-  SmartRules
+  PurchaseInput,
+  SmartRules,
+  StoreGameRef
 } from '@shared/models'
 import { useRunningStore } from '@renderer/stores/running'
 import { toast } from '@renderer/stores/toasts'
@@ -29,6 +31,12 @@ export const queryKeys = {
   collections: ['games', 'collections'] as const,
   metadataSearch: (title: string) => ['metadata', 'search', title] as const,
   cache: ['cache'] as const,
+  store: ['store'] as const,
+  wishlist: ['store', 'wishlist'] as const,
+  deals: ['store', 'deals'] as const,
+  storeSearch: (query: string) => ['store', 'search', query] as const,
+  storeGame: (ref: StoreGameRef) =>
+    ['store', 'game', ref.steamAppId, ref.cheapsharkId, ref.title] as const,
   /** Game page extras, keyed by what they depend on (an edited appid refetches them). */
   insights: (game: Pick<Game, 'id' | 'steamAppId' | 'igdbId'>, ...part: string[]) =>
     ['insights', game.id, game.steamAppId, game.igdbId, ...part] as const
@@ -363,6 +371,113 @@ export function useClearCache() {
   })
 }
 
+// Store (main keeps its own 10 min cache of prices)
+
+const STORE_STALE_MS = 5 * 60_000
+
+export function useWishlist() {
+  return useQuery({
+    queryKey: queryKeys.wishlist,
+    queryFn: () => call('store:wishlist'),
+    staleTime: STORE_STALE_MS
+  })
+}
+
+export function useSyncWishlist() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: () => call('store:syncWishlist'),
+    onSuccess: (view) => client.setQueryData(queryKeys.wishlist, view),
+    onError: (error) => toast.error(error)
+  })
+}
+
+export function useDeals(enabled: boolean) {
+  return useQuery({
+    queryKey: queryKeys.deals,
+    queryFn: () => call('store:deals'),
+    staleTime: STORE_STALE_MS,
+    retry: false,
+    enabled
+  })
+}
+
+export function useStoreSearch(query: string) {
+  const q = query.trim()
+  return useQuery({
+    queryKey: queryKeys.storeSearch(q),
+    queryFn: () => call('store:search', q),
+    staleTime: STORE_STALE_MS,
+    retry: false,
+    enabled: q.length > 0
+  })
+}
+
+/** Steam blocks of a store page (game not in the library), by Steam appid. */
+export function useStoreOverview(steamAppId: string | null) {
+  return useQuery({
+    queryKey: ['store', 'overview', steamAppId] as const,
+    queryFn: () => call('store:overview', steamAppId!),
+    staleTime: INSIGHTS_STALE_MS,
+    retry: false,
+    enabled: !!steamAppId
+  })
+}
+
+export function useStoreNews(steamAppId: string | null) {
+  return useQuery({
+    queryKey: ['store', 'news', steamAppId] as const,
+    queryFn: () => call('store:news', steamAppId!),
+    staleTime: INSIGHTS_STALE_MS,
+    retry: false,
+    enabled: !!steamAppId
+  })
+}
+
+export function useStoreGame(ref: StoreGameRef | null) {
+  return useQuery({
+    queryKey: ref ? queryKeys.storeGame(ref) : ['store', 'game', 'none'],
+    queryFn: () => call('store:game', ref!),
+    staleTime: STORE_STALE_MS,
+    retry: false,
+    enabled: !!ref
+  })
+}
+
+function useStoreMutation<A extends unknown[], R>(fn: (...args: A) => Promise<R>) {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: (args: A) => fn(...args),
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.store }),
+    onError: (error) => toast.error(error)
+  })
+}
+
+export function useAddWish() {
+  return useStoreMutation((ref: StoreGameRef) => call('store:addWish', ref))
+}
+
+export function useRemoveWish() {
+  return useStoreMutation((id: number) => call('store:removeWish', id))
+}
+
+const OPENED_IN = {
+  steam: 'Page du jeu ouverte dans Steam',
+  gog: 'Page du jeu ouverte dans GOG Galaxy',
+  browser: 'Page du magasin ouverte dans le navigateur'
+} as const
+
+export function useBuy() {
+  return useMutation({
+    mutationFn: (input: PurchaseInput) => call('store:buy', input),
+    onSuccess: ({ opensIn }) =>
+      toast.info(
+        `${OPENED_IN[opensIn]} : finalisez l’achat, Shelf l’ajoutera à la bibliothèque à votre retour.`
+      ),
+    onError: (error) => toast.error(error)
+  })
+}
+
 /** Keeps the renderer in sync with pushes from the main process. Mount once. */
 export function useMainEvents() {
   const client = useQueryClient()
@@ -375,9 +490,15 @@ export function useMainEvents() {
       void invalidateLibrary(client)
       if (reason === 'uninstall') toast.success('Désinstallation terminée : bibliothèque à jour.')
     })
+    const offPurchased = window.shelf.on('store:purchased', ({ title }) => {
+      void invalidateLibrary(client)
+      void client.invalidateQueries({ queryKey: queryKeys.store })
+      toast.success(`Achat détecté : « ${title} » est dans votre bibliothèque.`)
+    })
     return () => {
       offRunning()
       offLibrary()
+      offPurchased()
     }
   }, [client, setRunning])
 }

@@ -54,6 +54,7 @@ src/
     accounts/      synchro des jeux possédés : steam, itch, gog-galaxy (option A), gog-oauth (option B), epic-legendary, service
     metadata/      igdb, steamgriddb, service (clés, recherche, enrichissement)
     insights/      fiche enrichie : steam-store (actus, vidéos, avis, joueurs, communauté, succès), links, service (cache 10 min)
+    store/         boutique : cheapshark (prix $), steam (souhaits, prix €), gog (catalogue), purchase (URI launcher / URL), wishlist, watcher (détection d'achat), service
     media/         cache des images (userData/covers), protocole shelf-media:// (covers/ + remote/ = proxy d'images), embeds (YouTube)
     net/http.ts    ★ seule porte réseau : liste blanche d'hôtes, erreurs claires
     secrets/       SecretStore (safeStorage) — fichier secrets.json chiffré, jamais la DB
@@ -65,7 +66,7 @@ src/
     src/lib/       ipc.ts (call), queries.ts (hooks), actions.ts, shortcuts.ts, artwork.ts
     src/stores/    ui (route, filtres, menus), import, running, toasts
     src/components/ ui/ (DS Certflix), game/, library/ (FilterBar, palette, menu contextuel), import/, layout/, settings/
-    src/views/     Library, GameDetail, Collection, Import, Onboarding, Settings (+ settings/ sections)
+    src/views/     Library, GameDetail, Collection, Import, Onboarding, Settings (+ settings/ sections), Store
 drizzle/           migrations SQL versionnées (générées, commitées)
 resources/         icon.png (paquets), tray.png / trayTemplate.png (barre système)
 scripts/           make-icons.cjs
@@ -81,7 +82,7 @@ design/            export de la maquette Claude Design (référence, non buildé
 - Les handlers valident leurs arguments et lèvent des `AppError(code, message)` ; le message est affiché tel quel dans l'UI → en français, clair.
 - Aucun chemin en dur hors `src/main/platform/paths.ts`. `SHELF_USER_DATA` et `SHELF_LAUNCHER_ROOT` isolent les données et les launchers (tests).
 - Secrets (clés API, tokens) : uniquement via `SecretStore` (safeStorage) ; la DB ne stocke qu'une référence (`credentialsRef`).
-- Réseau : uniquement via `main/net/http.ts` (liste blanche : Steam Web API et boutique, Twitch/IGDB, SteamGridDB, itch.io, GOG, CDN d'images). Aucun appel réseau dans les tests : `fetch` injecté + réponses enregistrées (`tests/fixtures/api`) ; en e2e le `fetch` du main échoue par défaut, `stubFetch(app, routes)` rejoue des réponses.
+- Réseau : uniquement via `main/net/http.ts` (liste blanche : Steam Web API et boutique, Twitch/IGDB, SteamGridDB, itch.io, GOG, CheapShark, CDN d'images). Aucun appel réseau dans les tests : `fetch` injecté + réponses enregistrées (`tests/fixtures/api`) ; en e2e le `fetch` du main échoue par défaut, `stubFetch(app, routes)` rejoue des réponses.
 - Un jeu est unique par `(source, sourceId)` : détection locale, import et synchro font un upsert sur la même ligne. Jeux manuels : `sourceId` = UUID.
 - Intégrations non officielles (Epic via Legendary, GOG option B) isolées dans leur module : une erreur est stockée sur le compte (`lastError`) ou la source, jamais propagée au reste.
 - Imports : `@shared/*` et `@renderer/*` côté renderer ; chemins relatifs dans main/preload/tests (drizzle-kit ne résout pas les alias).

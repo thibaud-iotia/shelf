@@ -33,7 +33,8 @@ describe('database', () => {
       'games',
       'play_sessions',
       'settings',
-      'tags'
+      'tags',
+      'wishlist'
     ])
   })
 

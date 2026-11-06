@@ -58,6 +58,7 @@ function PaletteBody() {
       { label: 'Bibliothèque', route: { name: 'library' } },
       { label: 'Favoris', route: { name: 'favorites' } },
       { label: 'Récents', route: { name: 'recent' } },
+      { label: 'Boutique', route: { name: 'store' } },
       ...(collections.data ?? []).map((c) => ({
         label: `Collection « ${c.name} »`,
         route: { name: 'collection', id: c.id } as Route

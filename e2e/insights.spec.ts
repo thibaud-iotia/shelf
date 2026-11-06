@@ -115,8 +115,10 @@ test('game page shows Steam news, videos, reviews and links', async ({ app, page
   const image = news.first().locator('img')
   await expect(image).toHaveAttribute('src', /^shelf-media:\/\/remote\//)
   await expect.poll(() => image.evaluate((el: HTMLImageElement) => el.naturalWidth)).toBe(60)
-  // The press article's image is on a host Shelf does not proxy: placeholder instead.
-  await expect(news.nth(1).locator('img')).toHaveCount(0)
+  // The press article's image is on a host Shelf does not proxy: the game's header instead.
+  const header = news.nth(1).locator('img')
+  await expect(header).toHaveAttribute('src', /^shelf-media:\/\/remote\//)
+  await expect.poll(() => header.evaluate((el: HTMLImageElement) => el.naturalWidth)).toBe(60)
 
   // Videos: nothing is streamed before a click; then the Steam mp4 trailer plays.
   await tabs.getByRole('tab', { name: 'Vidéos · 3' }).click()

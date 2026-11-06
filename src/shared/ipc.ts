@@ -26,11 +26,17 @@ import type {
   MetadataMatch,
   NewsItem,
   PickedExecutable,
+  PurchaseInput,
+  PurchaseResult,
   ScanResult,
   SettingsView,
   SmartRules,
+  StoreGame,
+  StoreGameDetail,
+  StoreGameRef,
   SyncReport,
-  Tag
+  Tag,
+  WishlistView
 } from './models'
 
 export interface BackupResult {
@@ -125,6 +131,20 @@ export interface IpcChannels {
   'insights:news': { args: [gameId: number]; result: NewsItem[] }
   'insights:community': { args: [gameId: number, kind: CommunityKind]; result: CommunityItem[] }
   'insights:achievements': { args: [gameId: number]; result: AchievementsView }
+  /** Store: wishlist (Steam account + Shelf list), re-importing the Steam one when stale. */
+  'store:wishlist': { args: []; result: WishlistView }
+  'store:syncWishlist': { args: []; result: WishlistView }
+  'store:deals': { args: []; result: StoreGame[] }
+  'store:search': { args: [query: string]; result: StoreGame[] }
+  /** Purchase sheet: every store's offer, where "Acheter" opens. */
+  'store:game': { args: [ref: StoreGameRef]; result: StoreGameDetail }
+  /** Store page of a game to buy: the game page's Steam blocks, by Steam appid. */
+  'store:overview': { args: [steamAppId: string]; result: GameInsights }
+  'store:news': { args: [steamAppId: string]; result: NewsItem[] }
+  'store:addWish': { args: [ref: StoreGameRef]; result: null }
+  'store:removeWish': { args: [id: number]; result: null }
+  /** Opens the launcher's store page (or the browser) and follows the purchase. */
+  'store:buy': { args: [input: PurchaseInput]; result: PurchaseResult }
   'cache:info': { args: []; result: CacheInfo }
   'cache:clear': { args: []; result: CacheInfo }
 
@@ -185,6 +205,16 @@ const CHANNELS: Record<IpcChannel, true> = {
   'insights:news': true,
   'insights:community': true,
   'insights:achievements': true,
+  'store:wishlist': true,
+  'store:syncWishlist': true,
+  'store:deals': true,
+  'store:search': true,
+  'store:game': true,
+  'store:overview': true,
+  'store:news': true,
+  'store:addWish': true,
+  'store:removeWish': true,
+  'store:buy': true,
   'cache:info': true,
   'cache:clear': true,
   'settings:get': true,
@@ -202,11 +232,17 @@ export interface IpcEvents {
   'games:running': number[]
   /** The library changed outside a renderer request (session ended, sync, metadata…). */
   'library:changed': { reason: string }
+  /** A game bought from the store showed up in the library. */
+  'store:purchased': { title: string; gameId: number }
 }
 export type IpcEvent = keyof IpcEvents
 
 export const EVENT_CHANNEL = 'shelf:event'
-const EVENTS: Record<IpcEvent, true> = { 'games:running': true, 'library:changed': true }
+const EVENTS: Record<IpcEvent, true> = {
+  'games:running': true,
+  'library:changed': true,
+  'store:purchased': true
+}
 
 export function isIpcEvent(value: unknown): value is IpcEvent {
   return typeof value === 'string' && Object.hasOwn(EVENTS, value)

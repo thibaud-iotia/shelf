@@ -8,6 +8,8 @@ import type { SteamWatcher } from './launch/steam-watch'
 import type { MetadataService } from './metadata/service'
 import type { SecretStore } from './secrets/store'
 import type { SettingsStore } from './settings/store'
+import type { StoreService } from './store/service'
+import type { PurchaseWatcher } from './store/watcher'
 
 /** Long-lived services shared by the IPC handlers. */
 export interface AppContext {
@@ -28,4 +30,8 @@ export interface AppContext {
   checkUpdates: () => Promise<void>
   /** Games whose uninstall Shelf started, followed until the launcher removed them. */
   uninstallWatch: UninstallWatcher
+  /** Wishlist, deals, prices and purchases through the launchers. */
+  store: StoreService
+  /** Purchases opened from the store, followed until the game is in the library. */
+  purchases: PurchaseWatcher
 }

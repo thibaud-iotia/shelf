@@ -1,10 +1,14 @@
-import type { Game } from '@shared/models'
+import type { UseQueryResult } from '@tanstack/react-query'
+import type { Game, NewsItem } from '@shared/models'
 import { useGameNews } from '@renderer/lib/queries'
 import { formatFullDate } from '@shared/format'
 import { ExternalLink, PanelState } from './common'
 
-export function NewsPanel({ game }: { game: Game }) {
-  const news = useGameNews(game, true)
+export function GameNewsPanel({ game }: { game: Game }) {
+  return <NewsPanel news={useGameNews(game, true)} />
+}
+
+export function NewsPanel({ news }: { news: UseQueryResult<NewsItem[]> }) {
   return (
     <PanelState query={news} isEmpty={(items) => items.length === 0} empty="Aucune actualité.">
       {(items) => (

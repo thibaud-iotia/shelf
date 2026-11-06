@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  formatUsd,
   formatBytes,
   formatLastSession,
   formatPlaytime,
@@ -53,5 +54,13 @@ describe('game page numbers and dates', () => {
   it('groups thousands and prints full dates in French', () => {
     expect(formatCount(287755).replace(/\s/g, ' ')).toBe('287 755')
     expect(formatFullDate(new Date(2025, 8, 17, 12).getTime())).toBe('17 sept. 2025')
+  })
+})
+
+describe('store prices', () => {
+  it('formats CheapShark prices in US dollars, French style', () => {
+    expect(formatUsd(24.99)).toMatch(/^24,99\s\$$/)
+    expect(formatUsd(1234.5)).toMatch(/^1\s234,50\s\$$/)
+    expect(formatUsd(0)).toBe('Gratuit')
   })
 })

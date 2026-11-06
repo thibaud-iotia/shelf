@@ -135,6 +135,27 @@ export const collectionGames = sqliteTable(
   (t) => [primaryKey({ columns: [t.collectionId, t.gameId] })]
 )
 
+// Store wishlist: games imported from the Steam wishlist and/or added in Shelf. A row leaves
+// when neither keeps it (removed from Steam and not added by the user, or bought).
+export const wishlist = sqliteTable(
+  'wishlist',
+  {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    title: text('title').notNull(),
+    steamAppId: text('steam_app_id'),
+    // CheapShark game id (price comparison), for games without a Steam appid.
+    cheapsharkId: text('cheapshark_id'),
+    imageUrl: text('image_url'),
+    fromSteam: integer('from_steam', { mode: 'boolean' }).notNull().default(false),
+    byUser: integer('by_user', { mode: 'boolean' }).notNull().default(false),
+    addedAt: integer('added_at', { mode: 'timestamp_ms' }).notNull().default(now)
+  },
+  (t) => [
+    uniqueIndex('wishlist_steam_app_id_unique').on(t.steamAppId),
+    uniqueIndex('wishlist_cheapshark_id_unique').on(t.cheapsharkId)
+  ]
+)
+
 export const settings = sqliteTable('settings', {
   key: text('key').primaryKey(),
   // JSON-encoded value.

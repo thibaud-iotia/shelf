@@ -20,6 +20,7 @@ import {
   parseAppDetails,
   parseCommunity,
   parseNews,
+  steamHeaderUrl,
   parsePlayers,
   parseLanguages,
   parseRequirements,
@@ -214,6 +215,15 @@ describe('Steam store parsers', () => {
     // Press article: its image is on a host Shelf does not proxy.
     expect(press).toMatchObject({ official: false, feed: 'Rock, Paper, Shotgun', imageUrl: null })
     expect(press!.summary).not.toMatch(/<|>/)
+  })
+
+  it("shows the game's header on news without a usable image", () => {
+    const header = remoteImageUrl(steamHeaderUrl('1145360'))
+    const [concert, press] = parseNews(apiFixture('steam-news.json') as NewsResponse, header)
+    expect(proxied(press!.imageUrl!)).toBe(
+      'https://shared.fastly.steamstatic.com/store_item_assets/steam/apps/1145360/header.jpg'
+    )
+    expect(concert!.imageUrl).not.toBe(header)
   })
 
   it('cleans BBCode and HTML from summaries', () => {

@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { GameSourceId } from '@shared/domain'
+import type { StoreGameRef } from '@shared/models'
 
 export type SettingsSection =
   | 'metadata'
@@ -22,11 +23,17 @@ export type Route =
   | { name: 'import' }
   | { name: 'onboarding' }
   | { name: 'settings'; section: SettingsSection }
+  | { name: 'store' }
+  /** Store page of a game to buy (not in the library). */
+  | { name: 'storeGame'; ref: StoreGameRef }
 
 /** Routes that show a grid of games (and share the filter bar). */
 export type ListRoute = Extract<Route, { name: 'library' | 'favorites' | 'recent' | 'source' }>
 
 export type GameForm = { mode: 'create' } | { mode: 'edit'; gameId: number }
+
+/** Store sections; kept while visiting a game's store page and coming back. */
+export type StoreTab = 'home' | 'wishlist' | 'deals'
 
 export type InstallFilter = 'all' | 'installed' | 'not_installed' | 'update'
 export type Layout = 'grid' | 'list'
@@ -53,6 +60,11 @@ interface UiState {
   setTagFilter: (tag: string | null) => void
   layout: Layout
   setLayout: (layout: Layout) => void
+
+  storeTab: StoreTab
+  setStoreTab: (tab: StoreTab) => void
+  storeQuery: string
+  setStoreQuery: (query: string) => void
 
   selectedGameId: number | null
   select: (id: number | null) => void
@@ -103,6 +115,11 @@ export const useUiStore = create<UiState>()((set) => ({
   setTagFilter: (tagFilter) => set({ tagFilter }),
   layout: 'grid',
   setLayout: (layout) => set({ layout }),
+
+  storeTab: 'home',
+  setStoreTab: (storeTab) => set({ storeTab }),
+  storeQuery: '',
+  setStoreQuery: (storeQuery) => set({ storeQuery }),
 
   selectedGameId: null,
   select: (selectedGameId) => set({ selectedGameId }),

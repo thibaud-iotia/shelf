@@ -89,3 +89,9 @@ export function formatFullDate(time: number): string {
     year: 'numeric'
   })
 }
+
+/** CheapShark prices (US dollars, its only currency): 24.99 → "24,99 $", 0 → "Gratuit". */
+export function formatUsd(value: number): string {
+  if (value === 0) return 'Gratuit'
+  return `${value.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} $`
+}

@@ -22,6 +22,10 @@ const API = 'https://api.steampowered.com'
 const STORE = 'https://store.steampowered.com'
 const VIDEO_CDN = 'https://video.akamai.steamstatic.com/store_trailers'
 const CLAN_IMAGES = 'https://clan.akamai.steamstatic.com/images'
+const ASSETS = 'https://shared.fastly.steamstatic.com/store_item_assets'
+
+/** Generic header image, served for every app (the hashed paths of GetItems are preferred). */
+export const steamHeaderUrl = (appId: string) => `${ASSETS}/steam/apps/${appId}/header.jpg`
 
 export const storePageUrl = (appId: string) => `${STORE}/app/${appId}/`
 export const communityHubUrl = (appId: string) => `https://steamcommunity.com/app/${appId}`
@@ -259,7 +263,11 @@ export function newsImage(contents: string): string | null {
   return remoteImageUrl(raw.replace('{STEAM_CLAN_IMAGE}', CLAN_IMAGES))
 }
 
-export function parseNews(data: NewsResponse): NewsItem[] {
+/**
+ * News items of an app. Most press articles host their pictures on sites Shelf does not
+ * proxy and patch notes have none: those show the game's header (`fallbackImage`) instead.
+ */
+export function parseNews(data: NewsResponse, fallbackImage: string | null = null): NewsItem[] {
   return (data.appnews?.newsitems ?? []).map((item) => {
     const contents = item.contents ?? ''
     const official = item.feedname === 'steam_community_announcements'
@@ -272,7 +280,7 @@ export function parseNews(data: NewsResponse): NewsItem[] {
       feed: official ? 'Annonce officielle' : item.feedlabel?.trim() || item.feedname || 'Presse',
       official,
       summary: newsSummary(contents),
-      imageUrl: newsImage(contents)
+      imageUrl: newsImage(contents) ?? fallbackImage
     }
   })
 }

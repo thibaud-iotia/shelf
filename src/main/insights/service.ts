@@ -12,6 +12,7 @@ import { games } from '../db/schema'
 import { getGameRow } from '../games/repository'
 import type { IgdbExtras } from '../metadata/igdb'
 import type { FetchLike } from '../net/http'
+import { remoteImageUrl } from '../media/remote'
 import { buildLinks, youtubeVideos } from './links'
 import {
   communityHubUrl,
@@ -20,6 +21,7 @@ import {
   parseAppDetails,
   parseCommunity,
   parseNews,
+  steamHeaderUrl,
   parsePlayers,
   parseReviews,
   steamKeyError,
@@ -108,6 +110,15 @@ export class InsightsService {
   async overview(gameId: number): Promise<GameInsights> {
     const row = getGameRow(this.deps.db, gameId)
     const appId = await this.steamAppId(gameId).catch(() => null)
+    return this.overviewOf(appId, row.igdbId)
+  }
+
+  /** Same blocks for a Steam app that is not in the library (store page of a game to buy). */
+  overviewForApp(appId: string): Promise<GameInsights> {
+    return this.overviewOf(appId, null)
+  }
+
+  private async overviewOf(appId: string | null, igdbId: number | null): Promise<GameInsights> {
     const quiet = <T>(promise: Promise<T> | null): Promise<T | null> =>
       promise ? promise.catch(() => null) : Promise.resolve(null)
 
@@ -132,9 +143,7 @@ export class InsightsService {
           : null
       ),
       quiet(
-        row.igdbId !== null
-          ? this.cached(`igdb:${row.igdbId}`, () => this.deps.igdbExtras(row.igdbId!))
-          : null
+        igdbId !== null ? this.cached(`igdb:${igdbId}`, () => this.deps.igdbExtras(igdbId)) : null
       )
     ])
 
@@ -158,8 +167,13 @@ export class InsightsService {
   }
 
   async news(gameId: number): Promise<NewsItem[]> {
-    const appId = await this.requireAppId(gameId)
-    return this.cached(`news:${appId}`, () => this.client.news(appId)).then(parseNews)
+    return this.newsForApp(await this.requireAppId(gameId))
+  }
+
+  newsForApp(appId: string): Promise<NewsItem[]> {
+    return this.cached(`news:${appId}`, () => this.client.news(appId)).then((data) =>
+      parseNews(data, remoteImageUrl(steamHeaderUrl(appId)))
+    )
   }
 
   async community(gameId: number, kind: CommunityKind): Promise<CommunityItem[]> {

@@ -43,6 +43,13 @@
       "when": 1793913943027,
       "tag": "0005_update_available",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1793975303181,
+      "tag": "0006_wishlist",
+      "breakpoints": true
     }
   ]
 }

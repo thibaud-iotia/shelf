@@ -1,0 +1,59 @@
+{
+  "pages": 1,
+  "productCount": 12,
+  "products": [
+    {
+      "id": "1441199941",
+      "slug": "the_witcher_3_redkit",
+      "title": "REDkit The Witcher 3",
+      "productType": "game",
+      "price": {
+        "final": "0,00 €",
+        "base": "0,00 €",
+        "discount": null,
+        "finalMoney": {
+          "amount": "0.00",
+          "currency": "EUR",
+          "discount": "0.00"
+        },
+        "baseMoney": {
+          "amount": "0.00",
+          "currency": "EUR"
+        }
+      },
+      "coverHorizontal": "https://images.gog-statics.com/6808c0f7f179257a0eb94000b5062b87ae4afc2037119e67f30b7d68d148b59b.png",
+      "coverVertical": "https://images.gog-statics.com/1da93b20a0389c37d3da140a7b320489030f8d3df31cf9ae11869ebdcabc5e94.jpg"
+    },
+    {
+      "id": "1640424747",
+      "slug": "the_witcher_3_wild_hunt_game_of_the_year_edition",
+      "title": "The Witcher 3: Wild Hunt — Remastered",
+      "productType": "pack",
+      "price": {
+        "final": "49,99 €",
+        "base": "49,99 €",
+        "discount": null,
+        "finalMoney": {
+          "amount": "49.99",
+          "currency": "EUR",
+          "discount": "0.00"
+        },
+        "baseMoney": {
+          "amount": "49.99",
+          "currency": "EUR"
+        }
+      },
+      "coverHorizontal": "https://images.gog-statics.com/536b00d90b91d9248d08aff37920d9706995337cb708cb69fa45e7900edf80b7.png",
+      "coverVertical": "https://images.gog-statics.com/79ac87014addb87a16fb636a404ff8b667865f7059b9bc0a8438b69d17ddd88b.jpg"
+    },
+    {
+      "id": "1179418179",
+      "slug": "the_witcher_3_wild_hunt_songs_of_the_past",
+      "title": "The Witcher 3: Wild Hunt — Songs of the Past",
+      "productType": "pack",
+      "price": null,
+      "coverHorizontal": "https://images.gog-statics.com/b68944f8b141323f0cc9e08bb54695b672b738abc751e9c5f58111846e896ed0.png",
+      "coverVertical": "https://images.gog-statics.com/35f56400e4b4c997ed92c0f9eec28f4e8f06b3d59eed79bddfc410472ac2c365.jpg"
+    }
+  ]
+}

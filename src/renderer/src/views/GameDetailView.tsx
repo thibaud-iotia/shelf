@@ -1,8 +1,10 @@
 import { useState, type ReactNode } from 'react'
 import { INSTALL_STATE_LABELS, SOURCE_LABELS } from '@shared/domain'
 import { formatDay, formatLastSession, formatPlaytime, yearOf } from '@shared/format'
-import type { Game, GameDlc, GameInsights } from '@shared/models'
+import type { Game, GameDlc } from '@shared/models'
 import { heroGradient } from '@renderer/lib/artwork'
+import { BackBar, TabBar } from '@renderer/components/game/DetailChrome'
+import { availableTabs, type DetailTab } from '@renderer/lib/detail'
 import { MetadataDialog } from '@renderer/components/game/MetadataDialog'
 import { TagEditor } from '@renderer/components/game/TagEditor'
 import { AchievementsPanel } from '@renderer/components/game/insights/AchievementsPanel'
@@ -11,12 +13,12 @@ import { InsightsSide } from '@renderer/components/game/insights/InsightsSide'
 import { MediaGallery } from '@renderer/components/game/insights/MediaGallery'
 import {
   AboutSection,
+  GameLatestNews,
   Languages,
-  LatestNews,
   Requirements,
   StoreFacts
 } from '@renderer/components/game/insights/StoreSections'
-import { NewsPanel } from '@renderer/components/game/insights/NewsPanel'
+import { GameNewsPanel } from '@renderer/components/game/insights/NewsPanel'
 import { VideosPanel } from '@renderer/components/game/insights/VideosPanel'
 import { Button } from '@renderer/components/ui/Button'
 import { Chip } from '@renderer/components/ui/Chip'
@@ -31,7 +33,6 @@ import {
   usePickCover,
   usePickSaveFolder,
   useRefreshArtwork,
-  useCollections,
   useSettings,
   useUpdateGame
 } from '@renderer/lib/queries'
@@ -195,140 +196,10 @@ function RemoveAction({ game }: { game: Game }) {
   )
 }
 
-/** Where "back" leads: the view the game was opened from. */
-function useBackLabel(): string {
-  const previous = useUiStore((s) => s.history.at(-1))
-  const collections = useCollections()
-  switch (previous?.name) {
-    case 'favorites':
-      return 'Favoris'
-    case 'recent':
-      return 'Récents'
-    case 'source':
-      return SOURCE_LABELS[previous.source]
-    case 'collection':
-      return collections.data?.find((c) => c.id === previous.id)?.name ?? 'Collection'
-    case 'game':
-      return 'Jeu précédent'
-    case 'import':
-      return 'Import'
-    case 'settings':
-      return 'Réglages'
-    default:
-      return 'Bibliothèque'
-  }
-}
-
-/**
- * Way back to the gallery: a pill that stays pinned under the title bar while the page
- * scrolls, readable over any artwork. Escape and the mouse "back" button do the same.
- */
-function BackBar({ title }: { title: string }) {
-  const back = useUiStore((s) => s.back)
-  const label = useBackLabel()
-  return (
-    <div className="sticky top-2.5 z-20 h-0">
-      <nav
-        aria-label="Fil d’Ariane"
-        className="absolute left-10 top-0 flex items-center gap-1 h-10 p-1 pr-4 max-w-[calc(100%-80px)] rounded-full bg-black/70 backdrop-blur-md border border-white/15 shadow-lg"
-      >
-        <button
-          type="button"
-          onClick={back}
-          aria-label={`Retour : ${label}`}
-          title="Retour (Échap)"
-          className="app-no-drag group flex-none flex items-center gap-2 h-8 pl-2 pr-2.5 rounded-full text-sm font-semibold text-white hover:bg-white/15 cursor-pointer transition-colors focus-visible:outline-2 focus-visible:outline-brand"
-        >
-          <svg
-            aria-hidden="true"
-            viewBox="0 0 16 16"
-            className="w-4 h-4 transition-transform group-hover:-translate-x-0.5"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M10 3 5 8l5 5" />
-          </svg>
-          {label}
-          <kbd
-            aria-hidden="true"
-            className="ml-1 font-mono text-[10px] font-medium px-1.5 py-px rounded-xs bg-white/10 text-white/70"
-          >
-            Échap
-          </kbd>
-        </button>
-        <span aria-hidden="true" className="flex-none w-px h-4 mx-1.5 bg-white/25" />
-        <span
-          data-testid="breadcrumb-title"
-          title={title}
-          className="truncate text-sm font-semibold text-white"
-        >
-          {title}
-        </span>
-      </nav>
-    </div>
-  )
-}
-
-type Tab = 'overview' | 'news' | 'videos' | 'community' | 'achievements'
-
-/** Tabs worth showing: the Steam ones need a Steam page, videos need at least one. */
-function availableTabs(insights: GameInsights | undefined): { id: Tab; label: string }[] {
-  const tabs: { id: Tab; label: string }[] = [{ id: 'overview', label: 'Aperçu' }]
-  if (!insights) return tabs
-  const steam = insights.steamAppId !== null
-  if (steam) tabs.push({ id: 'news', label: 'Actualités' })
-  if (insights.videos.length) {
-    tabs.push({ id: 'videos', label: `Vidéos · ${insights.videos.length}` })
-  }
-  if (steam) tabs.push({ id: 'community', label: 'Communauté' })
-  if (steam && insights.achievementsTotal) {
-    tabs.push({ id: 'achievements', label: `Succès · ${insights.achievementsTotal}` })
-  }
-  return tabs
-}
-
-function TabBar({
-  tabs,
-  active,
-  onChange
-}: {
-  tabs: { id: Tab; label: string }[]
-  active: Tab
-  onChange: (tab: Tab) => void
-}) {
-  return (
-    <div
-      role="tablist"
-      aria-label="Sections de la fiche"
-      className="flex gap-6 border-b border-ink-600"
-    >
-      {tabs.map((tab) => (
-        <button
-          key={tab.id}
-          type="button"
-          role="tab"
-          aria-selected={tab.id === active}
-          onClick={() => onChange(tab.id)}
-          className={`-mb-px pb-2.5 text-sm font-semibold border-b-2 cursor-pointer transition-colors ${
-            tab.id === active
-              ? 'border-brand text-text-hi'
-              : 'border-transparent text-text-lo hover:text-text-mid'
-          }`}
-        >
-          {tab.label}
-        </button>
-      ))}
-    </div>
-  )
-}
-
 export function GameDetailView({ gameId }: { gameId: number }) {
   const detail = useGameDetail(gameId)
   const insights = useGameInsights(detail.data?.game)
-  const [selectedTab, setTab] = useState<Tab>('overview')
+  const [selectedTab, setTab] = useState<DetailTab>('overview')
   const openGameForm = useUiStore((s) => s.openGameForm)
   const running = useIsRunning(gameId)
   const play = usePlay()
@@ -422,7 +293,7 @@ export function GameDetailView({ gameId }: { gameId: number }) {
       <div className="flex gap-10 px-10 pt-2 pb-8">
         <div className="flex-1 min-w-0 flex flex-col gap-4">
           {tabs.length > 1 && <TabBar tabs={tabs} active={tab} onChange={setTab} />}
-          {tab === 'news' && <NewsPanel game={game} />}
+          {tab === 'news' && <GameNewsPanel game={game} />}
           {tab === 'videos' && insights.data && <VideosPanel videos={insights.data.videos} />}
           {tab === 'community' && <CommunityPanel game={game} />}
           {tab === 'achievements' && <AchievementsPanel game={game} />}
@@ -450,7 +321,7 @@ export function GameDetailView({ gameId }: { gameId: number }) {
               {store && <StoreFacts store={store} />}
               <TagEditor game={game} />
               {insights.data?.steamAppId && (
-                <LatestNews game={game} onMore={() => setTab('news')} />
+                <GameLatestNews game={game} onMore={() => setTab('news')} />
               )}
               {store && <AboutSection blocks={store.about} />}
               {dlcs.length > 0 && <DlcList dlcs={dlcs} />}

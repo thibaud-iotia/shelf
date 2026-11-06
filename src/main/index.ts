@@ -28,6 +28,9 @@ import { applyUserDataOverride, launcherLocations, paths } from './platform/path
 import { SecretStore } from './secrets/store'
 import { SettingsStore } from './settings/store'
 import { createSources } from './sources'
+import { StoreService } from './store/service'
+import { PurchaseWatcher } from './store/watcher'
+import { dropBought, ownedIndex } from './store/wishlist'
 import { applyLaunchAtStartup, ShelfTray, showMainWindow, startedHidden } from './system'
 import { createMainWindow } from './window'
 
@@ -155,6 +158,32 @@ function createContext(): AppContext {
     igdbExtras: (igdbId) => metadata.extras(igdbId)
   })
 
+  // Store purchases: payment happens in the launcher; when the game shows up (account sync or
+  // launcher files), it leaves the wishlist and the renderer shows a toast.
+  const purchases = new PurchaseWatcher({
+    refresh: async (sources) => {
+      if (sources.includes(null)) await accounts.syncAll()
+      else for (const source of sources) if (source) await accounts.syncSource(source)
+      await checkUpdates()
+      broadcast('library:changed', { reason: 'sync' })
+      onSynced()
+    },
+    findOwned: (purchase) => ownedIndex(db).find(purchase),
+    onPurchased: (purchase, gameId) => {
+      dropBought(db, purchase)
+      broadcast('store:purchased', { title: purchase.title, gameId })
+    }
+  })
+  const store = new StoreService({
+    db,
+    steamId: () => accounts.steamCredentials()?.steamId ?? null,
+    launcherAvailable: (source) => importer.isAvailable(source),
+    // Looked up at call time: the e2e tests replace shell.openExternal.
+    openExternal: (url) => shell.openExternal(url),
+    watchPurchase: (purchase) => purchases.add(purchase),
+    userAgent: `Shelf/${app.getVersion()} (+https://github.com/thibaud-iotia/shelf)`
+  })
+
   return {
     database,
     settings,
@@ -167,7 +196,9 @@ function createContext(): AppContext {
     insights,
     onSynced,
     checkUpdates,
-    uninstallWatch
+    uninstallWatch,
+    store,
+    purchases
   }
 }
 
@@ -210,6 +241,9 @@ if (!app.requestSingleInstanceLock()) {
         })
         .catch((error: unknown) => console.warn('[startup] sync failed', error))
 
+      // Back from the launcher's checkout: look for the game bought from the store.
+      app.on('browser-window-focus', () => ctx?.purchases.nudge())
+
       app.on('activate', () => {
         showMainWindow(openWindow)
       })
@@ -234,5 +268,6 @@ app.on('will-quit', () => {
   ctx?.runner.dispose()
   ctx?.steamWatch.dispose()
   ctx?.uninstallWatch.dispose()
+  ctx?.purchases.dispose()
   ctx?.database.close()
 })
