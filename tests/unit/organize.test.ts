@@ -30,6 +30,8 @@ function game(partial: Partial<Game> & { id: number; title: string }): Game {
     sourceId: String(partial.id),
     ownership: 'manual',
     installState: 'installed',
+    updateAvailable: false,
+    canUpdate: false,
     installPath: null,
     executablePath: null,
     launchArgs: null,

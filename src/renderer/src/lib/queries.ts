@@ -90,10 +90,40 @@ export function useInstallGame() {
   })
 }
 
+export function useApplyUpdate() {
+  return useMutation({
+    mutationFn: (id: number) => call('games:applyUpdate', id),
+    onSuccess: () => toast.info('Ouverture du launcher pour la mise à jour…'),
+    onError: (error) => toast.error(error)
+  })
+}
+
+/** Re-reads the launchers' files now (they are also re-read every 15 min). */
+export function useCheckUpdates() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: () => call('games:checkUpdates'),
+    onSuccess: (count) => {
+      void invalidateLibrary(client)
+      toast.info(
+        count === 0
+          ? 'Tous vos jeux installés sont à jour.'
+          : count === 1
+            ? '1 jeu a une mise à jour en attente.'
+            : `${count} jeux ont une mise à jour en attente.`
+      )
+    },
+    onError: (error) => toast.error(error)
+  })
+}
+
 export function useUninstallGame() {
   return useMutation({
     mutationFn: (id: number) => call('games:uninstall', id),
-    onSuccess: () => toast.info('Ouverture du launcher pour la désinstallation…'),
+    onSuccess: () =>
+      toast.info(
+        'Désinstallation lancée : suivez les instructions, Shelf mettra la bibliothèque à jour.'
+      ),
     onError: (error) => toast.error(error)
   })
 }
@@ -341,7 +371,10 @@ export function useMainEvents() {
   useEffect(() => {
     void call('games:running').then(setRunning)
     const offRunning = window.shelf.on('games:running', setRunning)
-    const offLibrary = window.shelf.on('library:changed', () => void invalidateLibrary(client))
+    const offLibrary = window.shelf.on('library:changed', ({ reason }) => {
+      void invalidateLibrary(client)
+      if (reason === 'uninstall') toast.success('Désinstallation terminée : bibliothèque à jour.')
+    })
     return () => {
       offRunning()
       offLibrary()

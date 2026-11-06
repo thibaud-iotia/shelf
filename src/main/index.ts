@@ -4,7 +4,15 @@ import { AccountService } from './accounts/service'
 import type { AppContext } from './context'
 import { openDatabase } from './db/client'
 import { broadcast, onBroadcast } from './events'
-import { closeSession, discardUnfinishedSessions, listGames, openSession } from './games/repository'
+import {
+  closeSession,
+  discardUnfinishedSessions,
+  installStatus,
+  listGames,
+  markNotInstalled,
+  openSession
+} from './games/repository'
+import { UninstallWatcher } from './games/uninstall-watch'
 import { launchGame, runningGameIds } from './launch/launch-game'
 import { registerIpcHandlers } from './ipc/handlers'
 import { ImportService } from './import/service'
@@ -30,6 +38,8 @@ registerMediaScheme()
 
 /** Delay between the end of a Steam game and the account sync. */
 const STEAM_SYNC_DELAY_MS = 60_000
+/** Launchers' files are re-read this often: install states and pending updates. */
+const UPDATE_CHECK_INTERVAL_MS = 15 * 60_000
 
 let ctx: AppContext | undefined
 let tray: ShelfTray | undefined
@@ -119,6 +129,26 @@ function createContext(): AppContext {
     }, STEAM_SYNC_DELAY_MS)
   })
 
+  // Launcher files (install states, pending updates): one read at a time, shared by callers.
+  let checking: Promise<void> | null = null
+  const checkUpdates = () =>
+    (checking ??= importer
+      .refreshInstalled()
+      .then((report) => {
+        if (report) broadcast('library:changed', { reason: 'refresh' })
+      })
+      .finally(() => {
+        checking = null
+      }))
+
+  // Uninstalls started from Shelf: re-read the launchers until the game is seen uninstalled.
+  const uninstallWatch = new UninstallWatcher({
+    refresh: checkUpdates,
+    state: (gameId) => installStatus(db, gameId),
+    markUninstalled: (gameId) => markNotInstalled(db, gameId),
+    onUninstalled: () => broadcast('library:changed', { reason: 'uninstall' })
+  })
+
   const insights = new InsightsService({
     db,
     steamCredentials: () => accounts.steamCredentials(),
@@ -135,7 +165,9 @@ function createContext(): AppContext {
     accounts,
     metadata,
     insights,
-    onSynced
+    onSynced,
+    checkUpdates,
+    uninstallWatch
   }
 }
 
@@ -162,11 +194,12 @@ if (!app.requestSingleInstanceLock()) {
         console.warn('[startup] tray unavailable', error)
       }
       applyLaunchAtStartup(ctx.settings.get('launchAtStartup'))
-      // Keep install states fresh: launcher games installed/removed while Shelf was closed.
-      void ctx.importer
-        .refreshInstalled()
-        .then((report) => report && broadcast('library:changed', { reason: 'refresh' }))
-        .catch((error: unknown) => console.warn('[startup] refresh failed', error))
+      // Keep install states and pending updates fresh: at startup (games installed, removed or
+      // updated while Shelf was closed), then periodically (launchers queue updates any time).
+      const refresh = () =>
+        void ctx?.checkUpdates().catch((error: unknown) => console.warn('[refresh] failed', error))
+      refresh()
+      setInterval(refresh, UPDATE_CHECK_INTERVAL_MS).unref()
       // Owned libraries: automatic sync when the last one is older than 24 h.
       void ctx.accounts
         .syncDue()
@@ -200,5 +233,6 @@ app.on('will-quit', () => {
   tray?.destroy()
   ctx?.runner.dispose()
   ctx?.steamWatch.dispose()
+  ctx?.uninstallWatch.dispose()
   ctx?.database.close()
 })

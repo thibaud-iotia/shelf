@@ -6,7 +6,8 @@ import type { Game, GameDetail, GameInput, GamePatch, PlaySession } from '../../
 import type { ShelfDatabase } from '../db/client'
 import { collectionGames, gameDlcs, gameTags, games, playSessions, tags } from '../db/schema'
 import { mediaUrl } from '../media/urls'
-import { installUri, uninstallUri } from '../sources/uris'
+import { mayUninstall } from '../sources/uninstall'
+import { installUri, updateUri } from '../sources/uris'
 
 export type GameRow = typeof games.$inferSelect
 
@@ -118,6 +119,7 @@ export function toGame(
     sourceId: row.sourceId,
     ownership: row.ownership,
     installState: row.installState,
+    updateAvailable: row.installState === 'installed' && row.updateAvailable,
     installPath: row.installPath,
     executablePath: row.executablePath,
     launchArgs: row.launchArgs,
@@ -145,7 +147,8 @@ export function toGame(
     savePath: row.savePath,
     useRunner: row.useRunner,
     canInstall: row.installState !== 'installed' && installUri(row) !== null,
-    canUninstall: row.installState === 'installed' && uninstallUri(row) !== null
+    canUninstall: row.installState === 'installed' && mayUninstall(row),
+    canUpdate: row.installState === 'installed' && row.updateAvailable && updateUri(row) !== null
   }
 }
 
@@ -237,6 +240,27 @@ export function updateGame(db: ShelfDatabase, id: number, patch: GamePatch): Gam
     db.update(games).set(patch).where(eq(games.id, id)).run()
   }
   return getGame(db, id)
+}
+
+/** Install state of a game, null when it is no longer in the library. */
+export function installStatus(
+  db: ShelfDatabase,
+  id: number
+): { installState: string; executablePath: string | null } | null {
+  return (
+    db
+      .select({ installState: games.installState, executablePath: games.executablePath })
+      .from(games)
+      .where(eq(games.id, id))
+      .get() ?? null
+  )
+}
+
+export function markNotInstalled(db: ShelfDatabase, id: number): void {
+  db.update(games)
+    .set({ installState: 'not_installed', updateAvailable: false })
+    .where(eq(games.id, id))
+    .run()
 }
 
 export function deleteGame(db: ShelfDatabase, id: number): void {

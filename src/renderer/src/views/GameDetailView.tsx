@@ -24,12 +24,12 @@ import { usePlay } from '@renderer/lib/actions'
 import {
   useGameDetail,
   useGameInsights,
+  useApplyUpdate,
   useInstallGame,
   useOpenFolder,
   useExportSaves,
   usePickCover,
   usePickSaveFolder,
-  useUninstallGame,
   useRefreshArtwork,
   useCollections,
   useSettings,
@@ -163,7 +163,6 @@ function ArtworkActions({ game }: { game: Game }) {
 function SavesActions({ game }: { game: Game }) {
   const pick = usePickSaveFolder()
   const exportSaves = useExportSaves()
-  const uninstall = useUninstallGame()
   return (
     <div data-testid="saves" className="flex flex-col gap-2 mt-4 pt-4 border-t border-ink-600">
       <span className="text-[11px] font-semibold tracking-[.12em] text-text-lo">SAUVEGARDES</span>
@@ -181,9 +180,17 @@ function SavesActions({ game }: { game: Game }) {
           {exportSaves.isPending ? 'Export…' : 'Exporter (.zip)…'}
         </SideAction>
       )}
-      {game.canUninstall && (
-        <SideAction onClick={() => uninstall.mutate(game.id)}>Désinstaller…</SideAction>
-      )}
+    </div>
+  )
+}
+
+function RemoveAction({ game }: { game: Game }) {
+  const openRemoveGame = useUiStore((s) => s.openRemoveGame)
+  return (
+    <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-ink-600">
+      <SideAction onClick={() => openRemoveGame(game.id)}>
+        {game.canUninstall ? 'Désinstaller ou supprimer…' : 'Supprimer…'}
+      </SideAction>
     </div>
   )
 }
@@ -327,6 +334,7 @@ export function GameDetailView({ gameId }: { gameId: number }) {
   const play = usePlay()
   const openFolder = useOpenFolder()
   const install = useInstallGame()
+  const applyUpdate = useApplyUpdate()
   const update = useUpdateGame()
 
   if (detail.isError) {
@@ -378,6 +386,10 @@ export function GameDetailView({ gameId }: { gameId: number }) {
           {game.installState === 'not_installed' && game.canInstall ? (
             <Button size="lg" onClick={() => install.mutate(game.id)}>
               Installer
+            </Button>
+          ) : game.canUpdate && !running ? (
+            <Button size="lg" onClick={() => applyUpdate.mutate(game.id)}>
+              ⟳ Mettre à jour
             </Button>
           ) : (
             <Button size="lg" disabled={running} onClick={() => void play(game)}>
@@ -474,6 +486,7 @@ export function GameDetailView({ gameId }: { gameId: number }) {
           {insights.data && <InsightsSide insights={insights.data} />}
           <ArtworkActions game={game} />
           <SavesActions game={game} />
+          <RemoveAction game={game} />
         </SideCard>
       </div>
     </section>

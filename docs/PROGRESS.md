@@ -19,12 +19,13 @@ Journal de bord : état de chaque phase, décisions prises, points ouverts.
 Phases 1 à 6 réalisées d'une traite à la demande de l'utilisateur (« fais toutes les phases d'un
 coup, je veux voir le résultat final »), un commit par phase, toutes fusionnées dans `main`.
 
-Bilan des tests : 154 unitaires, 29 e2e (+ 1 test de fumée de l'app packagée).
+Bilan des tests : 159 unitaires, 30 e2e (+ 1 test de fumée de l'app packagée).
 
 ## Phase 0 — Squelette
 
 - electron-vite 6 + React 19 + TS 6 strict + Tailwind 4, ESLint 10 + Prettier ; IPC typé ; SQLite + Drizzle ; e2e Playwright.
-- Fenêtre sans cadre natif : contrôles en overlay couleur `--surface-page`, bande de drag de 36 px (retour utilisateur : « le haut de la fenêtre n'est pas fondu avec l'app »).
+- Fenêtre sans cadre natif : contrôles en overlay **transparent** (`WINDOW_CONTROLS_COLOR`) + voile radial `.window-controls-scrim` derrière les boutons (Windows/Linux) pour la lisibilité sur les images — plus de rectangle opaque quand le contenu défile dessous, bande de drag de 36 px (retour utilisateur : « le haut de la fenêtre n'est pas fondu avec l'app »).
+- Barres de défilement discrètes (`app.css`) : fines, sans piste, curseur visible seulement au survol de la zone ; celle de la vue principale (`.app-scroll`) démarre sous la barre de titre (`margin-top: var(--title-bar)`), plus à côté des boutons fenêtre.
 
 ## Phase 1 — Bibliothèque manuelle
 
@@ -51,6 +52,8 @@ Bilan des tests : 154 unitaires, 29 e2e (+ 1 test de fumée de l'app packagée).
 - GOG option A (base locale Galaxy 2.0) ; option B derrière le réglage « Activer la connexion au compte GOG »
   (fenêtre de connexion dédiée, refresh token tourné et chiffré).
 - Epic via Legendary (`status --json`, `list --json`), sans réimplémenter l'auth Epic ; itch.io (clés possédées, paginé).
+  La copie de Legendary fournie par Heroic est lancée avec `LEGENDARY_CONFIG_PATH` = `<config Heroic>/legendaryConfig/legendary`
+  (sinon elle lit `~/.config/legendary` et ne voit aucun compte) ; le premier binaire connecté à un compte est retenu.
 - Synchro manuelle + automatique au démarrage si > 24 h ; erreurs stockées sur le compte (`lastError`).
 - Bouton « Installer » → URI du launcher.
 
@@ -136,11 +139,37 @@ Bilan des tests : 154 unitaires, 29 e2e (+ 1 test de fumée de l'app packagée).
   titre pendant le défilement, libellé selon la vue d'origine (collection, favoris, source…) ; le
   bouton « précédent » de la souris quitte aussi la fiche.
 
+- Mises à jour des jeux (retour : « mon Fortnite n'est pas à jour ») : `games.update_available`
+  (migration 0005), relu à chaque lecture des launchers (démarrage, toutes les 15 min, bouton
+  « ⟳ Vérifier les mises à jour » de la bibliothèque, `games:checkUpdates`). Sources, toutes locales :
+  Steam `StateFlags` (2 = mise à jour requise, 256/512/1024 = en cours/en pause) ou
+  `TargetBuildID ≠ buildid` ; Epic : le launcher déplace le `.item` d'un jeu à mettre à jour dans
+  `Manifests/Pending` (incomplet) — avant, Fortnite disparaissait donc du scan et passait « non
+  installé » ; il reste installé tant que le manifeste complet existe dans `.egstore` ; Legendary :
+  `version` de `installed.json` ≠ `build_version` de `assets.json`. Badge « ⟳ Mise à jour », chip
+  « Mises à jour · n », bouton « Mettre à jour » (fiche, menu contextuel) : aucun launcher n'expose
+  d'URI « mettre à jour » → Steam ouvre `steam://open/downloads`, Epic lance le jeu par le launcher
+  (non silencieux, il applique la mise à jour avant), Heroic son flux de lancement. Même cause côté
+  Steam : un jeu en cours de mise à jour (`StateFlags` 1026) n'est plus vu « non installé » s'il a
+  un `buildid`. Le rafraîchissement silencieux n'écrase plus la détection en cours de l'écran
+  d'import et ne relance plus l'enrichissement des métadonnées.
+
+- Supprimer un jeu (retour : « supprimer un jeu Steam via l'application ») : dialogue
+  « Supprimer « titre » » (`RemoveGameDialog`, état `removingGameId` du store UI), ouvert depuis le
+  menu contextuel (« Supprimer… ») et la fiche (« Désinstaller ou supprimer… »). Deux actions :
+  désinstaller du disque (Steam : `steam://uninstall/<appid>` ; GOG et jeux manuels sous Windows :
+  le désinstalleur laissé dans le dossier du jeu, `unins000.exe`/`uninstall.exe`, ouvert par
+  `shell.openPath` pour passer l'UAC — `sources/uninstall.ts`) et retirer de la bibliothèque. Un jeu
+  issu d'un compte synchronisé (`lastSyncedAt`) reviendrait à la synchro suivante : il est masqué à
+  la place (réaffichable par le réglage « Afficher les jeux masqués »).
+
 ## Décisions et écarts au plan
 
 - `GameSource.launch()` n'existe pas : le lancement est décidé par `launch/plan.ts` depuis la ligne en base
   (même logique pour toutes les sources, plus simple à tester). `AccountSource.installUri` vit dans `sources/uris.ts`.
-- Désinstallation : seul Steam expose une URI fiable ; les autres launchers se désinstallent depuis leur interface.
+- Désinstallation : seul Steam expose une URI fiable ; GOG et jeux manuels sous Windows passent par le
+  désinstalleur du dossier du jeu ; Epic, itch et Linux (scripts GOG à lancer en terminal) se
+  désinstallent depuis leur launcher.
 - Un seul `migration 0001` regroupe les colonnes ajoutées par les phases 1 à 5 (métadonnées, playtime externe,
   sauvegardes, runner, type de compte, règles de collection).
 - Lancement au démarrage non appliqué en dev (il enregistrerait le binaire Electron nu).
@@ -151,8 +180,12 @@ Bilan des tests : 154 unitaires, 29 e2e (+ 1 test de fumée de l'app packagée).
 - macOS et Linux non testés sur machine réelle (code et CI prêts) ; dmg non signé.
 - Steam ne permet pas de mesurer la durée des sessions lancées via `steam://` : le temps vient du compte, à jour après synchro.
 - Temps Epic non récupéré (Legendary ne l'expose pas).
+- Jeux Epic possédés non installés : visibles uniquement via la synchro Legendary/Heroic. Le launcher Epic
+  ne garde plus de cache local de la bibliothèque (`OC_<compte>.dat` ne liste que les jeux installés et les assets Unreal).
 - Polices : sous-ensemble latin uniquement.
 - Thème clair non exposé (le DS le fournit, l'UI utilise les tokens sombres).
+- Mises à jour GOG (Galaxy) et itch non détectées : aucune information locale fiable.
+  Epic sans Legendary : seules les mises à jour déjà mises en file par le launcher Epic sont vues.
 - Synchro GOG option B et Legendary non testées contre les vrais services (fixtures uniquement).
 - Fiche enrichie : communauté (`QueryFiles`) et succès (`GetSchemaForGame`, `GetPlayerAchievements`)
   demandent une clé Steam ; leurs fixtures suivent la documentation, pas une réponse réelle enregistrée.

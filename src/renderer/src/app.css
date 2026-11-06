@@ -77,6 +77,56 @@
   -webkit-app-region: no-drag;
 }
 
+/* Soft shade behind the transparent native window controls (Windows/Linux, top-right):
+   blends into --surface-page, keeps the glyphs legible over bright images. */
+.window-controls-scrim {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: 220px;
+  height: calc(var(--title-bar) + 16px);
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse 100% 100% at 100% 0%,
+    rgb(8 8 12 / 0.72) 0%,
+    rgb(8 8 12 / 0.45) 45%,
+    transparent 100%
+  );
+}
+:root[data-platform='mac'] .window-controls-scrim {
+  display: none;
+}
+
+/* Discreet scrollbars: thin, no track, thumb shown only while the pointer is over the
+   scrolling area (Chromium keeps no overlay scrollbars on desktop). */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background-clip: padding-box;
+  background-color: transparent;
+}
+:hover::-webkit-scrollbar-thumb {
+  background-color: rgb(255 255 255 / 0.16);
+}
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(255 255 255 / 0.3);
+}
+::-webkit-scrollbar-thumb:active {
+  background-color: rgb(255 255 255 / 0.4);
+}
+/* Main view scrolls under the title bar: its scrollbar starts below the window controls. */
+.app-scroll::-webkit-scrollbar-track {
+  margin-top: var(--title-bar);
+}
+
 @layer base {
   :root {
     --title-bar: 36px; /* = TITLE_BAR_HEIGHT */

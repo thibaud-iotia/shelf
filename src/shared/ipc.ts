@@ -78,6 +78,10 @@ export interface IpcChannels {
   'games:install': { args: [id: number]; result: null }
   /** Opens the launcher's uninstall flow (Steam). */
   'games:uninstall': { args: [id: number]; result: null }
+  /** Opens the launcher where the pending update of the game gets applied. */
+  'games:applyUpdate': { args: [id: number]; result: null }
+  /** Re-reads the launchers' files now; returns how many installed games have an update pending. */
+  'games:checkUpdates': { args: []; result: number }
   'games:pickSaveFolder': { args: [id: number]; result: Game | null }
   'games:exportSaves': { args: [id: number]; result: BackupResult | null }
 
@@ -148,6 +152,8 @@ const CHANNELS: Record<IpcChannel, true> = {
   'games:openFolder': true,
   'games:install': true,
   'games:uninstall': true,
+  'games:applyUpdate': true,
+  'games:checkUpdates': true,
   'games:pickSaveFolder': true,
   'games:exportSaves': true,
   'settings:pickRunner': true,

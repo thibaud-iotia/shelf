@@ -16,7 +16,8 @@ import { titleFromExecutable } from '../games/titles'
 import { validateGameId, validateGameInput, validateGamePatch } from '../games/validation'
 import { launchGame, runningGameIds } from '../launch/launch-game'
 import { exportSaves, backupFileName } from '../saves/backup'
-import { installUri, uninstallUri } from '../sources/uris'
+import { mayUninstall, uninstallPlan } from '../sources/uninstall'
+import { installUri, updateUri } from '../sources/uris'
 import { pickPath, pickSavePath } from './dialogs'
 import { handle } from './handle'
 
@@ -65,11 +66,28 @@ export function registerGameHandlers(ctx: AppContext): void {
 
   handle('games:uninstall', async (id) => {
     const game = getGameRow(db, validateGameId(id))
-    const uri = uninstallUri(game)
-    if (!uri) {
-      throw new AppError('NOT_FOUND', 'Désinstallez ce jeu depuis son launcher ou son dossier.')
+    if (game.installState !== 'installed') {
+      throw new AppError('VALIDATION', 'Ce jeu n’est pas installé.')
     }
-    await shell.openExternal(uri)
+    const plan = uninstallPlan(game)
+    if (!plan) {
+      throw new AppError(
+        'NOT_FOUND',
+        mayUninstall(game)
+          ? 'Aucun désinstalleur trouvé dans le dossier du jeu. Désinstallez-le depuis son launcher ou supprimez son dossier.'
+          : 'Désinstallez ce jeu depuis son launcher.'
+      )
+    }
+    if (plan.kind === 'uri') {
+      await shell.openExternal(plan.uri)
+    } else {
+      // ShellExecute (not spawn): the uninstallers ask for elevation through UAC.
+      const error = await shell.openPath(plan.path)
+      if (error) {
+        throw new AppError('UNAVAILABLE', `Impossible d’ouvrir le désinstalleur : ${error}`)
+      }
+    }
+    ctx.uninstallWatch.watch(game.id)
     return null
   })
 
@@ -129,6 +147,21 @@ export function registerGameHandlers(ctx: AppContext): void {
     if (!uri) throw new AppError('NOT_FOUND', 'Ce jeu ne peut pas être installé depuis Shelf.')
     await shell.openExternal(uri)
     return null
+  })
+
+  handle('games:applyUpdate', async (id) => {
+    const game = getGameRow(db, validateGameId(id))
+    const uri = game.installState === 'installed' ? updateUri(game) : null
+    if (!uri) {
+      throw new AppError('NOT_FOUND', 'Mettez ce jeu à jour depuis son launcher.')
+    }
+    await shell.openExternal(uri)
+    return null
+  })
+
+  handle('games:checkUpdates', async () => {
+    await ctx.checkUpdates()
+    return listGames(db).filter((g) => g.updateAvailable).length
   })
 
   handle('games:openFolder', async (id) => {

@@ -9,6 +9,8 @@ export interface Game {
   sourceId: string
   ownership: Ownership
   installState: InstallState
+  /** The launcher has an update pending for the installed copy (Steam, Epic, Legendary). */
+  updateAvailable: boolean
   installPath: string | null
   executablePath: string | null
   launchArgs: string | null
@@ -50,6 +52,8 @@ export interface Game {
   useRunner: boolean
   canInstall: boolean
   canUninstall: boolean
+  /** An update is pending and the launcher can be opened to apply it. */
+  canUpdate: boolean
 }
 
 export interface GameInput {
@@ -153,6 +157,8 @@ export interface ImportCandidate {
   title: string
   executablePath: string | null
   installPath: string | null
+  /** Launcher finds only: an update is pending for this install. */
+  updateAvailable: boolean
   status: CandidateStatus
   /** Folder-scan finds need a human look; launcher finds are trusted. */
   needsReview: boolean

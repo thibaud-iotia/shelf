@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Chip } from '@renderer/components/ui/Chip'
-import { useTags } from '@renderer/lib/queries'
+import { useCheckUpdates, useGames, useTags } from '@renderer/lib/queries'
 import { useUiStore } from '@renderer/stores/ui'
 
 export const FILTER_INPUT_ID = 'library-filter'
@@ -81,6 +81,9 @@ export function FilterBar() {
   const setInstall = useUiStore((s) => s.setInstallFilter)
   const favoritesOnly = useUiStore((s) => s.favoritesOnly)
   const toggleFavorites = useUiStore((s) => s.toggleFavoritesOnly)
+  const games = useGames()
+  const checkUpdates = useCheckUpdates()
+  const updates = (games.data ?? []).filter((g) => g.updateAvailable && !g.hidden).length
 
   return (
     <div className="flex flex-col gap-3.5">
@@ -142,10 +145,23 @@ export function FilterBar() {
         <Chip active={install === 'not_installed'} onClick={() => setInstall('not_installed')}>
           Non installés
         </Chip>
+        {(updates > 0 || install === 'update') && (
+          <Chip active={install === 'update'} onClick={() => setInstall('update')}>
+            ⟳ Mises à jour · {updates}
+          </Chip>
+        )}
         <Chip active={favoritesOnly} onClick={toggleFavorites}>
           ♥ Favoris
         </Chip>
         <TagMenu />
+        <button
+          type="button"
+          disabled={checkUpdates.isPending}
+          onClick={() => checkUpdates.mutate()}
+          className="ml-auto px-3 py-1.5 text-sm text-text-lo hover:text-text-mid disabled:opacity-50 cursor-pointer"
+        >
+          {checkUpdates.isPending ? 'Vérification…' : '⟳ Vérifier les mises à jour'}
+        </button>
       </div>
     </div>
   )

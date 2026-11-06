@@ -72,6 +72,14 @@ export function GameCard({
             ♥
           </span>
         )}
+        {!running && game.updateAvailable && (
+          <span
+            data-testid="update-badge"
+            className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full bg-[rgba(8,8,12,.75)] text-[11px] font-semibold text-amber-300"
+          >
+            ⟳ Mise à jour
+          </span>
+        )}
         {running && (
           <span
             data-testid="running-badge"

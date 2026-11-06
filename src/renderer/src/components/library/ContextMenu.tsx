@@ -4,6 +4,7 @@ import {
   useAddToCollection,
   useCollections,
   useGames,
+  useApplyUpdate,
   useInstallGame,
   useOpenFolder,
   useRemoveFromCollection,
@@ -39,6 +40,7 @@ export function ContextMenu() {
   const menu = useUiStore((s) => s.contextMenu)
   const close = useUiStore((s) => s.closeContextMenu)
   const openGameForm = useUiStore((s) => s.openGameForm)
+  const openRemoveGame = useUiStore((s) => s.openRemoveGame)
   const games = useGames()
   const tags = useTags()
   const collections = useCollections()
@@ -48,6 +50,7 @@ export function ContextMenu() {
   const removeFrom = useRemoveFromCollection()
   const openFolder = useOpenFolder()
   const install = useInstallGame()
+  const applyUpdate = useApplyUpdate()
   const play = usePlay()
   const panel = useRef<HTMLDivElement>(null)
   const [position, setPosition] = useState({ x: 0, y: 0 })
@@ -110,6 +113,9 @@ export function ContextMenu() {
       ) : (
         <Item onClick={run(() => void play(game))}>▶ Jouer</Item>
       )}
+      {game.canUpdate && (
+        <Item onClick={run(() => applyUpdate.mutate(game.id))}>⟳ Mettre à jour</Item>
+      )}
       <Item onClick={run(() => update.mutate([game.id, { favorite: !game.favorite }]))}>
         {game.favorite ? '♡ Retirer des favoris' : '♥ Favori'}
       </Item>
@@ -118,6 +124,7 @@ export function ContextMenu() {
       <Item onClick={run(() => update.mutate([game.id, { hidden: !game.hidden }]))}>
         {game.hidden ? 'Afficher' : 'Masquer'}
       </Item>
+      <Item onClick={() => openRemoveGame(game.id)}>Supprimer…</Item>
 
       <div className="my-1.5 h-px bg-ink-600" />
       <Heading>TAGS</Heading>

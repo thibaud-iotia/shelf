@@ -77,7 +77,9 @@ test.describe('launcher games', () => {
         opened.push(url)
       }
     })
+    await page.getByRole('button', { name: 'Désinstaller ou supprimer…' }).click()
     await page.getByRole('button', { name: 'Désinstaller…' }).click()
+    await expect(page.getByRole('dialog')).toBeHidden()
     await page.getByRole('button', { name: '▶ Jouer' }).click()
     await expect
       .poll(() => app.evaluate(() => (globalThis as { opened?: string[] }).opened))

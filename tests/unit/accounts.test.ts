@@ -3,7 +3,11 @@ import { join } from 'node:path'
 import Database from 'better-sqlite3'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
-import { epicLegendaryProvider, parseLegendaryList } from '../../src/main/accounts/epic-legendary'
+import {
+  epicLegendaryProvider,
+  parseLegendaryList,
+  type LegendaryBinary
+} from '../../src/main/accounts/epic-legendary'
 import { gogGalaxyProvider, readGalaxyOwned } from '../../src/main/accounts/gog-galaxy'
 import { codeFromRedirect, gogOAuthProvider } from '../../src/main/accounts/gog-oauth'
 import { fetchItchOwned, itchProvider } from '../../src/main/accounts/itch'
@@ -290,26 +294,46 @@ describe('Epic via Legendary', () => {
 
   it('needs a logged-in Legendary, tries each binary', async () => {
     const enoent = Object.assign(new Error('spawn legendary ENOENT'), { code: 'ENOENT' })
-    const run = async (file: string, args: string[]) => {
+    const run = async ({ file }: LegendaryBinary, args: string[]) => {
       if (file === 'legendary') throw enoent
       return args[0] === 'status'
         ? fixture('legendary-status.json')
         : fixture('legendary-list.json')
     }
-    const provider = epicLegendaryProvider(() => ['legendary', '/opt/heroic/legendary'], run)
+    const provider = epicLegendaryProvider(
+      () => [{ file: 'legendary' }, { file: '/opt/heroic/legendary' }],
+      run
+    )
     expect(await provider.connect({})).toMatchObject({ displayName: 'epicfan', secret: null })
     expect((await provider.fetchOwned({ externalUserId: 'epicfan' }, null)).games).toHaveLength(2)
 
     const anon = epicLegendaryProvider(
-      () => ['/x'],
+      () => [{ file: '/x' }],
       async () => fixture('legendary-status-anon.json')
     )
     await expect(anon.connect({})).rejects.toThrow(/legendary auth/)
     const missing = epicLegendaryProvider(
-      () => ['legendary'],
+      () => [{ file: 'legendary' }],
       async () => Promise.reject(enoent)
     )
     await expect(missing.connect({})).rejects.toThrow(/Legendary introuvable/)
+  })
+
+  it('uses Heroic’s Legendary config when the standalone one has no account', async () => {
+    const calls: LegendaryBinary[] = []
+    const run = async (binary: LegendaryBinary, args: string[]) => {
+      calls.push(binary)
+      if (args[0] === 'list') return fixture('legendary-list.json')
+      // Logged in only through Heroic's config folder.
+      return binary.configPath
+        ? fixture('legendary-status.json')
+        : fixture('legendary-status-anon.json')
+    }
+    const heroic = { file: '/heroic/legendary', configPath: '/heroic/legendaryConfig/legendary' }
+    const provider = epicLegendaryProvider(() => [{ file: 'legendary' }, heroic], run)
+    expect(await provider.connect({})).toMatchObject({ displayName: 'epicfan' })
+    expect((await provider.fetchOwned({ externalUserId: 'epicfan' }, null)).games).toHaveLength(2)
+    expect(calls.at(-1)).toEqual(heroic)
   })
 })
 

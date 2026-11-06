@@ -3,7 +3,7 @@
 
 import type { Collection, Game, SmartRules } from './models'
 
-export type InstallFilter = 'all' | 'installed' | 'not_installed'
+export type InstallFilter = 'all' | 'installed' | 'not_installed' | 'update'
 
 export interface LibraryFilter {
   text?: string
@@ -26,6 +26,7 @@ export function filterGames(games: Game[], filter: LibraryFilter): Game[] {
     if (g.hidden && !filter.showHidden) return false
     if (filter.install === 'installed' && g.installState !== 'installed') return false
     if (filter.install === 'not_installed' && g.installState === 'installed') return false
+    if (filter.install === 'update' && !g.updateAvailable) return false
     if (filter.favoritesOnly && !g.favorite) return false
     if (filter.tag && !g.tags.includes(filter.tag)) return false
     if (words.length) {

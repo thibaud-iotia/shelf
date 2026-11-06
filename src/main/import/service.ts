@@ -64,6 +64,15 @@ export class ImportService {
   async scan(
     options: { includeLaunchers?: boolean; folders?: string[] } = {}
   ): Promise<ScanResult> {
+    const { result, state } = await this.detect(options)
+    this.lastScan = state
+    return result
+  }
+
+  private async detect(options: {
+    includeLaunchers?: boolean
+    folders?: string[]
+  }): Promise<{ result: ScanResult; state: LastScan }> {
     const enabled = new Set(this.settings.get('enabledLaunchers'))
     const errors: SourceError[] = []
     const detected: DetectedGame[] = []
@@ -104,13 +113,21 @@ export class ImportService {
 
     const existing = this.db.select().from(games).all()
     const candidates = buildCandidates(detected, findings, existing)
-    this.lastScan = { candidates: new Map(candidates.map((c) => [c.key, c])), scanned }
-    return { candidates, launchers: await this.launchers(), errors }
+    return {
+      result: { candidates, launchers: await this.launchers(), errors },
+      state: { candidates: new Map(candidates.map((c) => [c.key, c])), scanned }
+    }
   }
 
   apply(decisions: ImportDecision[]): ImportReport {
     const scan = this.lastScan
     if (!scan) throw new AppError('VALIDATION', 'Lancez d’abord une détection.')
+    const report = this.applyScan(scan, decisions)
+    this.lastScan = null
+    return report
+  }
+
+  private applyScan(scan: LastScan, decisions: ImportDecision[], notify = true): ImportReport {
     const report: ImportReport = {
       imported: 0,
       updated: 0,
@@ -178,6 +195,7 @@ export class ImportService {
             sourceId: candidate.sourceId,
             ownership: 'owned',
             installState: 'installed',
+            updateAvailable: candidate.updateAvailable,
             installPath: candidate.installPath,
             executablePath: candidate.executablePath,
             igdbId
@@ -186,6 +204,7 @@ export class ImportService {
             target: [games.source, games.sourceId],
             set: {
               installState: 'installed',
+              updateAvailable: candidate.updateAvailable,
               ownership: 'owned',
               installPath: candidate.installPath,
               ...(candidate.executablePath ? { executablePath: candidate.executablePath } : {})
@@ -218,7 +237,7 @@ export class ImportService {
           .filter((g) => !g.executablePath || !existsSync(g.executablePath))
         if (gone.length === 0) continue
         tx.update(games)
-          .set({ installState: 'not_installed' })
+          .set({ installState: 'not_installed', updateAvailable: false })
           .where(
             inArray(
               games.id,
@@ -230,12 +249,14 @@ export class ImportService {
       }
     })
 
-    this.lastScan = null
-    this.onImported(touched)
+    if (notify) this.onImported(touched)
     return report
   }
 
-  /** Re-runs launcher detection and refreshes known games silently (startup). */
+  /**
+   * Re-runs launcher detection and refreshes known games silently (startup, periodic update
+   * check). Independent from the import screen's pending scan.
+   */
   async refreshInstalled(): Promise<ImportReport | null> {
     const known = this.db
       .select({ source: games.source })
@@ -243,8 +264,13 @@ export class ImportService {
       .where(inArray(games.source, ['steam', 'epic', 'gog', 'itch']))
       .all()
     if (known.length === 0) return null
-    const result = await this.scan({ folders: [] })
+    const { result, state } = await this.detect({ folders: [] })
     const updates = result.candidates.filter((c) => c.status === 'update')
-    return this.apply(updates.map((c) => ({ key: c.key, action: 'import' })))
+    // Known games only: their metadata is already handled, no enrichment round.
+    return this.applyScan(
+      state,
+      updates.map((c) => ({ key: c.key, action: 'import' })),
+      false
+    )
   }
 }

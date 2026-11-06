@@ -77,6 +77,8 @@ export function GameList({ games, onOpen, onPlay, onContextMenu }: GameListProps
           <span role="cell" className="text-sm text-text-mid">
             {running.includes(game.id) ? (
               <span className="text-green-300">● En cours</span>
+            ) : game.updateAvailable ? (
+              <span className="text-amber-300">⟳ mise à jour</span>
             ) : (
               INSTALL_STATE_LABELS[game.installState]
             )}

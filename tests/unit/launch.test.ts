@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { parseArgs } from '../../src/main/launch/args'
 import { buildLaunchPlan, type LaunchOptions } from '../../src/main/launch/plan'
 import { GameRunner } from '../../src/main/launch/runner'
-import { installUri, launchUri, uninstallUri } from '../../src/main/sources/uris'
+import { installUri, launchUri, uninstallUri, updateUri } from '../../src/main/sources/uris'
 
 const fakeGame = resolve(__dirname, '../fixtures/fake-game.cjs')
 
@@ -109,6 +109,18 @@ describe('launcher URIs', () => {
     expect(launchUri({ source: 'gog', sourceId: '1' }, 'linux')).toBe(
       'heroic://launch?appName=1&runner=gog'
     )
+  })
+
+  it('opens the launcher where a pending update gets applied', () => {
+    expect(updateUri({ source: 'steam', sourceId: '10' })).toBe('steam://open/downloads')
+    expect(updateUri({ source: 'epic', sourceId: 'Fortnite' }, 'win32')).toBe(
+      'com.epicgames.launcher://apps/Fortnite?action=launch'
+    )
+    expect(updateUri({ source: 'epic', sourceId: 'Fortnite' }, 'linux')).toBe(
+      'heroic://launch?appName=Fortnite&runner=legendary'
+    )
+    expect(updateUri({ source: 'gog', sourceId: '1' })).toBeNull()
+    expect(updateUri({ source: 'manual', sourceId: 'x' })).toBeNull()
   })
 })
 

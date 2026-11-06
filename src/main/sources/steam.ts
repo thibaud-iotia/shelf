@@ -26,7 +26,18 @@ export interface AppManifest {
   name: string
   installDir: string
   installed: boolean
+  /** An installed game whose update is queued, downloading or paused. */
+  updatePending: boolean
 }
+
+// appmanifest StateFlags (EAppState).
+const FLAG_UPDATE_REQUIRED = 2
+const FLAG_FULLY_INSTALLED = 4
+const FLAG_UPDATE_RUNNING = 256
+const FLAG_UPDATE_PAUSED = 512
+const FLAG_UPDATE_STARTED = 1024
+const UPDATING =
+  FLAG_UPDATE_REQUIRED | FLAG_UPDATE_RUNNING | FLAG_UPDATE_PAUSED | FLAG_UPDATE_STARTED
 
 export function parseAppManifest(text: string): AppManifest | null {
   const state = vdfObject(parseVdf(text).appstate)
@@ -34,9 +45,17 @@ export function parseAppManifest(text: string): AppManifest | null {
   const name = vdfString(state?.name)
   const installDir = vdfString(state?.installdir)
   if (!state || !appId || !name || !installDir) return null
-  // StateFlags bit 4 = fully installed.
   const flags = Number.parseInt(vdfString(state.stateflags) ?? '0', 10)
-  return { appId, name, installDir, installed: (flags & 4) === 4 }
+  const buildId = Number.parseInt(vdfString(state.buildid) ?? '0', 10) || 0
+  const targetBuildId = Number.parseInt(vdfString(state.targetbuildid) ?? '0', 10) || 0
+  // While an update runs Steam may clear "fully installed"; a non-zero build id still means a
+  // playable copy is on disk (a first install has none until it completes).
+  const installed =
+    (flags & FLAG_FULLY_INSTALLED) !== 0 || ((flags & UPDATING) !== 0 && buildId > 0)
+  const updatePending =
+    installed &&
+    ((flags & UPDATING) !== 0 || (targetBuildId > 0 && buildId > 0 && targetBuildId !== buildId))
+  return { appId, name, installDir, installed, updatePending }
 }
 
 export function isSteamTool(manifest: AppManifest): boolean {
@@ -78,7 +97,8 @@ export async function scanSteamRoot(root: string): Promise<DetectedGame[]> {
         sourceId: manifest.appId,
         title: manifest.name,
         installPath: join(steamapps, 'common', manifest.installDir),
-        executablePath: null
+        executablePath: null,
+        ...(manifest.updatePending ? { updateAvailable: true } : {})
       })
     }
   }

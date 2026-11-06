@@ -7,6 +7,8 @@ export interface DetectedGame {
   title: string
   installPath: string | null
   executablePath: string | null
+  /** The launcher has an update pending for this install (queued, downloading or paused). */
+  updateAvailable?: boolean
 }
 
 /**

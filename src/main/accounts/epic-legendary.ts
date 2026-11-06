@@ -5,14 +5,29 @@ import type { AccountProvider, OwnedGame } from './types'
 // Epic (unofficial): Shelf never implements Epic's authentication. It reads the library
 // through Legendary (standalone or bundled with Heroic), once the user logged in there.
 
-export type RunCommand = (file: string, args: string[]) => Promise<string>
+/**
+ * A Legendary executable. Heroic runs its bundled copy with its own config folder
+ * (`LEGENDARY_CONFIG_PATH`): without it, Legendary reads `~/.config/legendary` and sees no
+ * account even though the user is logged in to Epic in Heroic.
+ */
+export interface LegendaryBinary {
+  file: string
+  configPath?: string
+}
 
-const run: RunCommand = (file, args) =>
+export type RunCommand = (binary: LegendaryBinary, args: string[]) => Promise<string>
+
+const run: RunCommand = ({ file, configPath }, args) =>
   new Promise((resolve, reject) => {
     execFile(
       file,
       args,
-      { windowsHide: true, timeout: 120_000, maxBuffer: 64 * 1024 * 1024 },
+      {
+        windowsHide: true,
+        timeout: 120_000,
+        maxBuffer: 64 * 1024 * 1024,
+        env: configPath ? { ...process.env, LEGENDARY_CONFIG_PATH: configPath } : process.env
+      },
       (error, stdout, stderr) =>
         error ? reject(Object.assign(error, { stderr })) : resolve(stdout)
     )
@@ -48,49 +63,70 @@ export function parseLegendaryStatus(stdout: string): string | null {
   }
 }
 
-async function firstWorking(binaries: string[], args: string[], runCommand: RunCommand) {
-  let lastError: unknown = null
-  for (const binary of binaries) {
-    try {
-      return await runCommand(binary, args)
-    } catch (error) {
-      lastError = error
-      if ((error as NodeJS.ErrnoException).code === 'ENOENT') continue
-      break
-    }
-  }
-  if (!lastError || (lastError as NodeJS.ErrnoException).code === 'ENOENT') {
-    throw new AppError(
+const isMissing = (error: unknown) => (error as NodeJS.ErrnoException)?.code === 'ENOENT'
+
+function legendaryError(error: unknown): AppError {
+  if (!error || isMissing(error)) {
+    return new AppError(
       'UNAVAILABLE',
       'Legendary introuvable : installez Legendary ou Heroic Games Launcher.'
     )
   }
-  const stderr = String((lastError as { stderr?: string }).stderr ?? '')
-  throw new AppError('UNAVAILABLE', `Legendary a échoué : ${stderr.trim().split('\n').pop() ?? ''}`)
+  const stderr = String((error as { stderr?: string }).stderr ?? '')
+  return new AppError(
+    'UNAVAILABLE',
+    `Legendary a échoué : ${stderr.trim().split('\n').pop() ?? ''}`
+  )
+}
+
+/**
+ * First binary logged in to an Epic account. A standalone `legendary` on PATH may run without
+ * an account while Heroic's copy has one: every candidate is tried before giving up.
+ */
+async function loggedIn(
+  binaries: LegendaryBinary[],
+  runCommand: RunCommand
+): Promise<{ binary: LegendaryBinary; account: string }> {
+  let failure: unknown = null
+  let anonymous = false
+  for (const binary of binaries) {
+    try {
+      const account = parseLegendaryStatus(await runCommand(binary, ['status', '--json']))
+      if (account) return { binary, account }
+      anonymous = true
+    } catch (error) {
+      if (!failure || isMissing(failure)) failure = error
+    }
+  }
+  if (anonymous) {
+    throw new AppError(
+      'AUTH',
+      'Legendary n’est connecté à aucun compte Epic : lancez « legendary auth » ou connectez Epic dans Heroic.'
+    )
+  }
+  throw legendaryError(failure)
 }
 
 export function epicLegendaryProvider(
-  binaries: () => string[],
+  binaries: () => LegendaryBinary[],
   runCommand: RunCommand = run
 ): AccountProvider<unknown> {
   return {
     kind: 'epic-legendary',
     source: 'epic',
     async connect() {
-      const status = await firstWorking(binaries(), ['status', '--json'], runCommand)
-      const account = parseLegendaryStatus(status)
-      if (!account) {
-        throw new AppError(
-          'AUTH',
-          'Legendary n’est connecté à aucun compte Epic : lancez « legendary auth » ou connectez Epic dans Heroic.'
-        )
-      }
+      const { account } = await loggedIn(binaries(), runCommand)
       return { displayName: account, externalUserId: account, secret: null }
     },
     async fetchOwned() {
-      return {
-        games: parseLegendaryList(await firstWorking(binaries(), ['list', '--json'], runCommand))
+      const { binary } = await loggedIn(binaries(), runCommand)
+      let stdout: string
+      try {
+        stdout = await runCommand(binary, ['list', '--json'])
+      } catch (error) {
+        throw legendaryError(error)
       }
+      return { games: parseLegendaryList(stdout) }
     }
   }
 }

@@ -198,6 +198,37 @@ describe('ImportService', () => {
     expect(handle.db.select().from(games).all()).toHaveLength(3)
   })
 
+  it('tracks pending updates on refresh without touching the import screen scan', async () => {
+    const steam = { found: [{ ...hades, updateAvailable: true }] as DetectedGame[] }
+    const enriched: number[] = []
+    const service = new ImportService(
+      handle.db,
+      settings,
+      [{ ...fakeSource('steam', []), scan: async () => steam.found }],
+      (list) => enriched.push(...list.map((g) => g.id))
+    )
+    const scan = await service.scan({ folders: [] })
+    expect(scan.candidates[0]?.updateAvailable).toBe(true)
+    service.apply([{ key: scan.candidates[0]!.key, action: 'import' }])
+    const row = () => handle.db.select().from(games).where(eq(games.title, 'Hades')).get()!
+    expect(row().updateAvailable).toBe(true)
+    enriched.length = 0
+
+    // A pending import scan survives the background refresh.
+    await service.scan({ folders: [] })
+    steam.found = [hades]
+    await service.refreshInstalled()
+    expect(row().updateAvailable).toBe(false)
+    expect(enriched).toEqual([]) // known games: no metadata round
+    expect(() => service.apply([])).not.toThrow()
+
+    // Uninstalled: no update to apply anymore.
+    handle.db.update(games).set({ updateAvailable: true }).run()
+    steam.found = []
+    await service.refreshInstalled()
+    expect([row().installState, row().updateAvailable]).toEqual(['not_installed', false])
+  })
+
   it('skips disabled launchers', async () => {
     settings.update({ enabledLaunchers: ['epic'] })
     const service = new ImportService(handle.db, settings, [fakeSource('steam', [hades])])

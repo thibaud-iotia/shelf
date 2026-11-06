@@ -16,6 +16,8 @@ export const games = sqliteTable(
     ownership: text('ownership', { enum: OWNERSHIPS }).notNull().default('manual'),
     installState: text('install_state', { enum: INSTALL_STATES }).notNull().default('unknown'),
     installPath: text('install_path'),
+    // The launcher has an update pending for the installed copy (refreshed by every scan).
+    updateAvailable: integer('update_available', { mode: 'boolean' }).notNull().default(false),
     executablePath: text('executable_path'),
     launchArgs: text('launch_args'),
     coverPath: text('cover_path'),

@@ -28,7 +28,7 @@ export type ListRoute = Extract<Route, { name: 'library' | 'favorites' | 'recent
 
 export type GameForm = { mode: 'create' } | { mode: 'edit'; gameId: number }
 
-export type InstallFilter = 'all' | 'installed' | 'not_installed'
+export type InstallFilter = 'all' | 'installed' | 'not_installed' | 'update'
 export type Layout = 'grid' | 'list'
 
 export interface ContextMenuState {
@@ -60,6 +60,11 @@ interface UiState {
   gameForm: GameForm | null
   openGameForm: (form: GameForm) => void
   closeGameForm: () => void
+
+  /** Game whose "Supprimer…" dialog (uninstall / remove from the library) is open. */
+  removingGameId: number | null
+  openRemoveGame: (id: number) => void
+  closeRemoveGame: () => void
 
   paletteOpen: boolean
   setPaletteOpen: (open: boolean) => void
@@ -105,6 +110,10 @@ export const useUiStore = create<UiState>()((set) => ({
   gameForm: null,
   openGameForm: (gameForm) => set({ gameForm, contextMenu: null }),
   closeGameForm: () => set({ gameForm: null }),
+
+  removingGameId: null,
+  openRemoveGame: (removingGameId) => set({ removingGameId, contextMenu: null }),
+  closeRemoveGame: () => set({ removingGameId: null }),
 
   paletteOpen: false,
   setPaletteOpen: (paletteOpen) => set({ paletteOpen, contextMenu: null }),

@@ -1,5 +1,6 @@
 import type { AccountService } from './accounts/service'
 import type { DatabaseHandle } from './db/client'
+import type { UninstallWatcher } from './games/uninstall-watch'
 import type { ImportService } from './import/service'
 import type { InsightsService } from './insights/service'
 import type { GameRunner } from './launch/runner'
@@ -23,4 +24,8 @@ export interface AppContext {
   insights: InsightsService
   /** Queues artwork/metadata for games added by an account sync. */
   onSynced: () => void
+  /** Re-reads the launchers' files: install states and pending updates (one run at a time). */
+  checkUpdates: () => Promise<void>
+  /** Games whose uninstall Shelf started, followed until the launcher removed them. */
+  uninstallWatch: UninstallWatcher
 }

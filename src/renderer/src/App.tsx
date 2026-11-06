@@ -1,4 +1,5 @@
 import { GameFormDialog } from '@renderer/components/game/GameFormDialog'
+import { RemoveGameDialog } from '@renderer/components/game/RemoveGameDialog'
 import { Sidebar } from '@renderer/components/layout/Sidebar'
 import { CommandPalette } from '@renderer/components/library/CommandPalette'
 import { ContextMenu } from '@renderer/components/library/ContextMenu'
@@ -58,10 +59,11 @@ export function App() {
     <div className="flex h-full bg-page">
       <TitleBar />
       {route.name !== 'onboarding' && <Sidebar />}
-      <main className="flex flex-1 min-w-0 min-h-0 overflow-auto pt-[var(--title-bar)]">
+      <main className="app-scroll flex flex-1 min-w-0 min-h-0 overflow-auto pt-[var(--title-bar)]">
         <View route={route} />
       </main>
       <GameFormDialog />
+      <RemoveGameDialog />
       <CommandPalette />
       <ContextMenu />
       <Toasts />

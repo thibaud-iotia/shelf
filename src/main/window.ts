@@ -1,5 +1,10 @@
 import { app, BrowserWindow, shell, type BrowserWindowConstructorOptions } from 'electron'
-import { TITLE_BAR_HEIGHT, WINDOW_BACKGROUND, WINDOW_SYMBOL_COLOR } from '../shared/constants'
+import {
+  TITLE_BAR_HEIGHT,
+  WINDOW_BACKGROUND,
+  WINDOW_CONTROLS_COLOR,
+  WINDOW_SYMBOL_COLOR
+} from '../shared/constants'
 import { paths } from './platform/paths'
 
 export const WINDOW_TITLE = 'Shelf'
@@ -13,7 +18,9 @@ function titleBarOptions(): BrowserWindowConstructorOptions {
   return {
     titleBarStyle: 'hidden',
     titleBarOverlay: {
-      color: WINDOW_BACKGROUND,
+      // Transparent: the page shows through behind the buttons (no opaque box when
+      // content scrolls under them); only the native hover/press states are painted.
+      color: WINDOW_CONTROLS_COLOR,
       symbolColor: WINDOW_SYMBOL_COLOR,
       height: TITLE_BAR_HEIGHT
     }

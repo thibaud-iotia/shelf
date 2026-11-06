@@ -44,6 +44,7 @@ export function buildCandidates(
       title: known?.title ?? game.title,
       executablePath: game.executablePath,
       installPath: game.installPath,
+      updateAvailable: game.updateAvailable ?? false,
       status: known ? 'update' : 'new',
       needsReview: false,
       duplicateOf: null,
@@ -68,6 +69,7 @@ export function buildCandidates(
       title: finding.title,
       executablePath: finding.path,
       installPath: finding.folder,
+      updateAvailable: false,
       needsReview: true,
       duplicateOf: null,
       excludedReason: null

@@ -64,7 +64,8 @@ describe('Steam', () => {
       appId: '1145360',
       name: 'Hades',
       installDir: 'Hades',
-      installed: true
+      installed: true,
+      updatePending: false
     })
     expect(
       parseAppManifest(read('launchers/steam/steamapps/appmanifest_413150.acf'))?.installed
@@ -72,6 +73,23 @@ describe('Steam', () => {
     expect(
       isSteamTool(parseAppManifest(read('launchers/steam/steamapps/appmanifest_228980.acf'))!)
     ).toBe(true)
+  })
+
+  it('detects pending updates, keeping an installed copy installed while it updates', () => {
+    const manifest = (fields: string) =>
+      parseAppManifest(`"AppState" { "appid" "1" "name" "Game" "installdir" "Game" ${fields} }`)!
+    const state = (fields: string) => {
+      const m = manifest(fields)
+      return [m.installed, m.updatePending]
+    }
+    expect(state('"StateFlags" "4" "buildid" "10" "TargetBuildID" "10"')).toEqual([true, false])
+    // Update required (2), then downloading with "fully installed" cleared (1026).
+    expect(state('"StateFlags" "6" "buildid" "10"')).toEqual([true, true])
+    expect(state('"StateFlags" "1026" "buildid" "10" "TargetBuildID" "11"')).toEqual([true, true])
+    // Newer build announced but not flagged yet.
+    expect(state('"StateFlags" "4" "buildid" "10" "TargetBuildID" "11"')).toEqual([true, true])
+    // First install in progress: nothing playable yet.
+    expect(state('"StateFlags" "1026" "buildid" "0" "TargetBuildID" "11"')).toEqual([false, false])
   })
 
   it('scans a Steam root: installed games only, no tools', async () => {
@@ -110,6 +128,102 @@ describe('Epic', () => {
         bIsIncompleteInstall: true
       })
     ).toBeNull()
+  })
+
+  it('keeps a game whose update is pending in Manifests/Pending, flagged', async () => {
+    const root = join(tmp, 'epic-pending')
+    const manifests = join(root, 'Manifests')
+    const install = join(root, 'Fortnite')
+    mkdirSync(join(manifests, 'Pending'), { recursive: true })
+    mkdirSync(join(install, '.egstore'), { recursive: true })
+    const item = (guid: string, appName: string, title: string, location: string) =>
+      JSON.stringify({
+        DisplayName: title,
+        AppName: appName,
+        InstallationGuid: guid,
+        InstallLocation: location,
+        ManifestLocation: join(location, '.egstore'),
+        LaunchExecutable: 'Game.exe',
+        bIsIncompleteInstall: true,
+        AppCategories: ['games', 'applications']
+      })
+    // Update queued: the installed build's complete manifest is still there.
+    writeFileSync(join(install, '.egstore', 'AAA.manifest'), '')
+    writeFileSync(
+      join(manifests, 'Pending', 'AAA.item'),
+      item('AAA', 'Fortnite', 'Fortnite', install)
+    )
+    // First install in progress: no complete manifest, not installed.
+    writeFileSync(
+      join(manifests, 'Pending', 'BBB.item'),
+      item('BBB', 'New', 'New Game', join(root, 'New'))
+    )
+    // Installed game with an update also pending.
+    writeFileSync(
+      join(manifests, 'celeste.item'),
+      read('launchers', 'epic', 'Manifests', 'celeste.item')
+    )
+    writeFileSync(
+      join(manifests, 'Pending', 'CCC.item'),
+      item('CCC', 'Salt', 'Celeste', join(root, 'Celeste'))
+    )
+
+    const source = epicSource(() => ({ manifestDirs: [manifests], legendaryInstalled: [] }))
+    const games = await source.scan()
+    expect(games.map((g) => [g.sourceId, g.updateAvailable ?? false]).sort()).toEqual([
+      ['Fortnite', true],
+      ['Salt', true]
+    ])
+    expect(games.find((g) => g.sourceId === 'Fortnite')?.installPath).toBe(install)
+
+    // Only pending items: the launcher is still located.
+    const onlyPending = join(tmp, 'epic-only-pending', 'Manifests')
+    mkdirSync(join(onlyPending, 'Pending'), { recursive: true })
+    writeFileSync(
+      join(onlyPending, 'Pending', 'AAA.item'),
+      item('AAA', 'Fortnite', 'Fortnite', install)
+    )
+    const pendingSource = epicSource(() => ({
+      manifestDirs: [onlyPending],
+      legendaryInstalled: []
+    }))
+    expect(await pendingSource.locate()).toBe(onlyPending)
+    expect((await pendingSource.scan()).map((g) => g.sourceId)).toEqual(['Fortnite'])
+  })
+
+  it('flags Legendary installs older than the latest build in assets.json', async () => {
+    const dir = join(tmp, 'legendary')
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(
+      join(dir, 'installed.json'),
+      JSON.stringify({
+        Fortnite: {
+          app_name: 'Fortnite',
+          title: 'Fortnite',
+          install_path: '/games/Fortnite',
+          version: '++Fortnite+Release-42.00',
+          platform: 'Windows'
+        },
+        Salt: { app_name: 'Salt', title: 'Celeste', install_path: '/games/Celeste', version: '1.4' }
+      })
+    )
+    writeFileSync(
+      join(dir, 'assets.json'),
+      JSON.stringify({
+        Windows: [
+          { app_name: 'Fortnite', build_version: '++Fortnite+Release-43.00' },
+          { app_name: 'Salt', build_version: '1.4' }
+        ]
+      })
+    )
+    const source = epicSource(() => ({
+      manifestDirs: [],
+      legendaryInstalled: [join(dir, 'installed.json')]
+    }))
+    expect((await source.scan()).map((g) => [g.sourceId, g.updateAvailable ?? false])).toEqual([
+      ['Fortnite', true],
+      ['Salt', false]
+    ])
   })
 
   it('reads Legendary / Heroic installed.json', () => {

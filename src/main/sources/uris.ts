@@ -50,6 +50,29 @@ export function installUri(
   }
 }
 
+/**
+ * Where a pending update gets applied. No launcher exposes an "update this game" URI:
+ * - Steam: the downloads page, where queued updates are listed and can be started;
+ * - Epic: opening the game through the launcher (not silent) applies the update first;
+ * - Heroic (Linux, Legendary): its launch flow offers the update.
+ */
+export function updateUri(
+  game: UriTarget,
+  platform: NodeJS.Platform = process.platform
+): string | null {
+  const id = encodeURIComponent(game.sourceId)
+  switch (game.source) {
+    case 'steam':
+      return 'steam://open/downloads'
+    case 'epic':
+      return platform === 'linux'
+        ? `heroic://launch?appName=${id}&runner=legendary`
+        : `com.epicgames.launcher://apps/${id}?action=launch`
+    default:
+      return null
+  }
+}
+
 /** Only Steam exposes a reliable uninstall URI; other launchers are uninstalled from their own UI. */
 export function uninstallUri(game: UriTarget): string | null {
   return game.source === 'steam' ? `steam://uninstall/${encodeURIComponent(game.sourceId)}` : null
