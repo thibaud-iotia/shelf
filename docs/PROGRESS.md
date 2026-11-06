@@ -162,6 +162,11 @@ Bilan des tests : 159 unitaires, 30 e2e (+ 1 test de fumée de l'app packagée).
   `shell.openPath` pour passer l'UAC — `sources/uninstall.ts`) et retirer de la bibliothèque. Un jeu
   issu d'un compte synchronisé (`lastSyncedAt`) reviendrait à la synchro suivante : il est masqué à
   la place (réaffichable par le réglage « Afficher les jeux masqués »).
+- Lancer un jeu Steam sans ouvrir la fenêtre de Steam (retour : « que Steam reste en fond, réduit
+  dans la barre système ») : sous Windows, plan `launcher` = `steam.exe -silent steam://rungameid/<id>`
+  (exécutable lu dans `HKCU\Software\Valve\Steam\SteamExe`, sinon Program Files). Steam fermé démarre
+  dans la barre système ; Steam ouvert reçoit juste la commande. Échec du lancement → repli sur l'URI.
+  Suivi `RunningAppID` inchangé. Linux/macOS et e2e (racine de launchers factice) : URI comme avant.
 
 ## Décisions et écarts au plan
 

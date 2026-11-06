@@ -48,6 +48,23 @@ export class GameRunner extends EventEmitter<{ change: [number[]] }> {
       await this.deps.openExternal(plan.uri)
       return { tracked: false, method: 'uri' }
     }
+    if (plan.kind === 'launcher') {
+      try {
+        const child = this.spawnFn(plan.command, plan.args, {
+          detached: true,
+          stdio: 'ignore',
+          windowsHide: true
+        })
+        await new Promise<void>((resolve, reject) => {
+          child.once('spawn', resolve)
+          child.once('error', reject)
+        })
+        child.unref()
+      } catch {
+        await this.deps.openExternal(plan.uri)
+      }
+      return { tracked: false, method: 'uri' }
+    }
     if (this.running.has(gameId)) {
       throw new AppError('VALIDATION', 'Ce jeu est déjà en cours d’exécution.')
     }

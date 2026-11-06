@@ -1,7 +1,7 @@
 import type { LaunchResult } from '../../shared/models'
 import type { AppContext } from '../context'
 import { getGameRow } from '../games/repository'
-import { paths } from '../platform/paths'
+import { launcherLocations, paths } from '../platform/paths'
 import { buildLaunchPlan } from './plan'
 
 /** Launches a game (detail page, palette, tray) and follows it when Shelf can. */
@@ -12,12 +12,13 @@ export async function launchGame(
   const game = getGameRow(ctx.database.db, gameId)
   const plan = buildLaunchPlan(game, {
     platform: process.platform,
+    steamExecutable: game.source === 'steam' ? await launcherLocations().steamExecutable() : null,
     runnerPath: ctx.settings.get('runnerPath'),
     protonPrefix: paths.protonPrefix()
   })
   const result = await ctx.runner.launch(game.id, plan)
   // Steam starts the game itself: watch its RunningAppID to know when the session ends.
-  if (plan.kind === 'uri' && game.source === 'steam') {
+  if (plan.kind !== 'process' && game.source === 'steam') {
     ctx.steamWatch.watch(game.id, Number(game.sourceId))
   }
   return result

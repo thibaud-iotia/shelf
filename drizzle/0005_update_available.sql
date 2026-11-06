@@ -1,0 +1,1 @@
+ALTER TABLE `games` ADD `update_available` integer DEFAULT false NOT NULL;

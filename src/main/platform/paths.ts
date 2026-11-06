@@ -1,5 +1,6 @@
 // All filesystem locations used by the app live here. No hard-coded path anywhere else.
 
+import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { app } from 'electron'
@@ -44,6 +45,8 @@ export interface LauncherLocations {
   steamRoots: () => Promise<string[]>
   /** Steam's RunningAppID (0: no game, null: unreadable). */
   steamRunningAppId: () => Promise<number | null>
+  /** Steam client executable, used to start games with Steam minimized (`-silent`). Null: use the URI. */
+  steamExecutable: () => Promise<string | null>
   epicManifestDirs: string[]
   /** Legendary / Heroic `installed.json` files (Epic on Linux and macOS). */
   legendaryInstalled: string[]
@@ -62,6 +65,7 @@ function fixtureLocations(root: string): LauncherLocations {
   return {
     steamRoots: async () => [join(root, 'steam')],
     steamRunningAppId: () => readRunningAppIdFromVdf([join(root, 'steam', 'registry.vdf')]),
+    steamExecutable: async () => null,
     epicManifestDirs: [join(root, 'epic', 'Manifests')],
     legendaryInstalled: [join(root, 'legendary', 'installed.json')],
     legendaryBinaries: [],
@@ -102,6 +106,15 @@ export function launcherLocations(): LauncherLocations {
         parseAppId(
           (await queryRegistryValue('HKCU\\Software\\Valve\\Steam', 'RunningAppID')) ?? undefined
         ),
+      steamExecutable: async () => {
+        const registered = await queryRegistryValue('HKCU\\Software\\Valve\\Steam', 'SteamExe')
+        const candidates = [
+          ...(registered ? [registered.replace(/\//g, '\\')] : []),
+          join(programFilesX86, 'Steam', 'steam.exe'),
+          join(programFiles, 'Steam', 'steam.exe')
+        ]
+        return candidates.find((file) => existsSync(file)) ?? null
+      },
       epicManifestDirs: [join(programData, 'Epic', 'EpicGamesLauncher', 'Data', 'Manifests')],
       legendaryInstalled: [
         join(appData, 'heroic', 'legendaryConfig', 'legendary', 'installed.json'),
@@ -138,6 +151,7 @@ export function launcherLocations(): LauncherLocations {
     return {
       steamRoots: async () => [join(support, 'Steam')],
       steamRunningAppId: () => readRunningAppIdFromVdf([join(support, 'Steam', 'registry.vdf')]),
+      steamExecutable: async () => null,
       epicManifestDirs: [join(support, 'Epic', 'EpicGamesLauncher', 'Data', 'Manifests')],
       legendaryInstalled: [
         join(support, 'heroic', 'legendaryConfig', 'legendary', 'installed.json'),
@@ -171,6 +185,7 @@ export function launcherLocations(): LauncherLocations {
         join(home, '.steam', 'registry.vdf'),
         join(home, '.var', 'app', 'com.valvesoftware.Steam', '.steam', 'registry.vdf')
       ]),
+    steamExecutable: async () => null,
     epicManifestDirs: [],
     legendaryInstalled: [
       join(config, 'heroic', 'legendaryConfig', 'legendary', 'installed.json'),

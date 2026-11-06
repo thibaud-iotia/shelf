@@ -7,9 +7,13 @@ import { parseArgs } from './args'
 export type LaunchPlan =
   | { kind: 'process'; command: string; args: string[]; cwd: string; env?: Record<string, string> }
   | { kind: 'uri'; uri: string }
+  /** Hands the game to its launcher's executable, which Shelf does not follow; `uri` is the fallback. */
+  | { kind: 'launcher'; command: string; args: string[]; uri: string }
 
 export interface LaunchOptions {
   platform: NodeJS.Platform
+  /** Steam client executable (Windows). Games then start with Steam minimized to the tray. */
+  steamExecutable?: string | null
   /** Wine or Proton executable (Linux). */
   runnerPath: string | null
   /** Prefix directory handed to Proton (STEAM_COMPAT_DATA_PATH). */
@@ -25,7 +29,13 @@ type LaunchTarget = Pick<
 export function buildLaunchPlan(game: LaunchTarget, options: LaunchOptions): LaunchPlan {
   // Steam and Epic games need their launcher (DRM, overlay, cloud saves).
   if (game.source === 'steam' || game.source === 'epic') {
-    return { kind: 'uri', uri: launchUri(game, options.platform)! }
+    const uri = launchUri(game, options.platform)!
+    // `-silent`: a Steam that is not running yet starts in the tray instead of opening its
+    // main window; a running Steam just receives the command.
+    if (game.source === 'steam' && options.steamExecutable) {
+      return { kind: 'launcher', command: options.steamExecutable, args: ['-silent', uri], uri }
+    }
+    return { kind: 'uri', uri }
   }
 
   if (game.executablePath) {

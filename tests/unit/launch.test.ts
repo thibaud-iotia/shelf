@@ -53,6 +53,21 @@ describe('buildLaunchPlan', () => {
     })
   })
 
+  it('starts Steam minimized when its executable is known', () => {
+    const steamExe = 'C:\\Steam\\steam.exe'
+    expect(
+      buildLaunchPlan(
+        { ...manual, source: 'steam', sourceId: '1145360' },
+        { ...options, steamExecutable: steamExe }
+      )
+    ).toEqual({
+      kind: 'launcher',
+      command: steamExe,
+      args: ['-silent', 'steam://rungameid/1145360'],
+      uri: 'steam://rungameid/1145360'
+    })
+  })
+
   it('falls back to the launcher URI for GOG games without executable', () => {
     expect(
       buildLaunchPlan(
@@ -144,6 +159,30 @@ describe('GameRunner', () => {
     })
     return { runner, events, exited }
   }
+
+  it('hands launcher plans to the launcher without following them', async () => {
+    const { runner, events } = makeRunner()
+    const result = await runner.launch(3, {
+      kind: 'launcher',
+      command: process.execPath,
+      args: ['-e', ''],
+      uri: 'steam://rungameid/1'
+    })
+    expect(result).toEqual({ tracked: false, method: 'uri' })
+    expect(events).toEqual([])
+    expect(runner.isRunning(3)).toBe(false)
+  })
+
+  it('falls back to the URI when the launcher cannot start', async () => {
+    const { runner, events } = makeRunner()
+    await runner.launch(3, {
+      kind: 'launcher',
+      command: resolve(__dirname, 'missing-launcher.exe'),
+      args: [],
+      uri: 'steam://rungameid/1'
+    })
+    expect(events).toEqual(['open steam://rungameid/1'])
+  })
 
   it('follows a real process until it exits', async () => {
     const { runner, events, exited } = makeRunner()
