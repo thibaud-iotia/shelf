@@ -25,6 +25,7 @@ import {
   storeName,
   STORE_IDS,
   uniqueDeals,
+  type CsDeal,
   type CsGame,
   type StoreNames
 } from './cheapshark'
@@ -37,6 +38,7 @@ import {
   SteamStoreApi,
   type SteamItem
 } from './steam'
+import { limiter, TtlCache } from './cache'
 import type { PendingPurchase } from './watcher'
 import {
   addWish,
@@ -75,13 +77,28 @@ const STORE_SOURCE: Record<string, GameSourceId> = {
   [STORE_IDS.epic]: 'epic'
 }
 
-const chunks = <T>(items: T[], size: number): T[][] => {
-  const out: T[][] = []
-  for (let i = 0; i < items.length; i += size) out.push(items.slice(i, i + size))
-  return out
-}
+/** Requests in flight at once per service (CheapShark answers 429 to bursts). */
+const PARALLEL_REQUESTS = 4
+/** Store home images fetched in advance by `prewarm()`. */
+const PREWARM_IMAGES = 16
+/** First cards of the home's wishlist row. */
+const PREWARM_WISHLIST_IMAGES = 10
 
 const errorMessage = (error: unknown) => (error instanceof Error ? error.message : String(error))
+
+/** Default delay between the startup and the store warm-up (the library loads first). */
+export const PREWARM_DELAY_MS = 4000
+
+/**
+ * Store warm-up delay from `SHELF_STORE_PREWARM_MS`: a number of ms, `off` to disable
+ * (e2e tests: no unexpected request), the default otherwise.
+ */
+export function prewarmDelay(value: string | undefined): number | null {
+  if (value === undefined || value.trim() === '') return PREWARM_DELAY_MS
+  if (value.trim().toLowerCase() === 'off') return null
+  const ms = Number(value)
+  return Number.isFinite(ms) && ms >= 0 ? ms : PREWARM_DELAY_MS
+}
 
 interface BaseGame {
   title: string
@@ -104,28 +121,27 @@ export class StoreService {
   private readonly cheapshark: CheapSharkClient
   private readonly steam: SteamStoreApi
   private readonly gog: GogCatalogClient
-  private readonly cache = new Map<string, { expiresAt: number; value: Promise<unknown> }>()
+  private readonly cache: TtlCache
   private readonly now: () => number
-  private readonly ttlMs: number
   private wishlistSync: { at: number | null; error: string | null } = { at: null, error: null }
+  private syncing: Promise<void> | null = null
 
   constructor(private readonly deps: StoreDeps) {
-    this.cheapshark = new CheapSharkClient(deps.userAgent, deps.fetch)
-    this.steam = new SteamStoreApi(deps.fetch)
+    // Each service gets its own lane of PARALLEL_REQUESTS requests at once. The fetch is
+    // looked up at call time (the e2e tests replace globalThis.fetch).
+    const lane = (): FetchLike => {
+      const limit = limiter(PARALLEL_REQUESTS)
+      return (url, init) => limit(() => (deps.fetch ?? globalThis.fetch)(url, init))
+    }
+    this.cheapshark = new CheapSharkClient(deps.userAgent, lane())
+    this.steam = new SteamStoreApi(lane())
     this.gog = new GogCatalogClient(deps.fetch)
     this.now = deps.now ?? Date.now
-    this.ttlMs = deps.ttlMs ?? 10 * 60_000
+    this.cache = new TtlCache(deps.ttlMs ?? 10 * 60_000, this.now)
   }
 
   private cached<T>(key: string, load: () => Promise<T>): Promise<T> {
-    const hit = this.cache.get(key)
-    if (hit && hit.expiresAt > this.now()) return hit.value as Promise<T>
-    const value = load()
-    this.cache.set(key, { expiresAt: this.now() + this.ttlMs, value })
-    value.catch(() => {
-      if (this.cache.get(key)?.value === value) this.cache.delete(key)
-    })
-    return value
+    return this.cache.get(key, load)
   }
 
   private storeNames(): Promise<StoreNames> {
@@ -134,39 +150,40 @@ export class StoreService {
       .catch(() => parseStores([]))
   }
 
-  /** Steam names, images and prices in euros, 50 appids per call. */
-  private async steamItems(appIds: string[]): Promise<Map<string, SteamItem>> {
-    const all = new Map<string, SteamItem>()
-    for (const part of chunks([...new Set(appIds)].sort(), 50)) {
-      const items = await this.cached(`steam-items:${part.join(',')}`, () =>
-        this.steam.items(part)
-      ).then(parseStoreItems)
-      items.forEach((item, id) => all.set(id, item))
-    }
-    return all
+  /** Steam names, images and prices in euros, cached per appid, 50 appids per call. */
+  private steamItems(appIds: string[]): Promise<Map<string, SteamItem>> {
+    return this.cache.many('steam-item', appIds, 50, async (part) =>
+      parseStoreItems(await this.steam.items(part))
+    )
   }
 
-  /** Cheapest deal of each Steam appid (10 per call: a game has a deal per store). */
-  private async bestForSteamApps(appIds: string[], names: StoreNames) {
-    const all = new Map<string, BestDeal>()
-    for (const part of chunks([...new Set(appIds)].sort(), 10)) {
-      const deals = await this.cached(`cs-steam:${part.join(',')}`, () =>
-        this.cheapshark.dealsForSteamApps(part)
-      )
-      bestBySteamApp(deals, names).forEach((deal, id) => all.set(id, deal))
-    }
-    return all
+  /** Every store's deals of each Steam appid, cached per appid (10 per call: a deal per store). */
+  private steamAppDeals(appIds: string[]): Promise<Map<string, CsDeal[]>> {
+    return this.cache.many('cs-steam', appIds, 10, async (part) => {
+      const byApp = new Map<string, CsDeal[]>()
+      const deals = await this.cheapshark.dealsForSteamApps(part)
+      for (const deal of Array.isArray(deals) ? deals : []) {
+        const appId = steamAppIdOf(deal.steamAppID)
+        if (appId) byApp.set(appId, [...(byApp.get(appId) ?? []), deal])
+      }
+      return byApp
+    })
   }
 
-  private async csGames(ids: string[]): Promise<Map<string, CsGame>> {
-    const all = new Map<string, CsGame>()
-    for (const part of chunks([...new Set(ids)].sort(), 25)) {
-      const games = await this.cached(`cs-games:${part.join(',')}`, () =>
-        this.cheapshark.games(part)
-      )
-      for (const [id, game] of Object.entries(games ?? {})) if (game?.info) all.set(id, game)
-    }
-    return all
+  /** Cheapest deal of each Steam appid. */
+  private async bestForSteamApps(appIds: string[], names: Promise<StoreNames>) {
+    const [byApp, storeNames] = await Promise.all([this.steamAppDeals(appIds), names])
+    return bestBySteamApp([...byApp.values()].flat(), storeNames)
+  }
+
+  /** CheapShark game sheets, cached per id, 25 per call. */
+  private csGames(ids: string[]): Promise<Map<string, CsGame>> {
+    return this.cache.many('cs-games', ids, 25, async (part) => {
+      const games = await this.cheapshark.games(part)
+      const out = new Map<string, CsGame>()
+      for (const [id, game] of Object.entries(games ?? {})) if (game?.info) out.set(id, game)
+      return out
+    })
   }
 
   /**
@@ -191,11 +208,13 @@ export class StoreService {
     const bestAppIds = base.flatMap((g) =>
       g.steamAppId && g.best === undefined ? [g.steamAppId] : []
     )
-    const names = needBest ? await this.storeNames() : new Map<string, string>()
-    const [steamItems, steamBest, csGames] = await Promise.all([
+    // Everything in parallel: store names are only needed to label the deals.
+    const namesPromise = needBest ? this.storeNames() : Promise.resolve(new Map<string, string>())
+    const [names, steamItems, steamBest, csGames] = await Promise.all([
+      namesPromise,
       appIds.length ? quiet(this.steamItems(appIds), new Map<string, SteamItem>()) : new Map(),
       needBest && bestAppIds.length
-        ? quiet(this.bestForSteamApps(bestAppIds, names), new Map<string, BestDeal>())
+        ? quiet(this.bestForSteamApps(bestAppIds, namesPromise), new Map<string, BestDeal>())
         : new Map<string, BestDeal>(),
       needBest
         ? quiet(
@@ -243,8 +262,18 @@ export class StoreService {
 
   // --- Wishlist ---
 
-  /** Re-imports the Steam wishlist of the connected account (no account: nothing to do). */
-  async syncSteamWishlist(): Promise<void> {
+  /**
+   * Re-imports the Steam wishlist of the connected account (no account: nothing to do).
+   * Concurrent calls (warm-up and the page opening) share one import.
+   */
+  syncSteamWishlist(): Promise<void> {
+    this.syncing ??= this.importSteamWishlist().finally(() => {
+      this.syncing = null
+    })
+    return this.syncing
+  }
+
+  private async importSteamWishlist(): Promise<void> {
     const steamId = this.deps.steamId()
     if (!steamId) {
       this.wishlistSync = { at: null, error: null }
@@ -252,7 +281,10 @@ export class StoreService {
     }
     try {
       const entries = parseWishlist(await this.steam.wishlist(steamId))
-      const items = entries.length ? await this.steamItems(entries.map((e) => e.appId)) : new Map()
+      const appIds = entries.map((e) => e.appId)
+      // The prices asked right after (decorate) are fetched meanwhile; failures show up there.
+      if (appIds.length) this.steamAppDeals(appIds).catch(() => undefined)
+      const items = appIds.length ? await this.steamItems(appIds) : new Map<string, SteamItem>()
       syncSteamWishlist(
         this.deps.db,
         entries.map((e) => {
@@ -278,6 +310,8 @@ export class StoreService {
     const maxAge = this.deps.wishlistMaxAgeMs ?? 3600_000
     const { at } = this.wishlistSync
     if (options.forceSync || at === null || this.now() - at > maxAge) {
+      // Store names (needed by the prices) load during the import, not after it.
+      void this.storeNames()
       await this.syncSteamWishlist()
     }
     const rows = listWishlist(this.deps.db)
@@ -301,6 +335,29 @@ export class StoreService {
     }
   }
 
+  /**
+   * Warms the caches behind the store home (deals, wishlist and the first images) so the
+   * first visit does not wait for the network. Never fails: errors are not cached, the page
+   * asks again when opened.
+   */
+  async prewarm(warmImage?: (url: string) => Promise<unknown>): Promise<void> {
+    const [deals, wishlist] = await Promise.all([
+      this.deals().catch(() => [] as StoreGame[]),
+      this.wishlist().catch(() => null)
+    ])
+    if (!warmImage) return
+    const urls = [
+      ...deals.filter((g) => g.ownedGameId === null).slice(0, PREWARM_IMAGES),
+      ...(wishlist?.items.slice(0, PREWARM_WISHLIST_IMAGES) ?? [])
+    ]
+      .flatMap((g) => (g.imageUrl ? [parseRemoteImageUrl(g.imageUrl)] : []))
+      .filter((url): url is string => !!url)
+    const limit = limiter(PARALLEL_REQUESTS)
+    await Promise.all(
+      [...new Set(urls)].map((url) => limit(() => warmImage(url)).catch(() => undefined))
+    )
+  }
+
   addWish(ref: StoreGameRef): void {
     addWish(this.deps.db, {
       ...ref,
@@ -316,8 +373,11 @@ export class StoreService {
   // --- Deals & search ---
 
   async deals(): Promise<StoreGame[]> {
-    const names = await this.storeNames()
-    const deals = uniqueDeals(await this.cached('deals', () => this.cheapshark.deals(60)))
+    const [names, list] = await Promise.all([
+      this.storeNames(),
+      this.cached('deals', () => this.cheapshark.deals(60))
+    ])
+    const deals = uniqueDeals(list)
     const { games } = await this.decorate(
       deals.map((deal) => {
         const steamAppId = steamAppIdOf(deal.steamAppID)
@@ -342,10 +402,10 @@ export class StoreService {
     const results = await this.cached(`search:${title.toLowerCase()}`, () =>
       this.cheapshark.search(title, 24)
     )
-    const names = await this.storeNames()
-    const details = await this.csGames(results.map((r) => r.gameID)).catch(
-      () => new Map<string, CsGame>()
-    )
+    const [names, details] = await Promise.all([
+      this.storeNames(),
+      this.csGames(results.map((r) => r.gameID)).catch(() => new Map<string, CsGame>())
+    ])
     const { games } = await this.decorate(
       results.map((r) => {
         const steamAppId = steamAppIdOf(r.steamAppID)

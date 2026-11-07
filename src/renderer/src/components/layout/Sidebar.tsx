@@ -2,7 +2,8 @@ import type { ReactNode } from 'react'
 import { GAME_SOURCES, SOURCE_LABELS } from '@shared/domain'
 import type { Game, LaunchProgress } from '@shared/models'
 import { LaunchLabel } from '@renderer/components/game/LaunchStatus'
-import { useGames } from '@renderer/lib/queries'
+import { useQueryClient } from '@tanstack/react-query'
+import { prefetchStore, useGames } from '@renderer/lib/queries'
 import { useRunningStore } from '@renderer/stores/running'
 import { useUiStore, type Route } from '@renderer/stores/ui'
 import { SidebarCollections } from './SidebarCollections'
@@ -28,10 +29,15 @@ interface NavItemProps {
 function NavItem({ route, label, count, dot }: NavItemProps) {
   const active = useUiStore((s) => isActive(s.route, route))
   const navigate = useUiStore((s) => s.navigate)
+  const client = useQueryClient()
+  // The store's data is loaded as soon as the pointer gets there, before the click.
+  const prefetch = route.name === 'store' ? () => prefetchStore(client) : undefined
   return (
     <button
       type="button"
       onClick={() => navigate(route)}
+      onPointerEnter={prefetch}
+      onFocus={prefetch}
       aria-current={active ? 'page' : undefined}
       className={`flex items-center gap-2.5 px-3 py-[9px] rounded-[12px] text-sm text-left cursor-pointer transition-colors ${
         active ? 'bg-brand-subtle text-white font-semibold' : 'text-text-mid hover:bg-ink-800'

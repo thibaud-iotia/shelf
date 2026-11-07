@@ -30,7 +30,7 @@ import { applyUserDataOverride, launcherLocations, paths } from './platform/path
 import { SecretStore } from './secrets/store'
 import { SettingsStore } from './settings/store'
 import { createSources } from './sources'
-import { StoreService } from './store/service'
+import { prewarmDelay, StoreService } from './store/service'
 import { PurchaseWatcher } from './store/watcher'
 import { dropBought, ownedIndex } from './store/wishlist'
 import { applyLaunchAtStartup, ShelfTray, showMainWindow, startedHidden } from './system'
@@ -226,7 +226,8 @@ if (!app.requestSingleInstanceLock()) {
     .whenReady()
     .then(() => {
       ctx = createContext()
-      handleMediaProtocol(paths.covers, new RemoteImageCache())
+      const remoteImages = new RemoteImageCache()
+      handleMediaProtocol(paths.covers, remoteImages)
       allowYouTubeEmbeds()
       registerIpcHandlers(ctx)
       createMainWindow({
@@ -255,6 +256,15 @@ if (!app.requestSingleInstanceLock()) {
           ctx?.onSynced()
         })
         .catch((error: unknown) => console.warn('[startup] sync failed', error))
+
+      // Store: deals, wishlist and first images fetched in the background once the library is
+      // shown, so the first visit to "Boutique" does not wait for the network.
+      const storeDelay = prewarmDelay(process.env.SHELF_STORE_PREWARM_MS)
+      if (storeDelay !== null) {
+        setTimeout(() => {
+          void ctx?.store.prewarm((url) => remoteImages.get(url))
+        }, storeDelay).unref()
+      }
 
       // Back from the launcher's checkout: look for the game bought from the store.
       app.on('browser-window-focus', () => ctx?.purchases.nudge())

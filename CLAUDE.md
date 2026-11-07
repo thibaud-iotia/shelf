@@ -54,7 +54,7 @@ src/
     accounts/      synchro des jeux possédés : steam, itch, gog-galaxy (option A), gog-oauth (option B), epic-legendary, service
     metadata/      igdb, steamgriddb, service (clés, recherche, enrichissement)
     insights/      fiche enrichie : steam-store (actus, vidéos, avis, joueurs, communauté, succès), links, service (cache 10 min)
-    store/         boutique : cheapshark (prix $), steam (souhaits, prix €), gog (catalogue), purchase (URI launcher / URL), wishlist, watcher (détection d'achat), service
+    store/         boutique : cheapshark (prix $), steam (souhaits, prix €), gog (catalogue), purchase (URI launcher / URL), wishlist, watcher (détection d'achat), cache (TTL par id, limiter), service (+ prewarm au démarrage)
     media/         cache des images (userData/covers), protocole shelf-media:// (covers/ + remote/ = proxy d'images), embeds (YouTube)
     net/http.ts    ★ seule porte réseau : liste blanche d'hôtes, erreurs claires
     secrets/       SecretStore (safeStorage) — fichier secrets.json chiffré, jamais la DB
@@ -71,7 +71,7 @@ drizzle/           migrations SQL versionnées (générées, commitées)
 resources/         icon.png (paquets), tray.png / trayTemplate.png (barre système)
 scripts/           make-icons.cjs
 tests/unit/        Vitest ; tests/fixtures/ : launchers factices, réponses API enregistrées, sauvegardes, images
-e2e/               Playwright Electron — fixtures { app, page, userDataDir } + options launcherRoot, onboarded
+e2e/               Playwright Electron — fixtures { app, page, userDataDir } + options launcherRoot, onboarded, storePrewarmMs, launchFetch
 design/            export de la maquette Claude Design (référence, non buildé)
 ```
 
@@ -80,7 +80,7 @@ design/            export de la maquette Claude Design (référence, non buildé
 - `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`. Le renderer n'a ni `require` ni `process` (testé en e2e). CSP stricte dans `index.html` (`img-src 'self' data: shelf-media:` ; seules exceptions : `media-src` du CDN vidéo Steam, `frame-src` de youtube-nocookie). Une image distante passe par `remoteImageUrl()` (proxy `shelf-media://remote/…`, hôtes `IMAGE_HOSTS`).
 - **Ajouter un canal IPC** : (1) type dans `IpcChannels` + entrée dans `CHANNELS` de `src/shared/ipc.ts`, (2) `handle()` dans le fichier de domaine de `src/main/ipc/`, (3) hook dans `src/renderer/src/lib/queries.ts`. Le preload ne change pas. Même principe pour un événement (`IpcEvents` / `EVENTS`, `broadcast()`, `window.shelf.on`).
 - Les handlers valident leurs arguments et lèvent des `AppError(code, message)` ; le message est affiché tel quel dans l'UI → en français, clair.
-- Aucun chemin en dur hors `src/main/platform/paths.ts`. `SHELF_USER_DATA` et `SHELF_LAUNCHER_ROOT` isolent les données et les launchers (tests).
+- Aucun chemin en dur hors `src/main/platform/paths.ts`. `SHELF_USER_DATA` et `SHELF_LAUNCHER_ROOT` isolent les données et les launchers (tests) ; `SHELF_STORE_PREWARM_MS` règle le préchauffage de la Boutique (`off` en e2e par défaut).
 - Secrets (clés API, tokens) : uniquement via `SecretStore` (safeStorage) ; la DB ne stocke qu'une référence (`credentialsRef`).
 - Réseau : uniquement via `main/net/http.ts` (liste blanche : Steam Web API et boutique, Twitch/IGDB, SteamGridDB, itch.io, GOG, CheapShark, CDN d'images). Aucun appel réseau dans les tests : `fetch` injecté + réponses enregistrées (`tests/fixtures/api`) ; en e2e le `fetch` du main échoue par défaut, `stubFetch(app, routes)` rejoue des réponses.
 - Un jeu est unique par `(source, sourceId)` : détection locale, import et synchro font un upsert sur la même ligne. Jeux manuels : `sourceId` = UUID.

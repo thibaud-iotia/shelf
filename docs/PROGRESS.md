@@ -203,6 +203,18 @@ Bilan des tests : 200 unitaires, 33 e2e (+ 1 test de fumée de l'app packagée).
   hors liste blanche, patch notes sans image) : l'en-tête Steam du jeu remplace la case noire
   (`parseNews(data, fallbackImage)`, fiches boutique et bibliothèque).
 
+- Boutique, premier affichage (retour : « la première fois est assez longue, après ça va ») —
+  branche `perf/store-first-load`, détail et mesures dans
+  [feature/store-perf.md](../feature/store-perf.md). Les requêtes partaient en série (4
+  allers-retours pour les promotions, 17 pour une liste de 120 jeux) : requêtes en parallèle,
+  4 au plus par service (`limiter`), cache par id partagé entre listes (`TtlCache.many`),
+  import Steam dédoublonné ; préchauffage 4 s après le démarrage (promotions, liste, images des
+  premières cartes ; `SHELF_STORE_PREWARM_MS`) ; préchargement au survol de « Boutique » ;
+  `gcTime` d'une heure (données affichées aussitôt au retour, rafraîchies en fond). Résultat : 2
+  et 4 allers-retours à froid, 0 après préchauffage. Tests de perf :
+  `tests/unit/store-perf.test.ts` (réseau simulé sur horloge virtuelle) et deux e2e dans
+  `e2e/store.spec.ts`.
+
 ## Décisions et écarts au plan
 
 - `GameSource.launch()` n'existe pas : le lancement est décidé par `launch/plan.ts` depuis la ligne en base

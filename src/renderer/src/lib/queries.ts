@@ -381,13 +381,55 @@ export function useClearCache() {
 // Store (main keeps its own 10 min cache of prices)
 
 const STORE_STALE_MS = 5 * 60_000
+/**
+ * Store lists stay in memory long after the page is left: coming back shows them at once
+ * (stale-while-revalidate) while fresh prices load in the background.
+ */
+const STORE_GC_MS = 60 * 60_000
+
+const wishlistQuery = {
+  queryKey: queryKeys.wishlist,
+  queryFn: () => call('store:wishlist'),
+  staleTime: STORE_STALE_MS,
+  gcTime: STORE_GC_MS
+}
+
+const dealsQuery = {
+  queryKey: queryKeys.deals,
+  queryFn: () => call('store:deals'),
+  staleTime: STORE_STALE_MS,
+  gcTime: STORE_GC_MS,
+  retry: false
+}
+
+/**
+ * Loads the store home before it is shown (hover or focus of "Boutique"). The main process
+ * has usually warmed its cache at startup, so this costs one IPC round trip. A failure is
+ * forgotten (unless the page is open) so the page asks again and shows its own loading state.
+ */
+export function prefetchStore(client: QueryClient): void {
+  prefetchQuietly(client, dealsQuery)
+  prefetchQuietly(client, wishlistQuery)
+}
+
+function prefetchQuietly<T>(
+  client: QueryClient,
+  options: { queryKey: readonly unknown[]; queryFn: () => Promise<T>; gcTime: number }
+): void {
+  const { queryKey } = options
+  const state = client.getQueryState(queryKey)
+  if (state?.fetchStatus === 'fetching') return
+  if (state?.status === 'success' && state.dataUpdatedAt > Date.now() - STORE_STALE_MS) return
+  client.fetchQuery({ ...options, staleTime: STORE_STALE_MS, retry: false }).catch(() => {
+    const query = client.getQueryCache().find({ queryKey, exact: true })
+    if (query && query.getObserversCount() === 0 && query.state.data === undefined) {
+      client.removeQueries({ queryKey, exact: true })
+    }
+  })
+}
 
 export function useWishlist() {
-  return useQuery({
-    queryKey: queryKeys.wishlist,
-    queryFn: () => call('store:wishlist'),
-    staleTime: STORE_STALE_MS
-  })
+  return useQuery(wishlistQuery)
 }
 
 export function useSyncWishlist() {
@@ -400,13 +442,7 @@ export function useSyncWishlist() {
 }
 
 export function useDeals(enabled: boolean) {
-  return useQuery({
-    queryKey: queryKeys.deals,
-    queryFn: () => call('store:deals'),
-    staleTime: STORE_STALE_MS,
-    retry: false,
-    enabled
-  })
+  return useQuery({ ...dealsQuery, enabled })
 }
 
 export function useStoreSearch(query: string) {

@@ -170,3 +170,56 @@ test.describe('with Steam installed', () => {
     await expect.poll(() => opened(app)).toEqual(['steam://store/1145360'])
   })
 })
+
+// First visit performance: every store request takes LATENCY_MS, so a page that waited for
+// the network could not show up within that time.
+const LATENCY_MS = 1500
+const SLOW_STORE: FetchRoute[] = STORE.map((route) => ({ ...route, delayMs: LATENCY_MS }))
+const apiCalls = async (app: ElectronApplication) =>
+  (await fetchCalls(app)).filter((url) => !/steamstatic|epicgames/.test(url))
+
+test.describe('first visit, store warmed up at startup', () => {
+  test.use({ storePrewarmMs: 500, launchFetch: { routes: SLOW_STORE } })
+
+  test('the home shows up at once, without waiting for the network', async ({ app, page }) => {
+    // Warm-up: deals, then the first images of the home, in the background.
+    await expect
+      .poll(async () => (await fetchCalls(app)).filter((u) => u.includes('steamstatic')).length, {
+        timeout: 15_000
+      })
+      .toBeGreaterThan(5)
+    // Lets the images still in flight (4 at a time) land.
+    await page.waitForTimeout(LATENCY_MS + 500)
+    const before = await apiCalls(app)
+    expect(before.some((url) => url.includes('/deals?'))).toBe(true)
+
+    const start = Date.now()
+    await openStore(page)
+    const featured = page.getByTestId('store-featured')
+    await expect(featured.getByRole('heading', { level: 2 })).toHaveText('Flotsam')
+    await expect(page.getByTestId('home-deals').getByTestId('store-card')).toHaveCount(6)
+    // The banner's artwork is already downloaded too.
+    await expect
+      .poll(() =>
+        featured
+          .locator('button img')
+          .evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)
+      )
+      .toBe(true)
+    expect(Date.now() - start).toBeLessThan(LATENCY_MS)
+    // Served from the caches: no new request to the store services.
+    expect(await apiCalls(app)).toEqual(before)
+  })
+})
+
+test('hovering "Boutique" starts loading the home before the click', async ({ app, page }) => {
+  await stubFetch(app, STORE)
+  await page.getByRole('navigation').getByRole('button', { name: 'Boutique' }).hover()
+  await expect
+    .poll(async () => (await apiCalls(app)).some((url) => url.includes('/deals?')))
+    .toBe(true)
+  await openStore(page)
+  await expect(page.getByTestId('store-featured').getByRole('heading', { level: 2 })).toHaveText(
+    'Flotsam'
+  )
+})

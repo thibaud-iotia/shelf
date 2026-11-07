@@ -13,6 +13,16 @@ interface Options {
   launcherRoot: string | null
   /** Marks the onboarding as done before the test starts. Default true. */
   onboarded: boolean
+  /**
+   * SHELF_STORE_PREWARM_MS: delay of the store warm-up after startup. Default null (off), so
+   * no test sees requests it did not make.
+   */
+  storePrewarmMs: number | null
+  /**
+   * Recorded responses installed as soon as the app is launched (before any warm-up).
+   * Wrapped in an object: Playwright reads an array option as a [value, options] tuple.
+   */
+  launchFetch: { routes: FetchRoute[] }
 }
 
 interface Fixtures {
@@ -30,6 +40,8 @@ export const GAMES_FOLDER = resolve('tests/fixtures/folders/Games')
 export const test = base.extend<Fixtures & Options>({
   launcherRoot: [null, { option: true }],
   onboarded: [true, { option: true }],
+  storePrewarmMs: [null, { option: true }],
+  launchFetch: [{ routes: [] }, { option: true }],
 
   // eslint-disable-next-line no-empty-pattern
   userDataDir: async ({}, use) => {
@@ -37,7 +49,7 @@ export const test = base.extend<Fixtures & Options>({
     await use(dir)
     rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
   },
-  app: async ({ userDataDir, launcherRoot }, use) => {
+  app: async ({ userDataDir, launcherRoot, storePrewarmMs, launchFetch }, use) => {
     // Drop dev-server / run-as-node variables so the built app starts normally.
     const env = Object.fromEntries(
       Object.entries(process.env).filter(
@@ -51,10 +63,11 @@ export const test = base.extend<Fixtures & Options>({
     const noLaunchers = join(userDataDir, 'no-launchers')
     mkdirSync(noLaunchers, { recursive: true })
     env.SHELF_LAUNCHER_ROOT = launcherRoot ?? noLaunchers
+    env.SHELF_STORE_PREWARM_MS = storePrewarmMs === null ? 'off' : String(storePrewarmMs)
     const app = await electron.launch({ args: [resolve('.')], env })
     // No test reaches the real network: the main process fetch fails unless a test
-    // replays recorded responses with stubFetch().
-    await stubFetch(app, [])
+    // replays recorded responses with stubFetch() (or the launchFetch option).
+    await stubFetch(app, launchFetch.routes)
     await use(app)
     await app.close()
   },
@@ -90,6 +103,8 @@ export interface FetchRoute {
   body?: unknown
   image?: string
   status?: number
+  /** Simulated network latency before the answer, in ms. */
+  delayMs?: number
 }
 
 /**
@@ -106,6 +121,7 @@ export async function stubFetch(app: ElectronApplication, routes: FetchRoute[]):
       calls.push(url)
       const route = table.find((r) => url.includes(r.match))
       if (!route) throw new Error('offline (e2e)')
+      if (route.delayMs) await new Promise((resolve) => setTimeout(resolve, route.delayMs))
       if (route.image) {
         return new Response(Buffer.from(route.image, 'base64'), {
           status: route.status ?? 200,
