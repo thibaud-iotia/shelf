@@ -1,7 +1,8 @@
 import type { KeyboardEvent, MouseEvent } from 'react'
 import type { Game } from '@shared/models'
-import { useIsRunning } from '@renderer/stores/running'
+import { useIsRunning, useLaunchProgress } from '@renderer/stores/running'
 import { CoverArt } from './CoverArt'
+import { LaunchBadge, Spinner } from './LaunchStatus'
 
 export const GAME_DRAG_TYPE = 'application/x-shelf-game'
 
@@ -28,6 +29,8 @@ export function GameCard({
   onContextMenu
 }: GameCardProps) {
   const running = useIsRunning(game.id)
+  const launching = useLaunchProgress(game.id)
+  const busy = running || launching !== null
   const dimmed = game.installState === 'not_installed'
 
   return (
@@ -72,7 +75,7 @@ export function GameCard({
             ♥
           </span>
         )}
-        {!running && game.updateAvailable && (
+        {!busy && game.updateAvailable && (
           <span
             data-testid="update-badge"
             className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-full bg-[rgba(8,8,12,.75)] text-[11px] font-semibold text-amber-300"
@@ -80,6 +83,7 @@ export function GameCard({
             ⟳ Mise à jour
           </span>
         )}
+        {launching && !running && <LaunchBadge progress={launching} />}
         {running && (
           <span
             data-testid="running-badge"
@@ -90,7 +94,7 @@ export function GameCard({
           </span>
         )}
       </button>
-      {!running && game.installState !== 'not_installed' && (
+      {!busy && game.installState !== 'not_installed' && (
         <button
           type="button"
           tabIndex={-1}
@@ -100,6 +104,14 @@ export function GameCard({
         >
           ▶
         </button>
+      )}
+      {launching && !running && (
+        <span
+          aria-hidden
+          className="absolute bottom-12 right-2.5 w-10 h-10 flex items-center justify-center rounded-full bg-grad-brand text-white shadow-glow-brand pointer-events-none"
+        >
+          <Spinner />
+        </span>
       )}
     </article>
   )

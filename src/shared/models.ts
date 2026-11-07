@@ -112,6 +112,27 @@ export interface LaunchResult {
   method: 'process' | 'uri'
 }
 
+/**
+ * Where a launch stands between the click on "Jouer" and the game running:
+ * - starting: Shelf hands the game to its launcher or starts its process;
+ * - launcher: the launcher client itself is starting (Steam was closed);
+ * - updating: the launcher updates the game before starting it;
+ * - waiting: the launcher is up and starts the game;
+ * - handoff: opened in a launcher Shelf cannot follow (Epic, GOG…), shown for a few seconds.
+ */
+export type LaunchPhase = 'starting' | 'launcher' | 'updating' | 'waiting' | 'handoff'
+
+export interface LaunchProgress {
+  gameId: number
+  phase: LaunchPhase
+  /** Launcher in charge; null when Shelf starts the process itself. */
+  launcher: GameSourceId | null
+  /** When "Jouer" was clicked (ms since epoch). */
+  startedAt: number
+  /** When the current phase began (ms since epoch). */
+  phaseSince: number
+}
+
 export interface Tag {
   id: number
   name: string

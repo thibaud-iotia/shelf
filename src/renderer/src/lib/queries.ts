@@ -90,6 +90,13 @@ export function useLaunchGame() {
   return useLibraryMutation((id: number) => call('games:launch', id))
 }
 
+export function useCancelLaunch() {
+  return useMutation({
+    mutationFn: (id: number) => call('games:cancelLaunch', id),
+    onError: (error) => toast.error(error)
+  })
+}
+
 export function useInstallGame() {
   return useMutation({
     mutationFn: (id: number) => call('games:install', id),
@@ -482,10 +489,18 @@ export function useBuy() {
 export function useMainEvents() {
   const client = useQueryClient()
   const setRunning = useRunningStore((s) => s.set)
+  const setLaunching = useRunningStore((s) => s.setLaunching)
 
   useEffect(() => {
     void call('games:running').then(setRunning)
+    void call('games:launching').then(setLaunching)
     const offRunning = window.shelf.on('games:running', setRunning)
+    const offLaunching = window.shelf.on('games:launching', setLaunching)
+    const offTimeout = window.shelf.on('games:launchTimeout', ({ title, launcher }) =>
+      toast.error(
+        `« ${title} » ne s’est pas lancé${launcher === 'steam' ? ' : vérifiez la fenêtre de Steam' : ''}.`
+      )
+    )
     const offLibrary = window.shelf.on('library:changed', ({ reason }) => {
       void invalidateLibrary(client)
       if (reason === 'uninstall') toast.success('Désinstallation terminée : bibliothèque à jour.')
@@ -497,8 +512,10 @@ export function useMainEvents() {
     })
     return () => {
       offRunning()
+      offLaunching()
+      offTimeout()
       offLibrary()
       offPurchased()
     }
-  }, [client, setRunning])
+  }, [client, setRunning, setLaunching])
 }

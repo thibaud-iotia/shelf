@@ -14,7 +14,7 @@ import {
 } from '../games/repository'
 import { titleFromExecutable } from '../games/titles'
 import { validateGameId, validateGameInput, validateGamePatch } from '../games/validation'
-import { launchGame, runningGameIds } from '../launch/launch-game'
+import { cancelLaunch, launchGame, runningGameIds } from '../launch/launch-game'
 import { exportSaves, backupFileName } from '../saves/backup'
 import { mayUninstall, uninstallPlan } from '../sources/uninstall'
 import { installUri, updateUri } from '../sources/uris'
@@ -63,6 +63,13 @@ export function registerGameHandlers(ctx: AppContext): void {
   })
 
   handle('games:running', () => runningGameIds(ctx))
+
+  handle('games:launching', () => ctx.launches.list())
+
+  handle('games:cancelLaunch', (id) => {
+    cancelLaunch(ctx, validateGameId(id))
+    return null
+  })
 
   handle('games:uninstall', async (id) => {
     const game = getGameRow(db, validateGameId(id))

@@ -167,6 +167,21 @@ Bilan des tests : 200 unitaires, 33 e2e (+ 1 test de fumée de l'app packagée).
   (exécutable lu dans `HKCU\Software\Valve\Steam\SteamExe`, sinon Program Files). Steam fermé démarre
   dans la barre système ; Steam ouvert reçoit juste la commande. Échec du lancement → repli sur l'URI.
   Suivi `RunningAppID` inchangé. Linux/macOS et e2e (racine de launchers factice) : URI comme avant.
+- Retour visuel du lancement (retour : « quand on clique sur Jouer, c'est comme si rien ne s'était
+  passé le temps que Steam se lance en arrière-plan ») : `launch/progress.ts` (`LaunchTracker`) suit
+  chaque lancement du clic jusqu'au jeu démarré et pousse `games:launching` (`LaunchProgress[]` :
+  phase, launcher, début, début de phase). Phases : `starting` (Shelf prépare), `launcher` (le
+  client Steam démarre : pid de `ActiveProcess` à 0 ou mort), `updating` (`Apps\<appid>\Updating`),
+  `waiting` (Steam lance le jeu), `handoff` (Epic, GOG : launcher non suivi, affiché 20 s).
+  `SteamWatcher` lit désormais un `SteamStatus` (registre Windows ou `registry.vdf`), sonde toutes
+  les 1 s tant qu'un lancement est en attente (5 s ensuite), émet `phase` et `expired` (10 min sans
+  progrès, jamais pendant une mise à jour → toast « ne s'est pas lancé : vérifiez la fenêtre de
+  Steam », événement `games:launchTimeout`). UI : le bouton « Jouer » devient un statut avec
+  spinner, libellé et temps écoulé (+ « ✕ » = `games:cancelLaunch`, ne plus attendre) ; après 30 s
+  dans la même phase, « Rien ne se passe ? Vérifiez la fenêtre de Steam. » ; badge et spinner sur
+  la jaquette, statut dans la vue liste, entrée dans la section « EN COURS » de la sidebar
+  (visible depuis toutes les vues : palette, menu contextuel). Double clic ignoré (renderer) et
+  refusé (main). Libellés dans `shared/launch.ts`.
 
 - Boutique (retour : « rajoute la partie achats de jeux (Steam, Epic…), les vrais launchers
   tournent en fond ») — branche `feature/store`, détail et choix dans

@@ -6,6 +6,7 @@ import { useRunningStore } from '@renderer/stores/running'
 import { useUiStore } from '@renderer/stores/ui'
 import { CoverArt } from './CoverArt'
 import { GAME_DRAG_TYPE } from './GameCard'
+import { LaunchLabel, Spinner } from './LaunchStatus'
 
 interface GameListProps {
   games: Game[]
@@ -17,6 +18,8 @@ interface GameListProps {
 /** List layout of the library: one row per game, same actions as the grid. */
 export function GameList({ games, onOpen, onPlay, onContextMenu }: GameListProps) {
   const running = useRunningStore((s) => s.ids)
+  const launching = useRunningStore((s) => s.launching)
+  const launchOf = (gameId: number) => launching.find((l) => l.gameId === gameId) ?? null
   const selectedId = useUiStore((s) => s.selectedGameId)
   const select = useUiStore((s) => s.select)
 
@@ -77,6 +80,8 @@ export function GameList({ games, onOpen, onPlay, onContextMenu }: GameListProps
           <span role="cell" className="text-sm text-text-mid">
             {running.includes(game.id) ? (
               <span className="text-green-300">● En cours</span>
+            ) : launchOf(game.id) ? (
+              <LaunchLabel progress={launchOf(game.id)!} />
             ) : game.updateAvailable ? (
               <span className="text-amber-300">⟳ mise à jour</span>
             ) : (
@@ -90,19 +95,23 @@ export function GameList({ games, onOpen, onPlay, onContextMenu }: GameListProps
             {game.lastPlayedAt ? formatDay(game.lastPlayedAt) : '—'}
           </span>
           <span role="cell" className="text-right">
-            {game.installState !== 'not_installed' && !running.includes(game.id) && (
-              <button
-                type="button"
-                aria-label={`Jouer à ${game.title}`}
-                onClick={(e) => {
-                  e.stopPropagation()
-                  onPlay(game)
-                }}
-                className="px-3 py-1 rounded-full bg-grad-brand text-white text-xs font-semibold cursor-pointer"
-              >
-                ▶ Jouer
-              </button>
-            )}
+            {game.installState !== 'not_installed' &&
+              !running.includes(game.id) &&
+              (launchOf(game.id) ? (
+                <Spinner className="w-4 h-4 mr-4 text-brand" />
+              ) : (
+                <button
+                  type="button"
+                  aria-label={`Jouer à ${game.title}`}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onPlay(game)
+                  }}
+                  className="px-3 py-1 rounded-full bg-grad-brand text-white text-xs font-semibold cursor-pointer"
+                >
+                  ▶ Jouer
+                </button>
+              ))}
           </span>
         </div>
       ))}

@@ -22,6 +22,7 @@ import { GameNewsPanel } from '@renderer/components/game/insights/NewsPanel'
 import { VideosPanel } from '@renderer/components/game/insights/VideosPanel'
 import { Button } from '@renderer/components/ui/Button'
 import { Chip } from '@renderer/components/ui/Chip'
+import { LaunchPending } from '@renderer/components/game/LaunchStatus'
 import { usePlay } from '@renderer/lib/actions'
 import {
   useGameDetail,
@@ -37,7 +38,7 @@ import {
   useUpdateGame
 } from '@renderer/lib/queries'
 import { toast } from '@renderer/stores/toasts'
-import { useIsRunning } from '@renderer/stores/running'
+import { useIsRunning, useLaunchProgress } from '@renderer/stores/running'
 import { useUiStore } from '@renderer/stores/ui'
 
 function Label({ children, first = false }: { children: ReactNode; first?: boolean }) {
@@ -202,6 +203,7 @@ export function GameDetailView({ gameId }: { gameId: number }) {
   const [selectedTab, setTab] = useState<DetailTab>('overview')
   const openGameForm = useUiStore((s) => s.openGameForm)
   const running = useIsRunning(gameId)
+  const launching = useLaunchProgress(gameId)
   const play = usePlay()
   const openFolder = useOpenFolder()
   const install = useInstallGame()
@@ -258,6 +260,8 @@ export function GameDetailView({ gameId }: { gameId: number }) {
             <Button size="lg" onClick={() => install.mutate(game.id)}>
               Installer
             </Button>
+          ) : launching && !running ? (
+            <LaunchPending progress={launching} />
           ) : game.canUpdate && !running ? (
             <Button size="lg" onClick={() => applyUpdate.mutate(game.id)}>
               ⟳ Mettre à jour

@@ -2,21 +2,33 @@ import { useCallback, type MouseEvent } from 'react'
 import type { Game } from '@shared/models'
 import type { ScanOptions } from '@shared/ipc'
 import { useImportStore } from '@renderer/stores/import'
+import { useRunningStore } from '@renderer/stores/running'
 import { toast } from '@renderer/stores/toasts'
 import { useUiStore } from '@renderer/stores/ui'
 import { call } from './ipc'
 import { useLaunchGame, useScan } from './queries'
 
-/** Launch with user feedback: tracked processes show the running badge, URIs a toast. */
+/** Launches clicked but not acknowledged by the main process yet (guards double clicks). */
+const requested = new Set<number>()
+
+/**
+ * Launch with user feedback: the main process pushes the launch progress (button, card badge,
+ * sidebar) until the game runs; failures show a toast.
+ */
 export function usePlay() {
   const launch = useLaunchGame()
   return useCallback(
     async (game: Game) => {
+      const { ids, launching } = useRunningStore.getState()
+      if (requested.has(game.id) || ids.includes(game.id)) return
+      if (launching.some((l) => l.gameId === game.id)) return
+      requested.add(game.id)
       try {
-        const result = await launch.mutateAsync([game.id])
-        if (!result.tracked) toast.info(`${game.title} : lancement via le launcher…`)
+        await launch.mutateAsync([game.id])
       } catch {
         // Error toast already shown by the mutation.
+      } finally {
+        requested.delete(game.id)
       }
     },
     [launch]

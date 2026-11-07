@@ -3,6 +3,7 @@ import type { DatabaseHandle } from './db/client'
 import type { UninstallWatcher } from './games/uninstall-watch'
 import type { ImportService } from './import/service'
 import type { InsightsService } from './insights/service'
+import type { LaunchTracker } from './launch/progress'
 import type { GameRunner } from './launch/runner'
 import type { SteamWatcher } from './launch/steam-watch'
 import type { MetadataService } from './metadata/service'
@@ -18,6 +19,8 @@ export interface AppContext {
   runner: GameRunner
   /** Steam games launched through `steam://`, followed until they stop. */
   steamWatch: SteamWatcher
+  /** Launches between the click on "Jouer" and the game running (shown in the UI). */
+  launches: LaunchTracker
   importer: ImportService
   secrets: SecretStore
   accounts: AccountService

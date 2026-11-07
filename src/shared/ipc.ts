@@ -1,6 +1,7 @@
 // Single source of truth for IPC: every channel, its arguments and its result.
 // main registers handlers with `handle()`, preload exposes `invoke()`, renderer calls `window.shelf.invoke()`.
 
+import type { GameSourceId } from './domain'
 import type { SerializedAppError } from './errors'
 import type {
   Account,
@@ -22,6 +23,7 @@ import type {
   ImportDecision,
   ImportReport,
   LauncherStatus,
+  LaunchProgress,
   LaunchResult,
   MetadataMatch,
   NewsItem,
@@ -79,6 +81,10 @@ export interface IpcChannels {
   'games:pickExecutable': { args: []; result: PickedExecutable | null }
   'games:launch': { args: [id: number]; result: LaunchResult }
   'games:running': { args: []; result: number[] }
+  /** Launches in progress (clicked, the game not running yet). */
+  'games:launching': { args: []; result: LaunchProgress[] }
+  /** Stops waiting for a launch (the launcher keeps going on its own). */
+  'games:cancelLaunch': { args: [id: number]; result: null }
   'games:openFolder': { args: [id: number]; result: null }
   /** Opens the launcher's install page (owned, not installed). */
   'games:install': { args: [id: number]; result: null }
@@ -169,6 +175,8 @@ const CHANNELS: Record<IpcChannel, true> = {
   'games:pickExecutable': true,
   'games:launch': true,
   'games:running': true,
+  'games:launching': true,
+  'games:cancelLaunch': true,
   'games:openFolder': true,
   'games:install': true,
   'games:uninstall': true,
@@ -230,6 +238,10 @@ export function isIpcChannel(value: unknown): value is IpcChannel {
 export interface IpcEvents {
   /** Ids of the games whose process Shelf is currently following. */
   'games:running': number[]
+  /** Launches in progress, pushed whenever one starts, changes phase or ends. */
+  'games:launching': LaunchProgress[]
+  /** A launched game never showed up (the launcher may be waiting for the user). */
+  'games:launchTimeout': { gameId: number; title: string; launcher: GameSourceId | null }
   /** The library changed outside a renderer request (session ended, sync, metadata…). */
   'library:changed': { reason: string }
   /** A game bought from the store showed up in the library. */
@@ -240,6 +252,8 @@ export type IpcEvent = keyof IpcEvents
 export const EVENT_CHANNEL = 'shelf:event'
 const EVENTS: Record<IpcEvent, true> = {
   'games:running': true,
+  'games:launching': true,
+  'games:launchTimeout': true,
   'library:changed': true,
   'store:purchased': true
 }

@@ -5,7 +5,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { app } from 'electron'
 import type { LegendaryBinary } from '../accounts/epic-legendary'
-import { readRunningAppIdFromVdf, parseAppId } from '../sources/steam-running'
+import { readSteamStatusFromVdf, toSteamStatus, type SteamStatus } from '../sources/steam-running'
 import { queryRegistry, queryRegistryValue } from './registry'
 
 /**
@@ -43,8 +43,8 @@ export const paths = {
 /** Where each launcher keeps its data. See `launcherLocations()`. */
 export interface LauncherLocations {
   steamRoots: () => Promise<string[]>
-  /** Steam's RunningAppID (0: no game, null: unreadable). */
-  steamRunningAppId: () => Promise<number | null>
+  /** Steam's RunningAppID, client process and update flags of `appIds` (games being launched). */
+  steamStatus: (appIds: number[]) => Promise<SteamStatus>
   /** Steam client executable, used to start games with Steam minimized (`-silent`). Null: use the URI. */
   steamExecutable: () => Promise<string | null>
   epicManifestDirs: string[]
@@ -64,7 +64,7 @@ export interface LauncherLocations {
 function fixtureLocations(root: string): LauncherLocations {
   return {
     steamRoots: async () => [join(root, 'steam')],
-    steamRunningAppId: () => readRunningAppIdFromVdf([join(root, 'steam', 'registry.vdf')]),
+    steamStatus: (appIds) => readSteamStatusFromVdf([join(root, 'steam', 'registry.vdf')], appIds),
     steamExecutable: async () => null,
     epicManifestDirs: [join(root, 'epic', 'Manifests')],
     legendaryInstalled: [join(root, 'legendary', 'installed.json')],
@@ -81,6 +81,24 @@ async function steamRootFromRegistry(): Promise<string[]> {
   const [key] = await queryRegistry('HKCU\\Software\\Valve\\Steam')
   const path = key?.values.steampath
   return path ? [path.replace(/\//g, '\\')] : []
+}
+
+const STEAM_KEY = 'HKCU\\Software\\Valve\\Steam'
+
+/** Windows: the client pid and update flags are only read while a launch is pending. */
+async function steamStatusFromRegistry(appIds: number[]): Promise<SteamStatus> {
+  const value = async (key: string, name: string) =>
+    (await queryRegistryValue(key, name)) ?? undefined
+  const [runningAppId, pid, ...updating] = await Promise.all([
+    value(STEAM_KEY, 'RunningAppID'),
+    appIds.length ? value(`${STEAM_KEY}\\ActiveProcess`, 'pid') : undefined,
+    ...appIds.map((id) => value(`${STEAM_KEY}\\Apps\\${id}`, 'Updating'))
+  ])
+  return toSteamStatus({
+    runningAppId,
+    pid,
+    updating: Object.fromEntries(appIds.map((id, i) => [id, updating[i]]))
+  })
 }
 
 export function launcherLocations(): LauncherLocations {
@@ -102,12 +120,9 @@ export function launcherLocations(): LauncherLocations {
         join(programFilesX86, 'Steam'),
         join(programFiles, 'Steam')
       ],
-      steamRunningAppId: async () =>
-        parseAppId(
-          (await queryRegistryValue('HKCU\\Software\\Valve\\Steam', 'RunningAppID')) ?? undefined
-        ),
+      steamStatus: steamStatusFromRegistry,
       steamExecutable: async () => {
-        const registered = await queryRegistryValue('HKCU\\Software\\Valve\\Steam', 'SteamExe')
+        const registered = await queryRegistryValue(STEAM_KEY, 'SteamExe')
         const candidates = [
           ...(registered ? [registered.replace(/\//g, '\\')] : []),
           join(programFilesX86, 'Steam', 'steam.exe'),
@@ -150,7 +165,8 @@ export function launcherLocations(): LauncherLocations {
     const support = join(home, 'Library', 'Application Support')
     return {
       steamRoots: async () => [join(support, 'Steam')],
-      steamRunningAppId: () => readRunningAppIdFromVdf([join(support, 'Steam', 'registry.vdf')]),
+      steamStatus: (appIds) =>
+        readSteamStatusFromVdf([join(support, 'Steam', 'registry.vdf')], appIds),
       steamExecutable: async () => null,
       epicManifestDirs: [join(support, 'Epic', 'EpicGamesLauncher', 'Data', 'Manifests')],
       legendaryInstalled: [
@@ -180,11 +196,14 @@ export function launcherLocations(): LauncherLocations {
       join(home, '.local', 'share', 'Steam'),
       join(home, '.var', 'app', 'com.valvesoftware.Steam', '.local', 'share', 'Steam')
     ],
-    steamRunningAppId: () =>
-      readRunningAppIdFromVdf([
-        join(home, '.steam', 'registry.vdf'),
-        join(home, '.var', 'app', 'com.valvesoftware.Steam', '.steam', 'registry.vdf')
-      ]),
+    steamStatus: (appIds) =>
+      readSteamStatusFromVdf(
+        [
+          join(home, '.steam', 'registry.vdf'),
+          join(home, '.var', 'app', 'com.valvesoftware.Steam', '.steam', 'registry.vdf')
+        ],
+        appIds
+      ),
     steamExecutable: async () => null,
     epicManifestDirs: [],
     legendaryInstalled: [

@@ -7,15 +7,17 @@ import { broadcast, onBroadcast } from './events'
 import {
   closeSession,
   discardUnfinishedSessions,
+  getGameRow,
   installStatus,
   listGames,
   markNotInstalled,
   openSession
 } from './games/repository'
 import { UninstallWatcher } from './games/uninstall-watch'
-import { launchGame, runningGameIds } from './launch/launch-game'
+import { followSteamLaunches, launchGame, runningGameIds } from './launch/launch-game'
 import { registerIpcHandlers } from './ipc/handlers'
 import { ImportService } from './import/service'
+import { LaunchTracker } from './launch/progress'
 import { GameRunner } from './launch/runner'
 import { SteamWatcher } from './launch/steam-watch'
 import { MediaCache } from './media/cache'
@@ -88,10 +90,22 @@ function createContext(): AppContext {
     }
   })
   const locations = launcherLocations()
-  const steamWatch = new SteamWatcher({ readRunningAppId: locations.steamRunningAppId })
+  const steamWatch = new SteamWatcher({ readStatus: locations.steamStatus })
   const running = () => broadcast('games:running', runningGameIds({ runner, steamWatch }))
   runner.on('change', running)
   steamWatch.on('change', running)
+
+  // From the click on "Jouer" to the game running: what the UI shows meanwhile.
+  const launches = new LaunchTracker()
+  launches.on('change', (list) => broadcast('games:launching', list))
+  followSteamLaunches(launches, steamWatch, (gameId, launcher) => {
+    try {
+      const { title } = getGameRow(db, gameId)
+      broadcast('games:launchTimeout', { gameId, title, launcher })
+    } catch {
+      // Deleted meanwhile: nothing to tell.
+    }
+  })
 
   const settings = new SettingsStore(db)
   const secrets = new SecretStore(paths.secrets(), {
@@ -189,6 +203,7 @@ function createContext(): AppContext {
     settings,
     runner,
     steamWatch,
+    launches,
     importer,
     secrets,
     accounts,
@@ -267,6 +282,7 @@ app.on('will-quit', () => {
   tray?.destroy()
   ctx?.runner.dispose()
   ctx?.steamWatch.dispose()
+  ctx?.launches.dispose()
   ctx?.uninstallWatch.dispose()
   ctx?.purchases.dispose()
   ctx?.database.close()

@@ -1,4 +1,5 @@
 import { basename, dirname, extname } from 'node:path'
+import type { GameSourceId } from '../../shared/domain'
 import { AppError } from '../../shared/errors'
 import type { GameRow } from '../games/repository'
 import { launchUri } from '../sources/uris'
@@ -24,6 +25,14 @@ type LaunchTarget = Pick<
   GameRow,
   'source' | 'sourceId' | 'executablePath' | 'launchArgs' | 'useRunner'
 >
+
+/** Launcher the game is handed to (same rules as the plan); null when Shelf starts its process. */
+export function launcherOf(
+  game: Pick<LaunchTarget, 'source' | 'executablePath'>
+): GameSourceId | null {
+  if (game.source === 'steam' || game.source === 'epic') return game.source
+  return game.executablePath ? null : game.source
+}
 
 /** Decides how a game starts: through its launcher's URI, or as a process Shelf tracks. */
 export function buildLaunchPlan(game: LaunchTarget, options: LaunchOptions): LaunchPlan {

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { GAME_SOURCES, SOURCE_LABELS } from '@shared/domain'
-import type { Game } from '@shared/models'
+import type { Game, LaunchProgress } from '@shared/models'
+import { LaunchLabel } from '@renderer/components/game/LaunchStatus'
 import { useGames } from '@renderer/lib/queries'
 import { useRunningStore } from '@renderer/stores/running'
 import { useUiStore, type Route } from '@renderer/stores/ui'
@@ -55,12 +56,32 @@ export function SectionHeading({ children }: { children: ReactNode }) {
 
 function RunningGames({ games }: { games: Game[] }) {
   const ids = useRunningStore((s) => s.ids)
+  const launching = useRunningStore((s) => s.launching)
   const navigate = useUiStore((s) => s.navigate)
   const running = games.filter((g) => ids.includes(g.id))
-  if (running.length === 0) return null
+  // Launches first: the sidebar is visible from every view (palette, context menu, tray).
+  const starting = launching
+    .filter((l) => !ids.includes(l.gameId))
+    .map((progress) => ({ progress, game: games.find((g) => g.id === progress.gameId) }))
+    .filter((entry): entry is { progress: LaunchProgress; game: Game } => !!entry.game)
+  if (running.length === 0 && starting.length === 0) return null
   return (
     <div data-testid="running-list" className="flex flex-col gap-1 mb-2">
       <SectionHeading>EN COURS</SectionHeading>
+      {starting.map(({ progress, game }) => (
+        <button
+          key={game.id}
+          type="button"
+          data-testid="launching-entry"
+          onClick={() => navigate({ name: 'game', id: game.id })}
+          className="flex flex-col items-start gap-0.5 px-3 py-2 rounded-[12px] text-sm bg-ink-800 cursor-pointer text-left"
+        >
+          <span className="w-full truncate text-text-hi">{game.title}</span>
+          <span className="w-full text-xs">
+            <LaunchLabel progress={progress} />
+          </span>
+        </button>
+      ))}
       {running.map((g) => (
         <button
           key={g.id}
