@@ -1,7 +1,7 @@
 {
   "name": "shelf",
   "productName": "Shelf",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Bibliothèque de jeux personnelle multi-launchers",
   "private": true,
   "author": "Thibaud",
