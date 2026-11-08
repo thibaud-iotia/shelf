@@ -17,6 +17,8 @@ export interface InputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 
   leftIcon?: ReactNode
   rightIcon?: ReactNode
   size?: InputSize
+  /** Shows a clear button (×) while the field has a value. */
+  onClear?: () => void
 }
 
 export function Input({
@@ -26,6 +28,7 @@ export function Input({
   leftIcon,
   rightIcon,
   size = 'md',
+  onClear,
   id,
   className = '',
   disabled,
@@ -58,6 +61,21 @@ export function Input({
           className="flex-1 min-w-0 bg-transparent border-none outline-none text-heading text-[length:var(--fs-body-sm)] placeholder:text-muted"
           {...rest}
         />
+        {onClear && rest.value !== undefined && String(rest.value) !== '' && (
+          <button
+            type="button"
+            aria-label="Effacer"
+            title="Effacer"
+            disabled={disabled}
+            onClick={(e) => {
+              onClear()
+              e.currentTarget.parentElement?.querySelector('input')?.focus()
+            }}
+            className="flex items-center justify-center w-6 h-6 -mr-1.5 rounded-sm text-muted hover:text-heading hover:bg-ink-700 cursor-pointer text-xs"
+          >
+            ✕
+          </button>
+        )}
         {rightIcon && <span className="flex text-muted">{rightIcon}</span>}
       </div>
       {(hint || error) && (

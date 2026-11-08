@@ -25,8 +25,8 @@ export const IMAGE_HOSTS = new Set([
 
 /**
  * The only hosts Shelf talks to (PLAN: Steam Web API and store, IGDB/Twitch, SteamGridDB,
- * itch.io, GOG option B, CheapShark and the GOG catalog for the store, plus the image CDNs
- * above). Every outgoing request goes through this module.
+ * itch.io, GOG option B, CheapShark, the GOG catalog and Instant Gaming for the store, plus
+ * the image CDNs above). Every outgoing request goes through this module.
  */
 export const ALLOWED_HOSTS = new Set([
   'api.steampowered.com',
@@ -39,6 +39,8 @@ export const ALLOWED_HOSTS = new Set([
   'embed.gog.com',
   // Store: price comparison (CheapShark) and GOG product lookup (id, price in euros).
   'catalog.gog.com',
+  // Store: key reseller prices, read from its search page (no API).
+  'www.instant-gaming.com',
   ...IMAGE_HOSTS
 ])
 
@@ -103,6 +105,20 @@ export async function requestJson<T>(
   const response = await send(url, init, options)
   try {
     return (await response.json()) as T
+  } catch {
+    throw new AppError('NETWORK', `Réponse illisible de ${options.service}.`)
+  }
+}
+
+/** Body as text (HTML pages of sites without an API). */
+export async function requestText(
+  url: string,
+  init: RequestInit,
+  options: HttpOptions
+): Promise<string> {
+  const response = await send(url, init, options)
+  try {
+    return await response.text()
   } catch {
     throw new AppError('NETWORK', `Réponse illisible de ${options.service}.`)
   }

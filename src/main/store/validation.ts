@@ -1,5 +1,6 @@
 import { AppError } from '../../shared/errors'
 import type { PurchaseInput, StoreGameRef } from '../../shared/models'
+import { INSTANT_GAMING_STORE_ID } from './instant-gaming'
 
 const invalid = (what: string) => new AppError('VALIDATION', `${what} invalide.`)
 
@@ -51,7 +52,8 @@ export function validateStoreGameRef(value: unknown): StoreGameRef {
 export function validatePurchase(value: unknown): PurchaseInput {
   const ref = validateStoreGameRef(value)
   const input = value as Record<string, unknown>
-  const storeId = id(input.storeId, /^\d{1,4}$/, 'Magasin')
+  // CheapShark store ids are numeric; "ig" is Instant Gaming.
+  const storeId = id(input.storeId, /^(\d{1,4}|ig)$/, 'Magasin')
   if (!storeId) throw invalid('Magasin')
   // Deal ids are base64 strings, URL-encoded as CheapShark returns them.
   const dealId = id(input.dealId, /^[A-Za-z0-9%+/=_-]{1,200}$/, 'Offre')
@@ -63,5 +65,15 @@ export function validatePurchase(value: unknown): PurchaseInput {
     if (!gogId || !slug) throw invalid('Produit GOG')
     gog = { id: gogId, slug }
   }
-  return { ...ref, storeId, dealId, gog }
+  let instantGaming: PurchaseInput['instantGaming'] = null
+  if (storeId === INSTANT_GAMING_STORE_ID) {
+    const raw = (input.instantGaming ?? {}) as Record<string, unknown>
+    const productId = id(raw.id, /^\d{1,10}$/, 'Produit Instant Gaming')
+    const slug = id(raw.slug, /^[a-z0-9-]{1,200}$/, 'Produit Instant Gaming')
+    if (!productId || !slug || typeof raw.platform !== 'string' || raw.platform.length > 60) {
+      throw invalid('Produit Instant Gaming')
+    }
+    instantGaming = { id: productId, slug, platform: raw.platform }
+  }
+  return { ...ref, storeId, dealId, gog, instantGaming }
 }

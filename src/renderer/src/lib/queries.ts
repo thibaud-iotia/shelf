@@ -487,6 +487,20 @@ export function useStoreGame(ref: StoreGameRef | null) {
   })
 }
 
+/**
+ * Key reseller prices of a store page (Instant Gaming), asked once the sheet is known (its
+ * title and Steam appid). Slower than the sheet, so the offers show up first.
+ */
+export function useKeyshops(ref: StoreGameRef | null) {
+  return useQuery({
+    queryKey: ['store', 'keyshops', ref?.steamAppId ?? null, ref?.title ?? ''] as const,
+    queryFn: () => call('store:keyshops', ref!),
+    staleTime: STORE_STALE_MS,
+    retry: false,
+    enabled: !!ref?.title
+  })
+}
+
 function useStoreMutation<A extends unknown[], R>(fn: (...args: A) => Promise<R>) {
   const client = useQueryClient()
   return useMutation({

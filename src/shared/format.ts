@@ -90,6 +90,15 @@ export function formatFullDate(time: number): string {
   })
 }
 
+/** Prices in euros, written like Steam's ("24,50 €", regular space): 24.5 → "24,50 €". */
+export function formatEur(value: number): string {
+  const amount = value.toLocaleString('fr-FR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })
+  return `${amount.replace(/\s/g, ' ')} €`
+}
+
 /** CheapShark prices (US dollars, its only currency): 24.99 → "24,99 $", 0 → "Gratuit". */
 export function formatUsd(value: number): string {
   if (value === 0) return 'Gratuit'

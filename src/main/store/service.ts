@@ -2,6 +2,7 @@ import type { GameSourceId } from '../../shared/domain'
 import { AppError } from '../../shared/errors'
 import type {
   BestDeal,
+  KeyshopView,
   LocalPrice,
   PurchaseInput,
   PurchaseResult,
@@ -30,6 +31,12 @@ import {
   type StoreNames
 } from './cheapshark'
 import { GogCatalogClient, matchGogProduct, type GogProduct } from './gog'
+import {
+  INSTANT_GAMING_STORE_ID,
+  InstantGamingClient,
+  matchInstantGaming,
+  toKeyshopOffer
+} from './instant-gaming'
 import { purchaseTarget, type PurchaseEnv } from './purchase'
 import {
   parseStoreItems,
@@ -77,6 +84,14 @@ const STORE_SOURCE: Record<string, GameSourceId> = {
   [STORE_IDS.epic]: 'epic'
 }
 
+/** Launcher an Instant Gaming key is activated on (its `type`), followed after the purchase. */
+const KEY_PLATFORM_SOURCE: Record<string, GameSourceId> = {
+  steam: 'steam',
+  'gog.com': 'gog',
+  gog: 'gog',
+  'epic games': 'epic'
+}
+
 /** Requests in flight at once per service (CheapShark answers 429 to bursts). */
 const PARALLEL_REQUESTS = 4
 /** Store home images fetched in advance by `prewarm()`. */
@@ -121,6 +136,7 @@ export class StoreService {
   private readonly cheapshark: CheapSharkClient
   private readonly steam: SteamStoreApi
   private readonly gog: GogCatalogClient
+  private readonly instantGaming: InstantGamingClient
   private readonly cache: TtlCache
   private readonly now: () => number
   private wishlistSync: { at: number | null; error: string | null } = { at: null, error: null }
@@ -136,6 +152,7 @@ export class StoreService {
     this.cheapshark = new CheapSharkClient(deps.userAgent, lane())
     this.steam = new SteamStoreApi(lane())
     this.gog = new GogCatalogClient(deps.fetch)
+    this.instantGaming = new InstantGamingClient(deps.userAgent, lane())
     this.now = deps.now ?? Date.now
     this.cache = new TtlCache(deps.ttlMs ?? 10 * 60_000, this.now)
   }
@@ -549,14 +566,45 @@ export class StoreService {
     }
   }
 
+  // --- Key resellers ---
+
+  /**
+   * Instant Gaming editions of the game for PC, compared with the Steam price in euros
+   * (cached with the sheet's). Unofficial: a failure is returned in `error`, never thrown.
+   */
+  async keyshops(ref: StoreGameRef): Promise<KeyshopView> {
+    const title = ref.title.trim()
+    if (!title) return { offers: [], error: null }
+    try {
+      const [results, steamItems] = await Promise.all([
+        this.cached(`ig:${title.toLowerCase()}`, () => this.instantGaming.search(title)),
+        ref.steamAppId
+          ? this.steamItems([ref.steamAppId]).catch(() => new Map<string, SteamItem>())
+          : new Map<string, SteamItem>()
+      ])
+      const steamPrice = ref.steamAppId ? steamItems.get(ref.steamAppId)?.price : null
+      const official = steamPrice ? { storeName: 'Steam', price: steamPrice.final } : null
+      return {
+        offers: matchInstantGaming(results, title).map((p) => toKeyshopOffer(p, official)),
+        error: null
+      }
+    } catch (error) {
+      return { offers: [], error: errorMessage(error) }
+    }
+  }
+
   async buy(input: PurchaseInput): Promise<PurchaseResult> {
     const target = purchaseTarget(input, await this.purchaseEnv())
     if (!target) throw new AppError('VALIDATION', 'Aucun lien d’achat pour cette offre.')
     await this.deps.openExternal(target.url)
+    const source =
+      input.storeId === INSTANT_GAMING_STORE_ID
+        ? KEY_PLATFORM_SOURCE[input.instantGaming?.platform.toLowerCase() ?? '']
+        : STORE_SOURCE[input.storeId]
     this.deps.watchPurchase({
       title: input.title,
       steamAppId: input.steamAppId,
-      source: STORE_SOURCE[input.storeId] ?? null
+      source: source ?? null
     })
     return { opensIn: target.opensIn }
   }

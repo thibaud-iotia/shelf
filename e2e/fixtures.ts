@@ -99,9 +99,10 @@ export async function stubOpenDialog(app: ElectronApplication, ...paths: string[
 export interface FetchRoute {
   /** Substring of the URL. */
   match: string
-  /** JSON body, or a base64 PNG when `image` is set. */
+  /** JSON body, or a base64 PNG when `image` is set, or an HTML page when `html` is set. */
   body?: unknown
   image?: string
+  html?: string
   status?: number
   /** Simulated network latency before the answer, in ms. */
   delayMs?: number
@@ -122,6 +123,12 @@ export async function stubFetch(app: ElectronApplication, routes: FetchRoute[]):
       const route = table.find((r) => url.includes(r.match))
       if (!route) throw new Error('offline (e2e)')
       if (route.delayMs) await new Promise((resolve) => setTimeout(resolve, route.delayMs))
+      if (route.html !== undefined) {
+        return new Response(route.html, {
+          status: route.status ?? 200,
+          headers: { 'content-type': 'text/html; charset=UTF-8' }
+        })
+      }
       if (route.image) {
         return new Response(Buffer.from(route.image, 'base64'), {
           status: route.status ?? 200,

@@ -22,6 +22,7 @@ import type {
   GamePatch,
   ImportDecision,
   ImportReport,
+  KeyshopView,
   LauncherStatus,
   LaunchProgress,
   LaunchResult,
@@ -144,6 +145,8 @@ export interface IpcChannels {
   'store:search': { args: [query: string]; result: StoreGame[] }
   /** Purchase sheet: every store's offer, where "Acheter" opens. */
   'store:game': { args: [ref: StoreGameRef]; result: StoreGameDetail }
+  /** Key reseller prices (Instant Gaming), apart: never fails, `error` explains a failure. */
+  'store:keyshops': { args: [ref: StoreGameRef]; result: KeyshopView }
   /** Store page of a game to buy: the game page's Steam blocks, by Steam appid. */
   'store:overview': { args: [steamAppId: string]; result: GameInsights }
   'store:news': { args: [steamAppId: string]; result: NewsItem[] }
@@ -218,6 +221,7 @@ const CHANNELS: Record<IpcChannel, true> = {
   'store:deals': true,
   'store:search': true,
   'store:game': true,
+  'store:keyshops': true,
   'store:overview': true,
   'store:news': true,
   'store:addWish': true,

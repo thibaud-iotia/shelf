@@ -25,6 +25,37 @@ const HADES_SHEET = {
   ]
 }
 
+/**
+ * Instant Gaming search page (format of tests/fixtures/api/instant-gaming-search.html): a
+ * Steam key of Hades in stock, its DLC and a console edition, left out.
+ */
+const IG_HIT = {
+  type: 'Steam',
+  platforms: ['1'],
+  is_dlc: 0,
+  is_draft: 0,
+  preorder: 0,
+  has_stock: 1,
+  country_whitelist: ['FR']
+}
+const INSTANT_GAMING_PAGE = `<html><body><script>
+    window.searchResults = ${JSON.stringify({
+      hits: [
+        {
+          ...IG_HIT,
+          prod_id: 5893,
+          name: 'Hades',
+          fullname: 'Hades - PC (Steam)',
+          seo_name: 'hades-pc-steam',
+          price_eur: '15.99'
+        },
+        { ...IG_HIT, prod_id: 1, name: 'Hades - Soundtrack', seo_name: 'ost', is_dlc: 1 },
+        { ...IG_HIT, prod_id: 2, name: 'Hades', seo_name: 'hades-ps5', platforms: ['9'] }
+      ],
+      nbHits: 3
+    })};
+</script></body></html>`
+
 /** Recorded CheapShark and Steam answers; images are a local PNG. */
 const STORE: FetchRoute[] = [
   { match: 'cheapshark.com/api/1.0/stores', body: api('cheapshark-stores.json') },
@@ -34,6 +65,7 @@ const STORE: FetchRoute[] = [
   { match: 'cheapshark.com/api/1.0/games?ids=', body: { '196149': HADES_SHEET } },
   { match: 'cheapshark.com/api/1.0/games?id=', body: HADES_SHEET },
   { match: 'IStoreBrowseService/GetItems', body: api('steam-store-items.json') },
+  { match: 'www.instant-gaming.com/fr/rechercher/', html: INSTANT_GAMING_PAGE },
   // Store page of Hades: same Steam blocks as a library game page.
   { match: '/api/appdetails', body: api('steam-appdetails.json') },
   { match: 'GetNumberOfCurrentPlayers', body: api('steam-players.json') },
@@ -88,8 +120,19 @@ test('store: home, wishlist, search and a purchase detected on return', async ({
   await page.getByRole('tab', { name: 'Promotions' }).click()
   await expect(cards).toHaveCount(11)
 
-  // Search, then the store page of Hades: laid out like a game page, "Acheter" instead of "Jouer".
-  await page.getByRole('textbox', { name: 'Rechercher un jeu à acheter' }).fill('hades')
+  // Search: the clear button empties the field and brings the tab back.
+  const search = page.getByRole('textbox', { name: 'Rechercher un jeu à acheter' })
+  await expect(page.getByRole('button', { name: 'Effacer' })).toHaveCount(0)
+  await search.fill('hades')
+  await expect(page.getByText('Résultats pour « hades »')).toBeVisible()
+  await page.getByRole('button', { name: 'Effacer' }).click()
+  await expect(search).toHaveValue('')
+  await expect(search).toBeFocused()
+  await expect(page.getByText('Résultats pour « hades »')).toHaveCount(0)
+  await expect(cards).toHaveCount(11)
+
+  // Then the store page of Hades: laid out like a game page, "Acheter" instead of "Jouer".
+  await search.fill('hades')
   await expect(page.getByText('Résultats pour « hades »')).toBeVisible()
   await expect(cards).toHaveCount(5)
   await cards
@@ -109,6 +152,13 @@ test('store: home, wishlist, search and a purchase detected on return', async ({
   await expect(offers.first()).toContainText('-20%')
   await expect(offers.nth(1)).toContainText('24,50 €')
   await expect(page.getByTestId('lowest-ever')).toContainText('Plus bas historique : 6,24 $')
+  // Key reseller, apart: compared with Steam's price in euros (24,50 €), not its own discount.
+  const keys = page.getByTestId('keyshop-offer')
+  await expect(keys).toHaveCount(1)
+  await expect(keys).toContainText('Instant Gaming')
+  await expect(keys).toContainText('Clé Steam')
+  await expect(keys).toContainText('15,99 €')
+  await expect(keys).toContainText('-35% vs Steam')
 
   // No launcher installed: the best offer (Epic) and Steam open in the browser.
   await page.getByRole('button', { name: /^Acheter · 19,99 \$/ }).click()
@@ -121,6 +171,10 @@ test('store: home, wishlist, search and a purchase detected on return', async ({
       'https://www.cheapshark.com/redirect?dealID=epicdeal%3D',
       'https://store.steampowered.com/app/1145360/'
     ])
+  await keys.getByRole('button', { name: 'Acheter' }).click()
+  await expect
+    .poll(async () => (await opened(app))?.at(-1))
+    .toBe('https://www.instant-gaming.com/fr/5893-acheter-hades-pc-steam/')
 
   // Bought: the game shows up (here added by hand), Shelf notices when it gets the focus back.
   await page.evaluate(
@@ -145,7 +199,7 @@ test('store: home, wishlist, search and a purchase detected on return', async ({
   // Only the store services were called (plus Steam's store and CDN for the game page).
   for (const url of await fetchCalls(app)) {
     expect(new URL(url).hostname).toMatch(
-      /^(www\.cheapshark\.com|api\.steampowered\.com|store\.steampowered\.com|\w+\.\w+\.steamstatic\.com|cdn1\.epicgames\.com)$/
+      /^(www\.cheapshark\.com|api\.steampowered\.com|store\.steampowered\.com|\w+\.\w+\.steamstatic\.com|cdn1\.epicgames\.com|www\.instant-gaming\.com)$/
     )
   }
 })

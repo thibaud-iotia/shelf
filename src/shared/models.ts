@@ -514,6 +514,38 @@ export interface StoreGameDetail extends StoreGame {
   lowestEver: { price: number; date: number } | null
 }
 
+/**
+ * A game key from a reseller (Instant Gaming), shown apart from the official stores: the key
+ * is activated afterwards on `platform`.
+ */
+export interface KeyshopOffer {
+  shopName: string
+  productId: string
+  slug: string
+  /** Edition as sold: "Elden Ring - PC (Steam)". */
+  name: string
+  /** Where the key is activated: "Steam", "Epic Games", "Microsoft Store"… */
+  platform: string
+  /** "45,99 €". */
+  price: string
+  amount: number
+  inStock: boolean
+  preorder: boolean
+  /**
+   * Comparison with the official store's current price (sales included). The reseller's own
+   * discount is left out: it compares with a list price, so every game looks on sale there.
+   * `diffPct` < 0: the key is cheaper; > 0: the official store is cheaper.
+   */
+  versus: { storeName: string; price: string; diffPct: number } | null
+}
+
+export interface KeyshopView {
+  /** Editions of this exact game for PC, in stock first, then cheapest. */
+  offers: KeyshopOffer[]
+  /** The reseller could not be read (the store page shows everything else). */
+  error: string | null
+}
+
 export interface WishlistView {
   items: StoreGame[]
   steam: {
@@ -538,6 +570,8 @@ export interface PurchaseInput extends StoreGameRef {
   storeId: string
   dealId: string | null
   gog: { id: string; slug: string } | null
+  /** Instant Gaming product (store id "ig"): its page is rebuilt from these by the main process. */
+  instantGaming?: { id: string; slug: string; platform: string } | null
 }
 
 export interface PurchaseResult {

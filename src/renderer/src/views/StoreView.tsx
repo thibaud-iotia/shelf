@@ -413,6 +413,7 @@ export function StoreView() {
             placeholder="Rechercher un jeu à acheter…"
             value={text}
             onChange={(e) => setText(e.target.value)}
+            onClear={() => setText('')}
             onKeyDown={(e) => {
               if (e.key === 'Escape') setText('')
             }}

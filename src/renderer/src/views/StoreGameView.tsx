@@ -15,6 +15,7 @@ import {
   StoreFacts
 } from '@renderer/components/game/insights/StoreSections'
 import { VideosPanel } from '@renderer/components/game/insights/VideosPanel'
+import { KeyshopOffers } from '@renderer/components/store/KeyshopOffers'
 import { useWishToggle } from '@renderer/lib/wish'
 import { Button } from '@renderer/components/ui/Button'
 import { Chip } from '@renderer/components/ui/Chip'
@@ -117,6 +118,7 @@ function OffersCard({ game, children }: { game: StoreGameDetail; children?: Reac
         Le paiement se fait dans le launcher ou sur le site du magasin ; à votre retour dans Shelf,
         l’achat est détecté et le jeu rejoint la bibliothèque. Prix en dollars : CheapShark.
       </p>
+      <KeyshopOffers game={game} />
       {children}
     </aside>
   )

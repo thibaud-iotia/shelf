@@ -14,6 +14,7 @@ export function registerStoreHandlers(ctx: AppContext): void {
   handle('store:deals', () => ctx.store.deals())
   handle('store:search', (query) => ctx.store.search(validateStoreQuery(query)))
   handle('store:game', (ref) => ctx.store.game(validateStoreGameRef(ref)))
+  handle('store:keyshops', (ref) => ctx.store.keyshops(validateStoreGameRef(ref)))
   handle('store:overview', (appId) => ctx.insights.overviewForApp(validateSteamAppId(appId)))
   handle('store:news', (appId) => ctx.insights.newsForApp(validateSteamAppId(appId)))
   handle('store:addWish', (ref) => {
