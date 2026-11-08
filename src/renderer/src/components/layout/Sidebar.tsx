@@ -7,6 +7,7 @@ import { prefetchStore, useGames } from '@renderer/lib/queries'
 import { useRunningStore } from '@renderer/stores/running'
 import { useUiStore, type Route } from '@renderer/stores/ui'
 import { SidebarCollections } from './SidebarCollections'
+import logo from '@renderer/assets/logo.png'
 
 // Mockup 01 — "navigation hybride" sidebar (248px, ink-900).
 
@@ -119,9 +120,7 @@ export function Sidebar() {
       className="w-[248px] flex-none flex flex-col gap-[3px] px-3.5 pt-[var(--sidebar-top)] pb-[18px] bg-ink-900 border-r border-ink-600 overflow-y-auto"
     >
       <div className="flex items-center gap-2.5 mb-3.5 px-1.5">
-        <div className="w-[30px] h-[30px] rounded-[9px] bg-grad-brand flex items-center justify-center font-display font-bold text-base text-white">
-          S
-        </div>
+        <img src={logo} alt="" width={30} height={30} className="rounded-[8px]" />
         <b className="font-display font-bold text-lg text-text-hi">Shelf</b>
       </div>
 

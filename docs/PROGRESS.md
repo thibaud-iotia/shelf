@@ -19,7 +19,7 @@ Journal de bord : état de chaque phase, décisions prises, points ouverts.
 Phases 1 à 6 réalisées d'une traite à la demande de l'utilisateur (« fais toutes les phases d'un
 coup, je veux voir le résultat final »), un commit par phase, toutes fusionnées dans `main`.
 
-Bilan des tests : 200 unitaires, 33 e2e (+ 1 test de fumée de l'app packagée).
+Bilan des tests : 238 unitaires, 37 e2e (+ 1 test de fumée de l'app packagée).
 
 ## Phase 0 — Squelette
 
@@ -215,6 +215,40 @@ Bilan des tests : 200 unitaires, 33 e2e (+ 1 test de fumée de l'app packagée).
   `tests/unit/store-perf.test.ts` (réseau simulé sur horloge virtuelle) et deux e2e dans
   `e2e/store.spec.ts`.
 
+- Prix Instant Gaming (retour : « afficher le prix auquel on pourrait acheter un jeu sur
+  Instant Gaming ; tous les jeux y sont en promo, donc la réduction ne veut rien dire ») —
+  `store/instant-gaming.ts`. Pas d'API publique : la page de recherche
+  (`/fr/rechercher/?q=<titre>`) embarque la réponse Algolia en JSON (`window.searchResults`),
+  lue jusqu'à son accolade fermante — une requête donne toutes les éditions avec prix en €,
+  stock, plateforme d'activation et pays autorisés, sans parser le HTML des cartes (rendu par
+  Vue côté client). Retenu : éditions PC (`platforms` ∋ 1) de ce titre exact
+  (`normalizeTitle` sur `name`/`en_name`/`small_name`), hors DLC, brouillons, abonnements,
+  free-to-play, prix 0 (= non vendu), pays hors France ; en stock d'abord, puis la moins chère
+  (clé Steam d'abord à prix égal) ; 3 au plus affichées. Remise : celle d'IG compare à un prix
+  catalogue, elle est ignorée ; la fiche compare au prix **actuel** de Steam en € (promos
+  comprises) : badge « -35% vs Steam » si la clé est moins chère, sinon « Steam est moins cher
+  (x €) » ou « Même prix ». Canal à part `store:keyshops` (ne lève jamais : `error` dans la
+  réponse) : la fiche et ses offres s'affichent sans attendre la page IG (~300 ko) ; section
+  « REVENDEUR DE CLÉS » sous les magasins officiels, le bouton « Acheter » du héros reste sur
+  l'offre officielle. « Acheter » ouvre la page produit (`/fr/<id>-acheter-<slug>/`, recomposée
+  par le main après validation de l'id et du slug) dans le navigateur ; l'achat est suivi sur
+  le launcher de la clé (Steam, GOG, Epic). Requêtes avec le User-Agent descriptif de Shelf
+  (aucun blocage constaté le 2026-11-08), cache 10 min, 4 au plus en parallèle ; un 403
+  (anti-robots) donne « Instant Gaming refuse la requête pour le moment ». Nouvel hôte :
+  `www.instant-gaming.com` ; `requestText()` dans `net/http.ts` ; `stubFetch` accepte `html`.
+
+- Recherche de la Boutique : bouton « Effacer » (✕) dans le champ dès qu'il a une valeur
+  (retour : « pas de bouton pour clean l'input »). Prop `onClear` du composant `Input` (DS),
+  qui vide puis redonne le focus au champ ; testé dans `e2e/store.spec.ts`.
+
+- Nouvelle icône (retour : « plus stylé qu'un vieux S en couleur ») : une étagère, trois
+  boîtiers sombres debout et un boîtier corail penché contre eux, marqué d'une manette, sur
+  fond encre avec halo corail. `scripts/make-icons.cjs` dessine en SVG, rastérisé par Electron
+  à chaque taille (plus de dépendance à la police) ; la barre système utilise un glyphe
+  simplifié (tranches + boîtier penché + planche), blanc sur corail (`tray.png`) ou noir
+  (`trayTemplate*.png`, macOS). Le logo de la barre latérale (ex-« S ») est la même icône,
+  générée par le script sans la marge (`src/renderer/src/assets/logo.png`, 96 px).
+
 ## Décisions et écarts au plan
 
 - `GameSource.launch()` n'existe pas : le lancement est décidé par `launch/plan.ts` depuis la ligne en base
@@ -244,3 +278,8 @@ Bilan des tests : 200 unitaires, 33 e2e (+ 1 test de fumée de l'app packagée).
   Lecture YouTube intégrée non vérifiée dans l'app packagée (en-tête `Referer` ajouté pour l'erreur 153).
 - Boutique : prix CheapShark en dollars seulement ; Epic ouvert dans le navigateur (pas de slug
   produit fiable) ; liste de souhaits Steam non vérifiée contre un vrai profil public.
+- Instant Gaming : lecture d'une page web, sans contrat — un changement du site (ou une
+  protection anti-robots plus stricte) vide seulement la section « Revendeur de clés ». Prix
+  seulement sur la fiche d'un jeu (une page par jeu) : pour les cartes de la liste de
+  souhaits, il faudrait interroger l'index Algolia du site (clé publique de la page, plusieurs
+  titres par requête), non fait. Comparaison au seul prix Steam (pas GOG ni Epic).
