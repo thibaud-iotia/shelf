@@ -136,7 +136,11 @@ export function launcherLocations(): LauncherLocations {
         join(home, '.config', 'legendary', 'installed.json')
       ],
       legendaryBinaries: [
-        { file: 'legendary' },
+        {
+          file: 'legendary',
+          installedFile: join(home, '.config', 'legendary', 'installed.json'),
+          defaultInstallDir: join(home, 'Games')
+        },
         {
           file: join(
             localAppData,
@@ -150,7 +154,10 @@ export function launcherLocations(): LauncherLocations {
             'win32',
             'legendary.exe'
           ),
-          configPath: join(appData, 'heroic', 'legendaryConfig', 'legendary')
+          configPath: join(appData, 'heroic', 'legendaryConfig', 'legendary'),
+          installedFile: join(appData, 'heroic', 'legendaryConfig', 'legendary', 'installed.json'),
+          heroicConfig: join(appData, 'heroic', 'config.json'),
+          defaultInstallDir: join(home, 'Games', 'Heroic')
         }
       ],
       gogRegistry: () => queryRegistry('HKLM\\SOFTWARE\\WOW6432Node\\GOG.com\\Games'),
@@ -174,10 +181,17 @@ export function launcherLocations(): LauncherLocations {
         join(home, '.config', 'legendary', 'installed.json')
       ],
       legendaryBinaries: [
-        { file: 'legendary' },
+        {
+          file: 'legendary',
+          installedFile: join(home, '.config', 'legendary', 'installed.json'),
+          defaultInstallDir: join(home, 'Games')
+        },
         ...['arm64', 'x64'].map((arch) => ({
           file: `/Applications/Heroic.app/Contents/Resources/app.asar.unpacked/build/bin/${arch}/darwin/legendary`,
-          configPath: join(support, 'heroic', 'legendaryConfig', 'legendary')
+          configPath: join(support, 'heroic', 'legendaryConfig', 'legendary'),
+          installedFile: join(support, 'heroic', 'legendaryConfig', 'legendary', 'installed.json'),
+          heroicConfig: join(support, 'heroic', 'config.json'),
+          defaultInstallDir: join(home, 'Games', 'Heroic')
         }))
       ],
       gogRegistry: async () => [],
@@ -212,10 +226,17 @@ export function launcherLocations(): LauncherLocations {
       join(config, 'legendary', 'installed.json')
     ],
     legendaryBinaries: [
-      { file: 'legendary' },
+      {
+        file: 'legendary',
+        installedFile: join(config, 'legendary', 'installed.json'),
+        defaultInstallDir: join(home, 'Games')
+      },
       {
         file: '/opt/Heroic/resources/app.asar.unpacked/build/bin/x64/linux/legendary',
-        configPath: join(config, 'heroic', 'legendaryConfig', 'legendary')
+        configPath: join(config, 'heroic', 'legendaryConfig', 'legendary'),
+        installedFile: join(config, 'heroic', 'legendaryConfig', 'legendary', 'installed.json'),
+        heroicConfig: join(config, 'heroic', 'config.json'),
+        defaultInstallDir: join(home, 'Games', 'Heroic')
       }
     ],
     gogRegistry: async () => [],

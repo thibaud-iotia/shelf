@@ -22,23 +22,24 @@ import { GameNewsPanel } from '@renderer/components/game/insights/NewsPanel'
 import { VideosPanel } from '@renderer/components/game/insights/VideosPanel'
 import { Button } from '@renderer/components/ui/Button'
 import { Chip } from '@renderer/components/ui/Chip'
+import { InstallPending } from '@renderer/components/game/InstallStatus'
 import { LaunchPending } from '@renderer/components/game/LaunchStatus'
 import { usePlay } from '@renderer/lib/actions'
 import {
   useGameDetail,
   useGameInsights,
   useApplyUpdate,
-  useInstallGame,
   useOpenFolder,
   useExportSaves,
   usePickCover,
   usePickSaveFolder,
   useRefreshArtwork,
   useSettings,
+  useStartInstall,
   useUpdateGame
 } from '@renderer/lib/queries'
 import { toast } from '@renderer/stores/toasts'
-import { useIsRunning, useLaunchProgress } from '@renderer/stores/running'
+import { useInstallProgress, useIsRunning, useLaunchProgress } from '@renderer/stores/running'
 import { useUiStore } from '@renderer/stores/ui'
 
 function Label({ children, first = false }: { children: ReactNode; first?: boolean }) {
@@ -204,9 +205,10 @@ export function GameDetailView({ gameId }: { gameId: number }) {
   const openGameForm = useUiStore((s) => s.openGameForm)
   const running = useIsRunning(gameId)
   const launching = useLaunchProgress(gameId)
+  const installing = useInstallProgress(gameId)
   const play = usePlay()
   const openFolder = useOpenFolder()
-  const install = useInstallGame()
+  const startInstall = useStartInstall()
   const applyUpdate = useApplyUpdate()
   const update = useUpdateGame()
 
@@ -256,8 +258,10 @@ export function GameDetailView({ gameId }: { gameId: number }) {
         )}
         {game.logoUrl && <h1 className="sr-only">{game.title}</h1>}
         <div className="absolute right-10 bottom-[34px] flex items-center gap-2.5">
-          {game.installState === 'not_installed' && game.canInstall ? (
-            <Button size="lg" onClick={() => install.mutate(game.id)}>
+          {installing && game.installState !== 'installed' ? (
+            <InstallPending progress={installing} />
+          ) : game.installState === 'not_installed' && game.canInstall ? (
+            <Button size="lg" onClick={() => startInstall(game)}>
               Installer
             </Button>
           ) : launching && !running ? (

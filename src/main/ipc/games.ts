@@ -1,6 +1,8 @@
-import { dirname } from 'node:path'
+import { dirname, isAbsolute } from 'node:path'
 import { shell, type OpenDialogOptions } from 'electron'
 import { AppError } from '../../shared/errors'
+import { isInstallSource } from '../../shared/install'
+import type { InstallRequest } from '../../shared/models'
 import type { AppContext } from '../context'
 import { broadcast } from '../events'
 import {
@@ -17,9 +19,20 @@ import { validateGameId, validateGameInput, validateGamePatch } from '../games/v
 import { cancelLaunch, launchGame, runningGameIds } from '../launch/launch-game'
 import { exportSaves, backupFileName } from '../saves/backup'
 import { mayUninstall, uninstallPlan } from '../sources/uninstall'
-import { installUri, updateUri } from '../sources/uris'
+import { updateUri } from '../sources/uris'
 import { pickPath, pickSavePath } from './dialogs'
 import { handle } from './handle'
+
+function validateInstallRequest(value: unknown): InstallRequest {
+  if (value === undefined || value === null) return {}
+  if (typeof value !== 'object')
+    throw new AppError('VALIDATION', 'Demande d’installation invalide.')
+  const { path, remember } = value as Record<string, unknown>
+  if (path !== undefined && (typeof path !== 'string' || !isAbsolute(path))) {
+    throw new AppError('VALIDATION', 'Emplacement d’installation : chemin absolu attendu.')
+  }
+  return { path, remember: remember === true }
+}
 
 function executableFilters(): OpenDialogOptions['filters'] {
   if (process.platform === 'win32') {
@@ -148,11 +161,43 @@ export function registerGameHandlers(ctx: AppContext): void {
     return getGame(db, gameId)
   })
 
-  handle('games:install', async (id) => {
+  handle('games:install', async (id, request) => {
     const game = getGameRow(db, validateGameId(id))
-    const uri = installUri(game)
-    if (!uri) throw new AppError('NOT_FOUND', 'Ce jeu ne peut pas être installé depuis Shelf.')
-    await shell.openExternal(uri)
+    if (game.installState === 'installed') {
+      throw new AppError('VALIDATION', 'Ce jeu est déjà installé.')
+    }
+    const { path, remember } = validateInstallRequest(request)
+    const result = await ctx.installs.install(game, { path })
+    // "Toujours installer ici": the default location for this launcher, no more asking.
+    if (remember && path && result.mode === 'background' && isInstallSource(game.source)) {
+      ctx.settings.update({
+        installPaths: { ...ctx.settings.get('installPaths'), [game.source]: path },
+        askInstallLocation: false
+      })
+    }
+    return result
+  })
+
+  handle('games:installLocations', (source) => ctx.installs.locations(String(source)))
+
+  handle('games:pickInstallFolder', async (source) => {
+    if (!isInstallSource(source)) {
+      throw new AppError('VALIDATION', 'Ce launcher ne permet pas de choisir l’emplacement.')
+    }
+    const folder = await pickPath({
+      title:
+        source === 'steam'
+          ? 'Dossier d’installation (bibliothèque Steam)'
+          : 'Dossier d’installation des jeux Epic',
+      properties: ['openDirectory', 'createDirectory']
+    })
+    return folder ? ctx.installs.pickedFolder(source, folder) : null
+  })
+
+  handle('games:installing', () => ctx.installs.list())
+
+  handle('games:cancelInstall', async (id) => {
+    await ctx.installs.cancel(validateGameId(id))
     return null
   })
 

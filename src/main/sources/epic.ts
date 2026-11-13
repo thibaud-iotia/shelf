@@ -98,6 +98,19 @@ export function parseLegendaryInstalled(
   })
 }
 
+/** Whether the Epic Games Launcher has `appName` installed (a complete `.item` manifest). */
+export async function epicLauncherHas(manifestDirs: string[], appName: string): Promise<boolean> {
+  for (const dir of manifestDirs) {
+    for (const item of (await listDir(dir)).filter((file) =>
+      file.toLowerCase().endsWith('.item')
+    )) {
+      const data = await readJson<EpicManifest>(join(dir, item))
+      if (data?.AppName === appName && !data.bIsIncompleteInstall) return true
+    }
+  }
+  return false
+}
+
 export interface EpicLocations {
   manifestDirs: string[]
   legendaryInstalled: string[]

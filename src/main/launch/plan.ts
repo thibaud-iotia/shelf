@@ -9,12 +9,23 @@ export type LaunchPlan =
   | { kind: 'process'; command: string; args: string[]; cwd: string; env?: Record<string, string> }
   | { kind: 'uri'; uri: string }
   /** Hands the game to its launcher's executable, which Shelf does not follow; `uri` is the fallback. */
-  | { kind: 'launcher'; command: string; args: string[]; uri: string }
+  | {
+      kind: 'launcher'
+      command: string
+      args: string[]
+      uri: string
+      env?: Record<string, string>
+    }
 
 export interface LaunchOptions {
   platform: NodeJS.Platform
   /** Steam client executable (Windows). Games then start with Steam minimized to the tray. */
   steamExecutable?: string | null
+  /**
+   * Legendary that installed this Epic game (installed from Shelf, or through Heroic): the
+   * Epic Games Launcher does not know it, Legendary launches it.
+   */
+  legendary?: { file: string; configPath?: string } | null
   /** Wine or Proton executable (Linux). */
   runnerPath: string | null
   /** Prefix directory handed to Proton (STEAM_COMPAT_DATA_PATH). */
@@ -43,6 +54,16 @@ export function buildLaunchPlan(game: LaunchTarget, options: LaunchOptions): Lau
     // main window; a running Steam just receives the command.
     if (game.source === 'steam' && options.steamExecutable) {
       return { kind: 'launcher', command: options.steamExecutable, args: ['-silent', uri], uri }
+    }
+    if (game.source === 'epic' && options.legendary) {
+      const { file, configPath } = options.legendary
+      return {
+        kind: 'launcher',
+        command: file,
+        args: ['launch', game.sourceId],
+        uri,
+        ...(configPath ? { env: { LEGENDARY_CONFIG_PATH: configPath } } : {})
+      }
     }
     return { kind: 'uri', uri }
   }

@@ -24,6 +24,11 @@ import type {
   ImportReport,
   KeyshopView,
   LauncherStatus,
+  InstallLocations,
+  InstallProgress,
+  InstallRequest,
+  InstallStart,
+  PickedInstallFolder,
   LaunchProgress,
   LaunchResult,
   MetadataMatch,
@@ -87,8 +92,22 @@ export interface IpcChannels {
   /** Stops waiting for a launch (the launcher keeps going on its own). */
   'games:cancelLaunch': { args: [id: number]; result: null }
   'games:openFolder': { args: [id: number]; result: null }
-  /** Opens the launcher's install page (owned, not installed). */
-  'games:install': { args: [id: number]; result: null }
+  /**
+   * Installs an owned game: in the background when the launcher allows it (Steam, Epic via
+   * Legendary), otherwise opens the launcher's install page.
+   */
+  'games:install': { args: [id: number, request?: InstallRequest]; result: InstallStart }
+  /** Where a background install may go (null: no background install for this launcher). */
+  'games:installLocations': { args: [source: GameSourceId]; result: InstallLocations | null }
+  /** Folder picker for installs: the folder as the launcher will use it, null when cancelled. */
+  'games:pickInstallFolder': {
+    args: [source: GameSourceId]
+    result: PickedInstallFolder | null
+  }
+  /** Installs started in the background and not finished yet. */
+  'games:installing': { args: []; result: InstallProgress[] }
+  /** Stops a background install (or only stops following it when it cannot be stopped). */
+  'games:cancelInstall': { args: [id: number]; result: null }
   /** Opens the launcher's uninstall flow (Steam). */
   'games:uninstall': { args: [id: number]; result: null }
   /** Opens the launcher where the pending update of the game gets applied. */
@@ -182,6 +201,10 @@ const CHANNELS: Record<IpcChannel, true> = {
   'games:cancelLaunch': true,
   'games:openFolder': true,
   'games:install': true,
+  'games:installLocations': true,
+  'games:pickInstallFolder': true,
+  'games:installing': true,
+  'games:cancelInstall': true,
   'games:uninstall': true,
   'games:applyUpdate': true,
   'games:checkUpdates': true,
@@ -246,6 +269,15 @@ export interface IpcEvents {
   'games:launching': LaunchProgress[]
   /** A launched game never showed up (the launcher may be waiting for the user). */
   'games:launchTimeout': { gameId: number; title: string; launcher: GameSourceId | null }
+  /** Background installs, pushed whenever one starts, progresses or ends. */
+  'games:installing': InstallProgress[]
+  /** A background install ended: installed, failed (`error`) or cancelled. */
+  'games:installEnded': {
+    gameId: number
+    title: string
+    outcome: 'installed' | 'failed' | 'cancelled'
+    error?: string
+  }
   /** The library changed outside a renderer request (session ended, sync, metadata…). */
   'library:changed': { reason: string }
   /** A game bought from the store showed up in the library. */
@@ -258,6 +290,8 @@ const EVENTS: Record<IpcEvent, true> = {
   'games:running': true,
   'games:launching': true,
   'games:launchTimeout': true,
+  'games:installing': true,
+  'games:installEnded': true,
   'library:changed': true,
   'store:purchased': true
 }

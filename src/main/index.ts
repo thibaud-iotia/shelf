@@ -17,6 +17,12 @@ import { UninstallWatcher } from './games/uninstall-watch'
 import { followSteamLaunches, launchGame, runningGameIds } from './launch/launch-game'
 import { registerIpcHandlers } from './ipc/handlers'
 import { ImportService } from './import/service'
+import { LegendaryInstaller } from './install/legendary'
+import { InstallService } from './install/service'
+import { SteamInstaller } from './install/steam'
+import { steamClientControl } from './install/steam-client'
+import { readTail, steamContentLog } from './install/steam-log'
+import { processWriteMeter } from './platform/process-io'
 import { LaunchTracker } from './launch/progress'
 import { GameRunner } from './launch/runner'
 import { SteamWatcher } from './launch/steam-watch'
@@ -30,6 +36,7 @@ import { applyUserDataOverride, launcherLocations, paths } from './platform/path
 import { SecretStore } from './secrets/store'
 import { SettingsStore } from './settings/store'
 import { createSources } from './sources'
+import { steamSource } from './sources/steam'
 import { prewarmDelay, StoreService } from './store/service'
 import { PurchaseWatcher } from './store/watcher'
 import { dropBought, ownedIndex } from './store/wishlist'
@@ -166,6 +173,43 @@ function createContext(): AppContext {
     onUninstalled: () => broadcast('library:changed', { reason: 'uninstall' })
   })
 
+  // Installs without the launcher's window: Steam (manifest + restart in the tray), Epic
+  // through Legendary. The library is re-read once the game is on disk.
+  const steamRoot = () => steamSource(locations.steamRoots).locate()
+  const steamInstaller = new SteamInstaller({
+    root: steamRoot,
+    control: steamClientControl({
+      status: locations.steamStatus,
+      executable: locations.steamExecutable,
+      // Looked up at call time: the e2e tests replace shell.openExternal.
+      openExternal: (uri) => shell.openExternal(uri)
+    })
+  })
+  const installs = new InstallService({
+    steam: steamInstaller,
+    legendary: new LegendaryInstaller({ binaries: () => launcherLocations().legendaryBinaries }),
+    enabled: () => settings.get('backgroundInstall'),
+    defaultPath: (source) => settings.get('installPaths')[source],
+    // Live progress of Steam downloads: the appmanifest only gets it when they stop.
+    steamLog: async () => {
+      const root = await steamRoot()
+      return root ? readTail(steamContentLog(root), 128 * 1024) : null
+    },
+    steamWrites: processWriteMeter('steam'),
+    openExternal: (uri) => shell.openExternal(uri),
+    refresh: checkUpdates,
+    onChange: (list) => broadcast('games:installing', list),
+    onEnded: (game, outcome, error) => {
+      if (outcome === 'installed') broadcast('library:changed', { reason: 'install' })
+      broadcast('games:installEnded', {
+        gameId: game.id,
+        title: game.title,
+        outcome,
+        ...(error ? { error } : {})
+      })
+    }
+  })
+
   const insights = new InsightsService({
     db,
     steamCredentials: () => accounts.steamCredentials(),
@@ -211,6 +255,7 @@ function createContext(): AppContext {
     insights,
     onSynced,
     checkUpdates,
+    installs,
     uninstallWatch,
     store,
     purchases
@@ -247,6 +292,14 @@ if (!app.requestSingleInstanceLock()) {
         void ctx?.checkUpdates().catch((error: unknown) => console.warn('[refresh] failed', error))
       refresh()
       setInterval(refresh, UPDATE_CHECK_INTERVAL_MS).unref()
+      // Steam installs queued before Shelf last quit: followed again.
+      void ctx.installs
+        .resume(
+          listGames(ctx.database.db).filter(
+            (g) => g.source === 'steam' && g.installState !== 'installed'
+          )
+        )
+        .catch((error: unknown) => console.warn('[startup] install resume failed', error))
       // Owned libraries: automatic sync when the last one is older than 24 h.
       void ctx.accounts
         .syncDue()
@@ -294,6 +347,7 @@ app.on('will-quit', () => {
   ctx?.steamWatch.dispose()
   ctx?.launches.dispose()
   ctx?.uninstallWatch.dispose()
+  ctx?.installs.dispose()
   ctx?.purchases.dispose()
   ctx?.database.close()
 })

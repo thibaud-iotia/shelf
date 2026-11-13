@@ -13,11 +13,17 @@ import type { AccountProvider, OwnedGame } from './types'
 export interface LegendaryBinary {
   file: string
   configPath?: string
+  /** The `installed.json` this binary writes (games it installed, launched through it). */
+  installedFile?: string
+  /** Heroic's `config.json`: its default install folder is used for installs from Shelf. */
+  heroicConfig?: string
+  /** Where this binary installs when nothing else is set (Legendary: `~/Games`). */
+  defaultInstallDir?: string
 }
 
 export type RunCommand = (binary: LegendaryBinary, args: string[]) => Promise<string>
 
-const run: RunCommand = ({ file, configPath }, args) =>
+export const runLegendary: RunCommand = ({ file, configPath }, args) =>
   new Promise((resolve, reject) => {
     execFile(
       file,
@@ -65,7 +71,7 @@ export function parseLegendaryStatus(stdout: string): string | null {
 
 const isMissing = (error: unknown) => (error as NodeJS.ErrnoException)?.code === 'ENOENT'
 
-function legendaryError(error: unknown): AppError {
+export function legendaryError(error: unknown): AppError {
   if (!error || isMissing(error)) {
     return new AppError(
       'UNAVAILABLE',
@@ -83,7 +89,7 @@ function legendaryError(error: unknown): AppError {
  * First binary logged in to an Epic account. A standalone `legendary` on PATH may run without
  * an account while Heroic's copy has one: every candidate is tried before giving up.
  */
-async function loggedIn(
+export async function loggedIn(
   binaries: LegendaryBinary[],
   runCommand: RunCommand
 ): Promise<{ binary: LegendaryBinary; account: string }> {
@@ -109,7 +115,7 @@ async function loggedIn(
 
 export function epicLegendaryProvider(
   binaries: () => LegendaryBinary[],
-  runCommand: RunCommand = run
+  runCommand: RunCommand = runLegendary
 ): AccountProvider<unknown> {
   return {
     kind: 'epic-legendary',

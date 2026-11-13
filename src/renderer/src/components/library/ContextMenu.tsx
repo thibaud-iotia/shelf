@@ -5,13 +5,14 @@ import {
   useCollections,
   useGames,
   useApplyUpdate,
-  useInstallGame,
   useOpenFolder,
   useRemoveFromCollection,
   useSetTags,
+  useStartInstall,
   useTags,
   useUpdateGame
 } from '@renderer/lib/queries'
+import { useRunningStore } from '@renderer/stores/running'
 import { useUiStore } from '@renderer/stores/ui'
 
 function Item({ children, onClick }: { children: ReactNode; onClick: () => void }) {
@@ -49,9 +50,10 @@ export function ContextMenu() {
   const addTo = useAddToCollection()
   const removeFrom = useRemoveFromCollection()
   const openFolder = useOpenFolder()
-  const install = useInstallGame()
+  const startInstall = useStartInstall()
   const applyUpdate = useApplyUpdate()
   const play = usePlay()
+  const installing = useRunningStore((s) => s.installing)
   const panel = useRef<HTMLDivElement>(null)
   const [position, setPosition] = useState({ x: 0, y: 0 })
   const [newTag, setNewTag] = useState('')
@@ -108,8 +110,9 @@ export function ContextMenu() {
       style={{ left: position.x, top: position.y }}
       className="fixed z-50 w-[260px] max-h-[calc(100vh-16px)] overflow-auto p-1.5 rounded-md bg-ink-800 border border-ink-600 shadow-[0_20px_60px_rgba(0,0,0,.6)]"
     >
-      {game.installState === 'not_installed' && game.canInstall ? (
-        <Item onClick={run(() => install.mutate(game.id))}>⤓ Installer</Item>
+      {installing.some((i) => i.gameId === game.id) ? null : game.installState ===
+          'not_installed' && game.canInstall ? (
+        <Item onClick={run(() => startInstall(game))}>⤓ Installer</Item>
       ) : (
         <Item onClick={run(() => void play(game))}>▶ Jouer</Item>
       )}

@@ -1,7 +1,8 @@
 import type { KeyboardEvent, MouseEvent } from 'react'
 import type { Game } from '@shared/models'
-import { useIsRunning, useLaunchProgress } from '@renderer/stores/running'
+import { useInstallProgress, useIsRunning, useLaunchProgress } from '@renderer/stores/running'
 import { CoverArt } from './CoverArt'
+import { InstallBadge } from './InstallStatus'
 import { LaunchBadge, Spinner } from './LaunchStatus'
 
 export const GAME_DRAG_TYPE = 'application/x-shelf-game'
@@ -30,7 +31,8 @@ export function GameCard({
 }: GameCardProps) {
   const running = useIsRunning(game.id)
   const launching = useLaunchProgress(game.id)
-  const busy = running || launching !== null
+  const installing = useInstallProgress(game.id)
+  const busy = running || launching !== null || installing !== null
   const dimmed = game.installState === 'not_installed'
 
   return (
@@ -84,6 +86,7 @@ export function GameCard({
           </span>
         )}
         {launching && !running && <LaunchBadge progress={launching} />}
+        {installing && !launching && !running && <InstallBadge progress={installing} />}
         {running && (
           <span
             data-testid="running-badge"

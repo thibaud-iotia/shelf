@@ -15,7 +15,10 @@ export const DEFAULT_SETTINGS: AppSettings = {
   runnerPath: null,
   gogOAuthEnabled: false,
   coverSize: 'md',
-  showHidden: false
+  showHidden: false,
+  backgroundInstall: true,
+  askInstallLocation: true,
+  installPaths: { steam: null, epic: null }
 }
 
 type Validator<K extends keyof AppSettings> = (value: unknown) => AppSettings[K]
@@ -61,7 +64,20 @@ const validators: { [K in keyof AppSettings]: Validator<K> } = {
     }
     return v
   },
-  showHidden: boolean('Jeux masqués')
+  showHidden: boolean('Jeux masqués'),
+  backgroundInstall: boolean('Installation en arrière-plan'),
+  askInstallLocation: boolean('Emplacement d’installation'),
+  installPaths: (v) => {
+    const invalid = () => new AppError('VALIDATION', 'Emplacement d’installation invalide.')
+    if (v === null || typeof v !== 'object' || Array.isArray(v)) throw invalid()
+    const path = (value: unknown) => {
+      if (value === null || value === undefined || value === '') return null
+      if (typeof value !== 'string') throw invalid()
+      return value.trim() || null
+    }
+    const paths = v as Record<string, unknown>
+    return { steam: path(paths.steam), epic: path(paths.epic) }
+  }
 }
 
 /** Typed key/value settings persisted as JSON in the `settings` table. */

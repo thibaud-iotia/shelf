@@ -6,6 +6,7 @@ import { useRunningStore } from '@renderer/stores/running'
 import { useUiStore } from '@renderer/stores/ui'
 import { CoverArt } from './CoverArt'
 import { GAME_DRAG_TYPE } from './GameCard'
+import { InstallLabel } from './InstallStatus'
 import { LaunchLabel, Spinner } from './LaunchStatus'
 
 interface GameListProps {
@@ -20,6 +21,8 @@ export function GameList({ games, onOpen, onPlay, onContextMenu }: GameListProps
   const running = useRunningStore((s) => s.ids)
   const launching = useRunningStore((s) => s.launching)
   const launchOf = (gameId: number) => launching.find((l) => l.gameId === gameId) ?? null
+  const installing = useRunningStore((s) => s.installing)
+  const installOf = (gameId: number) => installing.find((i) => i.gameId === gameId) ?? null
   const selectedId = useUiStore((s) => s.selectedGameId)
   const select = useUiStore((s) => s.select)
 
@@ -82,6 +85,8 @@ export function GameList({ games, onOpen, onPlay, onContextMenu }: GameListProps
               <span className="text-green-300">● En cours</span>
             ) : launchOf(game.id) ? (
               <LaunchLabel progress={launchOf(game.id)!} />
+            ) : installOf(game.id) ? (
+              <InstallLabel progress={installOf(game.id)!} />
             ) : game.updateAvailable ? (
               <span className="text-amber-300">⟳ mise à jour</span>
             ) : (

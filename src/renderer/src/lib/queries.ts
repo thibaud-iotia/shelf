@@ -1,5 +1,7 @@
 import { useEffect } from 'react'
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query'
+import type { GameSourceId } from '@shared/domain'
+import { isInstallSource } from '@shared/install'
 import type { ScanOptions } from '@shared/ipc'
 import type {
   ApiKeyService,
@@ -11,12 +13,14 @@ import type {
   GameInput,
   GamePatch,
   ImportDecision,
+  InstallRequest,
   PurchaseInput,
   SmartRules,
   StoreGameRef
 } from '@shared/models'
 import { useRunningStore } from '@renderer/stores/running'
 import { toast } from '@renderer/stores/toasts'
+import { useUiStore } from '@renderer/stores/ui'
 import { call } from './ipc'
 
 export const queryKeys = {
@@ -25,6 +29,7 @@ export const queryKeys = {
   games: ['games'] as const,
   game: (id: number) => ['games', id] as const,
   settings: ['settings'] as const,
+  installLocations: (source: string) => ['installLocations', source] as const,
   launchers: ['launchers'] as const,
   accounts: ['games', 'accounts'] as const,
   tags: ['games', 'tags'] as const,
@@ -98,9 +103,60 @@ export function useCancelLaunch() {
 }
 
 export function useInstallGame() {
+  const client = useQueryClient()
   return useMutation({
-    mutationFn: (id: number) => call('games:install', id),
-    onSuccess: () => toast.info('Ouverture du launcher pour l’installation…'),
+    mutationFn: ([id, request]: [number, InstallRequest?]) => call('games:install', id, request),
+    onSuccess: ({ mode }, [, request]) => {
+      toast.info(
+        mode === 'background'
+          ? 'Installation lancée en arrière-plan : suivez-la sur la fiche du jeu.'
+          : 'Ouverture du launcher pour l’installation…'
+      )
+      // "Toujours installer ici" saved a default location.
+      if (request?.remember) void client.invalidateQueries({ queryKey: queryKeys.settings })
+    },
+    onError: (error) => toast.error(error)
+  })
+}
+
+/**
+ * "Installer": asks where to install first (Steam library, Epic folder) when the settings say
+ * so, installs right away otherwise.
+ */
+export function useStartInstall() {
+  const settings = useSettings()
+  const install = useInstallGame()
+  const openInstallDialog = useUiStore((s) => s.openInstallDialog)
+  return (game: Pick<Game, 'id' | 'source'>) => {
+    const ask =
+      settings.data?.backgroundInstall !== false &&
+      settings.data?.askInstallLocation !== false &&
+      isInstallSource(game.source)
+    if (ask) openInstallDialog(game.id)
+    else install.mutate([game.id])
+  }
+}
+
+export function useInstallLocations(source: GameSourceId | null) {
+  return useQuery({
+    queryKey: queryKeys.installLocations(source ?? 'none'),
+    queryFn: () => call('games:installLocations', source!),
+    enabled: source !== null,
+    staleTime: 0,
+    gcTime: 0
+  })
+}
+
+export function usePickInstallFolder() {
+  return useMutation({
+    mutationFn: (source: GameSourceId) => call('games:pickInstallFolder', source),
+    onError: (error) => toast.error(error)
+  })
+}
+
+export function useCancelInstall() {
+  return useMutation({
+    mutationFn: (id: number) => call('games:cancelInstall', id),
     onError: (error) => toast.error(error)
   })
 }
@@ -540,10 +596,18 @@ export function useMainEvents() {
   const client = useQueryClient()
   const setRunning = useRunningStore((s) => s.set)
   const setLaunching = useRunningStore((s) => s.setLaunching)
+  const setInstalling = useRunningStore((s) => s.setInstalling)
 
   useEffect(() => {
     void call('games:running').then(setRunning)
     void call('games:launching').then(setLaunching)
+    void call('games:installing').then(setInstalling)
+    const offInstalling = window.shelf.on('games:installing', setInstalling)
+    const offInstallEnded = window.shelf.on('games:installEnded', ({ title, outcome, error }) => {
+      if (outcome === 'installed') toast.success(`« ${title} » est installé.`)
+      else if (outcome === 'cancelled') toast.info(`Installation de « ${title} » annulée.`)
+      else toast.error(error ?? `L’installation de « ${title} » a échoué.`)
+    })
     const offRunning = window.shelf.on('games:running', setRunning)
     const offLaunching = window.shelf.on('games:launching', setLaunching)
     const offTimeout = window.shelf.on('games:launchTimeout', ({ title, launcher }) =>
@@ -563,9 +627,11 @@ export function useMainEvents() {
     return () => {
       offRunning()
       offLaunching()
+      offInstalling()
+      offInstallEnded()
       offTimeout()
       offLibrary()
       offPurchased()
     }
-  }, [client, setRunning, setLaunching])
+  }, [client, setRunning, setLaunching, setInstalling])
 }

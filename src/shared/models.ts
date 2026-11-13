@@ -133,6 +133,82 @@ export interface LaunchProgress {
   phaseSince: number
 }
 
+/**
+ * Where an install started from Shelf stands (no launcher window opened):
+ * - preparing: Shelf hands the game to the launcher (Steam manifest, Legendary starting);
+ * - restarting: Steam restarts in the background to pick the game up;
+ * - waitingGame: a Steam game is running, Steam restarts once it is closed;
+ * - queued: the launcher has the game in its queue, the download has not started;
+ * - downloading: bytes are coming (`progress` when the launcher tells it);
+ * - paused: the download is paused in the launcher.
+ */
+export type InstallPhase =
+  | 'preparing'
+  | 'restarting'
+  | 'waitingGame'
+  | 'queued'
+  | 'allocating'
+  | 'downloading'
+  | 'finishing'
+  | 'paused'
+
+export interface InstallProgress {
+  gameId: number
+  source: GameSourceId
+  phase: InstallPhase
+  /** 0…1 when known. */
+  progress: number | null
+  /** Bytes downloaded / to download, when the launcher tells them. */
+  downloadedBytes: number | null
+  totalBytes: number | null
+  /** When the install was started (ms since epoch). */
+  startedAt: number
+  /** The install can really be stopped (Legendary download, Steam manifest not picked up yet). */
+  cancellable: boolean
+}
+
+/** How `games:install` went: in the background, or the launcher's install page was opened. */
+export interface InstallStart {
+  mode: 'background' | 'launcher'
+}
+
+/** Launchers Shelf installs to in the background, where the user may pick the folder. */
+export type InstallSource = 'steam' | 'epic'
+
+/**
+ * A place a game can be installed to:
+ * - library: one of Steam's libraries;
+ * - newLibrary: a folder Shelf adds to Steam's libraries during its restart;
+ * - folder: a folder Legendary installs into (the game in a sub-folder).
+ */
+export interface InstallLocation {
+  path: string
+  /** Free space on its disk; null when unknown. */
+  freeBytes: number | null
+  kind: 'library' | 'newLibrary' | 'folder'
+}
+
+export interface InstallLocations {
+  source: InstallSource
+  locations: InstallLocation[]
+  /** Pre-selected: the default saved in the settings, else Shelf's own choice. */
+  defaultPath: string
+}
+
+/** A folder picked for installs, as the launcher will use it. */
+export interface PickedInstallFolder {
+  location: InstallLocation
+  /** Why the game goes elsewhere than the folder picked (Steam: one library per disk). */
+  notice: string | null
+}
+
+export interface InstallRequest {
+  /** Where to install; the default location when not given. */
+  path?: string
+  /** Save `path` as the default and stop asking. */
+  remember?: boolean
+}
+
 export interface Tag {
   id: number
   name: string
@@ -294,6 +370,12 @@ export interface AppSettings {
   gogOAuthEnabled: boolean
   coverSize: CoverSize
   showHidden: boolean
+  /** Install Steam / Epic (Legendary) games in the background, without the launcher's window. */
+  backgroundInstall: boolean
+  /** Ask where to install (Steam library, Epic folder) at each install. */
+  askInstallLocation: boolean
+  /** Default install location per launcher; null: Shelf picks (most free space, Heroic's). */
+  installPaths: Record<InstallSource, string | null>
 }
 
 export interface SettingsView extends AppSettings {

@@ -249,6 +249,60 @@ Bilan des tests : 238 unitaires, 37 e2e (+ 1 test de fumée de l'app packagée).
   (`trayTemplate*.png`, macOS). Le logo de la barre latérale (ex-« S ») est la même icône,
   générée par le script sans la marge (`src/renderer/src/assets/logo.png`, 96 px).
 
+- Installation sans passer par l'interface du launcher (retour : « ne plus passer par
+  l'interface Steam pour installer un jeu de ma galerie ») — module `main/install/`.
+  **Steam** n'a aucune commande publique d'installation silencieuse (`steam://install` ouvre
+  toujours sa boîte de dialogue). Shelf écrit donc le manifeste d'une installation en file
+  (`appmanifest_<id>.acf`, `StateFlags` 1026, `buildid` 0 — ce que Steam écrit lui-même) dans
+  la bibliothèque la plus libre, puis démarre Steam réduit (`steam.exe -silent`) ou le
+  redémarre (`-shutdown`, attente de la fin du processus, `-silent`) : Steam ne lit les
+  manifestes qu'au démarrage et lance alors le téléchargement. Plusieurs clics groupés en un
+  seul redémarrage ; jamais pendant une partie Steam (`RunningAppID`) : le redémarrage attend
+  la fin du jeu. Sans exécutable (macOS, Linux, e2e) : `steam://exit` et
+  `steam://open/downloads`. Suivi en lisant le manifeste toutes les 2 s (`BytesDownloaded` /
+  `BytesToDownload`, pause ; toutes les secondes depuis, voir plus bas) jusqu'à l'état installé, puis relecture des launchers ; manifeste
+  supprimé par Steam (jeu absent du compte connecté) = échec expliqué. Installations Steam en
+  cours retrouvées au démarrage de Shelf. Annulable tant que Steam n'a pas lu le manifeste.
+  **Epic** : `legendary install <app> --yes --skip-sdl --with-dlcs` (Legendary seul ou celui
+  de Heroic, dans le dossier par défaut de Heroic), progression lue dans son journal,
+  annulable (arbre de processus tué) ; sans Legendary connecté, page du launcher Epic comme
+  avant. Un jeu Epic installé par Legendary et inconnu du launcher Epic se lance via
+  `legendary launch` sous Windows (ailleurs, l'URI Heroic s'en charge déjà). UI : bouton de
+  progression (barre, %, tailles, indication si Steam attend la fin d'une partie) sur la
+  fiche, badge sur la jaquette, état en liste, toasts de fin. Réglage « Installer en
+  arrière-plan » (Réglages › Système, activé par défaut) ; désactivé, ou pour GOG / itch, le
+  launcher s'ouvre comme avant. Canaux `games:installing`, `games:cancelInstall` ; événements
+  `games:installing`, `games:installEnded` ; `games:install` renvoie `{ mode }`.
+- Choix de l'emplacement d'installation (retour : « je ne peux pas choisir l'emplacement où
+  j'installe mon jeu »). « Installer » ouvre une fenêtre : emplacements avec espace libre
+  (Steam : ses bibliothèques présentes ; Epic : dossier enregistré + dossier par défaut de
+  Heroic, du `install_dir` de Legendary ou `~/Games`), défaut présélectionné, « Autre
+  dossier… » (explorateur natif), case « Toujours installer ici, sans demander ». Steam : un
+  dossier dans une bibliothèque y renvoie ; sur un disque qui a déjà une bibliothèque, le jeu
+  va dans celle-ci (règle de Steam : une bibliothèque par disque, message affiché) ; ailleurs,
+  le dossier devient une **nouvelle bibliothèque Steam** — `libraryfolder.vdf` écrit tout de
+  suite, entrée ajoutée à `config/` et `steamapps/libraryfolders.vdf` pendant que Steam est
+  fermé pour son redémarrage (copie `.shelf-bak` gardée une fois), comme Steam › Stockage ›
+  « Ajouter un disque ». Installation annulée ou Steam qui ne se ferme pas : marqueur et
+  manifeste retirés. Epic : `--base-path` du dossier choisi. Réglages › Système : « Demander
+  l'emplacement à chaque installation » et emplacement par défaut par launcher (« Changer… »,
+  « Automatique »). Réglages `askInstallLocation`, `installPaths` ; canaux
+  `games:installLocations`, `games:pickInstallFolder` ; `games:install(id, { path, remember })`.
+- Progression Steam fluide (retour : « ça reste longtemps à 0 % à part si je mets sur pause sur
+  Steam »). Constat sur machine réelle : Steam n'écrit `BytesDownloaded` dans l'appmanifest qu'à
+  l'arrêt du téléchargement (pause, fin) ; relire le manifeste plus souvent n'y change rien, et
+  la taille des fichiers non plus (Steam les préalloue). Shelf lit donc, chaque seconde, la fin de
+  `logs/content_log.txt` (`install/steam-log.ts`) : tailles dès le départ (« update started :
+  download 0/4580010288 … stage 0/6018004668 », avec ce qui est déjà fait à la reprise), étapes
+  (préallocation, téléchargement, finalisation), pause et fin ; entre deux lignes, les octets
+  écrits par le processus Steam (`platform/process-io.ts` : `GetProcessIoCounters` via un
+  assistant PowerShell lancé une fois et interrogé sur stdin sous Windows, `/proc/<pid>/io` sous
+  Linux, rien sous macOS). Mesuré : 2,75 Go écrits pour 2,44 Go reçus (3,2 Go à écrire) en 46 s.
+  Estimation = écrit depuis le début de la session / à écrire, jamais en arrière, plafonnée à
+  99 % jusqu'à l'état installé, recalée par le log à chaque reprise et par le manifeste après une
+  pause. Nouvelles phases `allocating` (« Allocation de l'espace disque… ») et `finishing`
+  (« Finalisation… »). Sans log ni compteur : manifeste seul, comme avant.
+
 ## Décisions et écarts au plan
 
 - `GameSource.launch()` n'existe pas : le lancement est décidé par `launch/plan.ts` depuis la ligne en base
@@ -283,3 +337,9 @@ Bilan des tests : 238 unitaires, 37 e2e (+ 1 test de fumée de l'app packagée).
   seulement sur la fiche d'un jeu (une page par jeu) : pour les cartes de la liste de
   souhaits, il faudrait interroger l'index Algolia du site (clé publique de la page, plusieurs
   titres par requête), non fait. Comparaison au seul prix Steam (pas GOG ni Epic).
+- Installation en arrière-plan : Steam via manifeste non vérifié sur machine réelle dans les
+  tests automatiques (fixtures) ; installation Legendary non testée contre Epic. Ajout d'une
+  nouvelle bibliothèque Steam par `libraryfolders.vdf` non vérifié contre un vrai client
+  (testé sur fichiers) ; la taille du jeu n'est pas connue avant le téléchargement (pas
+  d'alerte d'espace insuffisant). Progression Steam estimée par les écritures du processus :
+  approximative si Steam écrit autre chose en même temps (autre téléchargement, cache de shaders).

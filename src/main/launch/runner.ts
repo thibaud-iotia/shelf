@@ -53,7 +53,8 @@ export class GameRunner extends EventEmitter<{ change: [number[]] }> {
         const child = this.spawnFn(plan.command, plan.args, {
           detached: true,
           stdio: 'ignore',
-          windowsHide: true
+          windowsHide: true,
+          ...(plan.env ? { env: { ...process.env, ...plan.env } } : {})
         })
         await new Promise<void>((resolve, reject) => {
           child.once('spawn', resolve)

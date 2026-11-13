@@ -45,12 +45,13 @@ src/
     window.ts      fenêtre sans cadre (overlay des contrôles), fermeture vers la barre système
     system.ts      tray, lancement à l'ouverture de session
     events.ts      broadcast(event) vers le renderer (+ abonnés main : tray)
-    platform/      ★ paths.ts (seul endroit des chemins OS, launcherLocations()), registry.ts (reg query)
+    platform/      ★ paths.ts (seul endroit des chemins OS, launcherLocations()), registry.ts (reg query), process-io.ts (octets écrits par un processus)
     db/            schema.ts (Drizzle), client.ts (openDatabase + migrations)
     games/         repository (CRUD, sessions), organize (tags, collections), validation, titles
     launch/        args (parseur d'arguments), plan (URI launcher / processus / Wine-Proton), runner (suivi des processus)
     sources/       détection locale : vdf, steam, epic, gog, itch, folder-scan, uris (launch/install/uninstall)
     import/        candidates (nouveau / màj / doublon / exclu) + ImportService
+    install/       installation sans fenêtre du launcher : steam-manifest (appmanifest en file, libraryfolders), steam (écriture, nouvelle bibliothèque, redémarrage silencieux de Steam), steam-log (progression en direct : content_log + octets écrits par Steam), disk (espace libre), steam-client, legendary (Epic), service (suivi, progression)
     accounts/      synchro des jeux possédés : steam, itch, gog-galaxy (option A), gog-oauth (option B), epic-legendary, service
     metadata/      igdb, steamgriddb, service (clés, recherche, enrichissement)
     insights/      fiche enrichie : steam-store (actus, vidéos, avis, joueurs, communauté, succès), links, service (cache 10 min)

@@ -1,4 +1,5 @@
 import { GameFormDialog } from '@renderer/components/game/GameFormDialog'
+import { InstallDialog } from '@renderer/components/game/InstallDialog'
 import { RemoveGameDialog } from '@renderer/components/game/RemoveGameDialog'
 import { Sidebar } from '@renderer/components/layout/Sidebar'
 import { CommandPalette } from '@renderer/components/library/CommandPalette'
@@ -70,6 +71,7 @@ export function App() {
       </main>
       <GameFormDialog />
       <RemoveGameDialog />
+      <InstallDialog />
       <CommandPalette />
       <ContextMenu />
       <Toasts />

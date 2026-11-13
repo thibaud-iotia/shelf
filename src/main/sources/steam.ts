@@ -62,7 +62,8 @@ export function isSteamTool(manifest: AppManifest): boolean {
   return TOOL_APP_IDS.has(manifest.appId) || TOOL_NAME.test(manifest.name)
 }
 
-async function libraryPaths(root: string): Promise<string[]> {
+/** Steam root first, then the libraries of libraryfolders.vdf (duplicates removed). */
+export async function libraryPaths(root: string): Promise<string[]> {
   const vdf = await readText(
     (await firstExisting([
       join(root, 'steamapps', 'libraryfolders.vdf'),

@@ -2,7 +2,9 @@ import type { GameSourceId } from '../../shared/domain'
 import type { LaunchResult } from '../../shared/models'
 import type { AppContext } from '../context'
 import { getGameRow } from '../games/repository'
-import { launcherLocations, paths } from '../platform/paths'
+import { legendaryOwnerOf } from '../install/legendary'
+import { launcherLocations, paths, type LauncherLocations } from '../platform/paths'
+import { epicLauncherHas } from '../sources/epic'
 import { buildLaunchPlan, launcherOf } from './plan'
 import type { LaunchTracker } from './progress'
 import type { SteamWatcher } from './steam-watch'
@@ -21,9 +23,11 @@ export async function launchGame(ctx: LaunchContext, gameId: number): Promise<La
   ctx.launches.begin(game.id, launcherOf(game))
   let result: LaunchResult
   try {
+    const locations = launcherLocations()
     const plan = buildLaunchPlan(game, {
       platform: process.platform,
-      steamExecutable: game.source === 'steam' ? await launcherLocations().steamExecutable() : null,
+      steamExecutable: game.source === 'steam' ? await locations.steamExecutable() : null,
+      legendary: game.source === 'epic' ? await legendaryLaunchFor(game.sourceId, locations) : null,
       runnerPath: ctx.settings.get('runnerPath'),
       protonPrefix: paths.protonPrefix()
     })
@@ -42,6 +46,19 @@ export async function launchGame(ctx: LaunchContext, gameId: number): Promise<La
   if (result.tracked || ctx.steamWatch.isRunning(game.id)) ctx.launches.finish(game.id)
   else ctx.launches.handoff(game.id)
   return result
+}
+
+/**
+ * Windows: an Epic game the Epic Games Launcher does not have but a Legendary installed
+ * (from Shelf or Heroic) starts through that Legendary. Elsewhere Heroic's URI already does.
+ */
+async function legendaryLaunchFor(
+  appName: string,
+  locations: LauncherLocations
+): Promise<{ file: string; configPath?: string } | null> {
+  if (process.platform !== 'win32') return null
+  if (await epicLauncherHas(locations.epicManifestDirs, appName)) return null
+  return legendaryOwnerOf(appName, locations.legendaryBinaries)
 }
 
 /** Stops waiting for a launch; the launcher goes on on its own. */

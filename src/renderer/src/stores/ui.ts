@@ -78,6 +78,11 @@ interface UiState {
   openRemoveGame: (id: number) => void
   closeRemoveGame: () => void
 
+  /** Game whose "where to install" dialog is open. */
+  installDialogGameId: number | null
+  openInstallDialog: (id: number) => void
+  closeInstallDialog: () => void
+
   paletteOpen: boolean
   setPaletteOpen: (open: boolean) => void
 
@@ -131,6 +136,10 @@ export const useUiStore = create<UiState>()((set) => ({
   removingGameId: null,
   openRemoveGame: (removingGameId) => set({ removingGameId, contextMenu: null }),
   closeRemoveGame: () => set({ removingGameId: null }),
+
+  installDialogGameId: null,
+  openInstallDialog: (installDialogGameId) => set({ installDialogGameId, contextMenu: null }),
+  closeInstallDialog: () => set({ installDialogGameId: null }),
 
   paletteOpen: false,
   setPaletteOpen: (paletteOpen) => set({ paletteOpen, contextMenu: null }),

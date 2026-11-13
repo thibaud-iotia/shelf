@@ -2,6 +2,7 @@ import type { AccountService } from './accounts/service'
 import type { DatabaseHandle } from './db/client'
 import type { UninstallWatcher } from './games/uninstall-watch'
 import type { ImportService } from './import/service'
+import type { InstallService } from './install/service'
 import type { InsightsService } from './insights/service'
 import type { LaunchTracker } from './launch/progress'
 import type { GameRunner } from './launch/runner'
@@ -31,6 +32,8 @@ export interface AppContext {
   onSynced: () => void
   /** Re-reads the launchers' files: install states and pending updates (one run at a time). */
   checkUpdates: () => Promise<void>
+  /** Installs in the background (Steam, Epic via Legendary), followed until done. */
+  installs: InstallService
   /** Games whose uninstall Shelf started, followed until the launcher removed them. */
   uninstallWatch: UninstallWatcher
   /** Wishlist, deals, prices and purchases through the launchers. */
