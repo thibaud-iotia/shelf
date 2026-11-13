@@ -34,6 +34,7 @@ import {
   type SteamInstallerDeps
 } from '../../src/main/install/steam'
 import { steamClientControl } from '../../src/main/install/steam-client'
+import { installUri } from '../../src/main/sources/uris'
 import {
   addLibraryFolder,
   buildLibraryFolderFile,
@@ -723,9 +724,11 @@ describe('InstallService', () => {
     expect(await missing.installs.install(hades)).toEqual({ mode: 'launcher' })
     expect(missing.deps.openExternal).toHaveBeenCalledWith('steam://install/1145360')
 
+    // GOG goes through its launcher: Galaxy on Windows/macOS, Heroic on Linux (CI runs both).
     const gog = service({})
-    await gog.installs.install({ id: 3, title: 'X', source: 'gog', sourceId: '1' })
-    expect(gog.deps.openExternal).toHaveBeenCalledWith('goggalaxy://openGameView/1')
+    const gogGame = { id: 3, title: 'X', source: 'gog' as const, sourceId: '1' }
+    await gog.installs.install(gogGame)
+    expect(gog.deps.openExternal).toHaveBeenCalledWith(installUri(gogGame))
   })
 
   it('cancels a Steam install before Steam reads it, refuses afterwards', async () => {
