@@ -1,4 +1,4 @@
-import { eq, isNull } from 'drizzle-orm'
+import { and, eq, isNotNull, isNull, lt, or } from 'drizzle-orm'
 import { AppError } from '../../shared/errors'
 import type {
   ApiKeyService,
@@ -11,17 +11,28 @@ import { games } from '../db/schema'
 import { getGameRow, type GameRow } from '../games/repository'
 import { normalizeTitle } from '../games/titles'
 import type { MediaCache } from '../media/cache'
+import type { ImageKind } from '../media/shrink-policy'
 import { mediaUrl } from '../media/urls'
 import type { FetchLike } from '../net/http'
 import type { SecretStore } from '../secrets/store'
+import { limiter } from '../store/cache'
 import { IgdbClient, igdbImageUrl, type GameMetadata, type IgdbExtras } from './igdb'
-import { SteamGridDbClient, type SgdbTarget } from './steamgriddb'
+import { SteamGridDbClient, type ArtworkKind, type SgdbTarget } from './steamgriddb'
 
 export const SECRET_REFS = {
   igdbClientId: 'igdb.clientId',
   igdbClientSecret: 'igdb.clientSecret',
   steamGridDbKey: 'steamgriddb.apiKey'
 } as const
+
+/** Games enriched at once: the work is mostly waiting for the network. */
+export const ENRICH_CONCURRENCY = 4
+/** A game without artwork is looked up again after this long (SteamGridDB grows). */
+export const ARTWORK_RETRY_MS = 7 * 24 * 3600_000
+
+/** Artwork of one game: the cover first (library), the rest later (game page only). */
+type ArtworkPart = 'cover' | 'extras'
+const ALL_PARTS: readonly ArtworkPart[] = ['cover', 'extras']
 
 export interface EnrichTarget {
   id: number
@@ -32,13 +43,21 @@ export interface EnrichTarget {
 /** IGDB metadata + SteamGridDB artwork, cached locally. */
 export class MetadataService {
   private igdbClient: IgdbClient | null = null
+  /** SteamGridDB ids found by title search, reused by the second pass of `enrich`. */
+  private readonly sgdbIds = new Map<string, number>()
 
   constructor(
     private readonly db: ShelfDatabase,
     private readonly secrets: SecretStore,
     private readonly cache: MediaCache,
-    private readonly fetch?: FetchLike
+    private readonly fetch?: FetchLike,
+    private readonly now: () => number = Date.now
   ) {}
+
+  /** New keys or an emptied cache: games without artwork deserve a new lookup. */
+  private forgetArtworkChecks(): void {
+    this.db.update(games).set({ artworkCheckedAt: null }).run()
+  }
 
   igdbConfigured(): boolean {
     return (
@@ -56,6 +75,8 @@ export class MetadataService {
       if (typeof value === 'string' && value.trim()) this.secrets.set(ref, value.trim())
     }
     this.igdbClient = null
+    this.sgdbIds.clear()
+    this.forgetArtworkChecks()
   }
 
   clearKeys(service: ApiKeyService): void {
@@ -80,7 +101,7 @@ export class MetadataService {
 
   private sgdb(): SteamGridDbClient | null {
     const key = this.secrets.get(SECRET_REFS.steamGridDbKey)
-    return key ? new SteamGridDbClient(key, this.fetch) : null
+    return key ? new SteamGridDbClient(key, this.fetch, this.sgdbIds) : null
   }
 
   async test(service: ApiKeyService): Promise<ConnectionTest> {
@@ -121,22 +142,41 @@ export class MetadataService {
     )
   }
 
-  private async artworkFor(row: GameRow, meta: GameMetadata | null) {
+  /**
+   * Image URLs of the requested parts: SteamGridDB first, IGDB as fallback. `failed`: the
+   * SteamGridDB lookup failed (network…), so a missing image does not mean "none exists".
+   */
+  private async artworkFor(row: GameRow, meta: GameMetadata | null, parts: readonly ArtworkPart[]) {
     const sgdb = this.sgdb()
     const target: SgdbTarget =
       row.source === 'steam' ? { steamAppId: row.sourceId } : { title: meta?.title ?? row.title }
+    const kinds: ArtworkKind[] = [
+      ...(parts.includes('cover') ? (['grids'] as const) : []),
+      ...(parts.includes('extras') ? (['heroes', 'logos'] as const) : [])
+    ]
+    let failed = false
     const art = sgdb
-      ? await sgdb.artwork(target).catch(() => ({ cover: null, hero: null, logo: null }))
+      ? await sgdb.artwork(target, kinds).catch(() => {
+          failed = true
+          return { cover: null, hero: null, logo: null }
+        })
       : { cover: null, hero: null, logo: null }
-    const coverUrl =
-      art.cover ?? (meta?.coverImageId ? igdbImageUrl(meta.coverImageId, 'cover_big') : null)
-    const heroUrl = art.hero ?? (meta?.heroImageId ? igdbImageUrl(meta.heroImageId, '1080p') : null)
-    return { coverUrl, heroUrl, logoUrl: art.logo }
+    const igdbCover = meta?.coverImageId ? igdbImageUrl(meta.coverImageId, 'cover_big') : null
+    const igdbHero = meta?.heroImageId ? igdbImageUrl(meta.heroImageId, '1080p') : null
+    return {
+      coverUrl: parts.includes('cover') ? (art.cover ?? igdbCover) : null,
+      heroUrl: parts.includes('extras') ? (art.hero ?? igdbHero) : null,
+      logoUrl: art.logo,
+      shotUrls: parts.includes('extras')
+        ? (meta?.screenshotIds ?? []).map((id) => igdbImageUrl(id, 'screenshot_big'))
+        : [],
+      failed
+    }
   }
 
-  private async download(url: string | null, prefix: string): Promise<string | null> {
+  private async download(url: string | null, prefix: string, kind: ImageKind) {
     if (!url) return null
-    return this.cache.download(url, prefix).catch(() => null)
+    return this.cache.download(url, prefix, kind).catch(() => null)
   }
 
   /** Applies an IGDB entry (or none) and refreshes the artwork of one game. */
@@ -155,24 +195,28 @@ export class MetadataService {
     await this.store(row, meta)
   }
 
-  private async store(row: GameRow, meta: GameMetadata | null): Promise<void> {
+  private async store(
+    row: GameRow,
+    meta: GameMetadata | null,
+    parts: readonly ArtworkPart[] = ALL_PARTS
+  ): Promise<{ cover: boolean }> {
     if (!meta && !this.steamGridDbConfigured()) {
       throw new AppError(
         'VALIDATION',
         'Configurez IGDB ou SteamGridDB dans Réglages › Métadonnées.'
       )
     }
-    const art = await this.artworkFor(row, meta)
+    const art = await this.artworkFor(row, meta, parts)
     const prefix = String(row.id)
     const [cover, hero, logo, ...shots] = await Promise.all([
-      this.download(art.coverUrl, `${prefix}-cover`),
-      this.download(art.heroUrl, `${prefix}-hero`),
-      this.download(art.logoUrl, `${prefix}-logo`),
-      ...(meta?.screenshotIds ?? []).map((id) =>
-        this.download(igdbImageUrl(id, 'screenshot_big'), `${prefix}-shot`)
-      )
+      this.download(art.coverUrl, `${prefix}-cover`, 'cover'),
+      this.download(art.heroUrl, `${prefix}-hero`, 'hero'),
+      this.download(art.logoUrl, `${prefix}-logo`, 'logo'),
+      ...art.shotUrls.map((url) => this.download(url, `${prefix}-shot`, 'shot'))
     ])
     const screenshots = shots.filter((s): s is string => !!s)
+    // The lookup ended: an image was found, or there is none (not a network failure).
+    const checked = parts.includes('cover') && (!!cover || (!art.coverUrl && !art.failed))
 
     // Replaced files are removed; what could not be downloaded keeps the previous file.
     const next = {
@@ -192,6 +236,7 @@ export class MetadataService {
       .update(games)
       .set({
         ...next,
+        ...(checked ? { artworkCheckedAt: new Date(this.now()) } : {}),
         ...(meta
           ? {
               igdbId: meta.igdbId,
@@ -204,6 +249,7 @@ export class MetadataService {
       })
       .where(eq(games.id, row.id))
       .run()
+    return { cover: !!cover }
   }
 
   /** IGDB videos and websites for the game page; null when IGDB is not configured. */
@@ -220,42 +266,151 @@ export class MetadataService {
   }
 
   /**
-   * Background enrichment after an import or a sync. Without a chosen match, the first
-   * IGDB result is used only when its title matches exactly; errors never propagate.
+   * IGDB entry for automatic enrichment: the chosen one, the known one, or the first search
+   * result when its title matches exactly (the search returns full entries: no second query).
+   */
+  private async metadataFor(row: GameRow, chosen: number | undefined) {
+    if (!this.igdbConfigured()) return null
+    const igdbId = chosen ?? row.igdbId
+    if (igdbId != null) return this.igdb().byId(igdbId)
+    const [best] = await this.igdb().search(row.title, 3)
+    return best && normalizeTitle(best.title) === normalizeTitle(row.title) ? best : null
+  }
+
+  private markChecked(gameId: number): void {
+    this.db
+      .update(games)
+      .set({ artworkCheckedAt: new Date(this.now()) })
+      .where(eq(games.id, gameId))
+      .run()
+  }
+
+  /**
+   * Background enrichment after an import or a sync, `ENRICH_CONCURRENCY` games at a time.
+   * Two passes: metadata and covers of every game first (the library fills up quickly), then
+   * heroes, logos and screenshots, only shown on the game page. Errors never propagate.
    */
   async enrich(targets: EnrichTarget[], onProgress?: () => void): Promise<number> {
     if (!this.igdbConfigured() && !this.steamGridDbConfigured()) return 0
+    const run = limiter(ENRICH_CONCURRENCY)
     let done = 0
-    for (const target of targets) {
-      if (target.igdbId === null) continue
-      try {
-        const row = getGameRow(this.db, target.id)
-        if (target.igdbId === undefined && row.coverPath) continue
-        let igdbId = target.igdbId ?? row.igdbId
-        if (igdbId == null && this.igdbConfigured()) {
-          const [best] = await this.igdb().search(row.title, 3)
-          if (best && normalizeTitle(best.title) === normalizeTitle(row.title)) igdbId = best.igdbId
-        }
-        await this.apply(row.id, igdbId ?? null)
-        done++
-        onProgress?.()
-      } catch (error) {
-        console.warn(`[metadata] enrich ${target.id} failed`, error)
-      }
-    }
+    // Games with a cover get the rest of their artwork in the second pass.
+    const found: { id: number; meta: GameMetadata | null }[] = []
+    await Promise.all(
+      targets.map((target) =>
+        run(async () => {
+          if (target.igdbId === null) return
+          try {
+            const row = getGameRow(this.db, target.id)
+            if (target.igdbId === undefined && row.coverPath) return
+            const meta = await this.metadataFor(row, target.igdbId)
+            // IGDB only, no match: nothing to fetch until the keys change.
+            if (!meta && !this.steamGridDbConfigured()) return this.markChecked(row.id)
+            const { cover } = await this.store(row, meta, ['cover'])
+            done++
+            if (cover) found.push({ id: row.id, meta })
+            onProgress?.()
+          } catch (error) {
+            console.warn(`[metadata] enrich ${target.id} failed`, error)
+          }
+        })
+      )
+    )
+    await Promise.all(
+      found.map(({ id, meta }) =>
+        run(async () => {
+          try {
+            await this.store(getGameRow(this.db, id), meta, ['extras'])
+            onProgress?.()
+          } catch (error) {
+            console.warn(`[metadata] artwork ${id} failed`, error)
+          }
+        })
+      )
+    )
     return done
   }
 
-  /** Games still without a cover (e.g. just synced from an account), at most `limit`. */
-  async enrichMissing(limit = 100, onProgress?: () => void): Promise<number> {
+  /**
+   * Games still without a cover (e.g. just synced from an account). Those whose last lookup
+   * found nothing wait `ARTWORK_RETRY_MS` before the next one.
+   */
+  async enrichMissing(onProgress?: () => void): Promise<number> {
     if (!this.igdbConfigured() && !this.steamGridDbConfigured()) return 0
+    const retryBefore = new Date(this.now() - ARTWORK_RETRY_MS)
     const missing = this.db
       .select({ id: games.id })
       .from(games)
-      .where(isNull(games.coverPath))
-      .limit(limit)
+      .where(
+        and(
+          isNull(games.coverPath),
+          or(isNull(games.artworkCheckedAt), lt(games.artworkCheckedAt, retryBefore))
+        )
+      )
       .all()
     return this.enrich(missing, onProgress)
+  }
+
+  /**
+   * Shrinks artwork downloaded before it was stored at display size, one file at a time.
+   * Returns the number of files replaced.
+   */
+  async compactCache(onProgress?: () => void): Promise<number> {
+    const rows = this.db
+      .select({
+        id: games.id,
+        coverPath: games.coverPath,
+        heroPath: games.heroPath,
+        logoPath: games.logoPath,
+        screenshots: games.screenshots
+      })
+      .from(games)
+      .where(
+        or(
+          isNotNull(games.coverPath),
+          isNotNull(games.heroPath),
+          isNotNull(games.logoPath),
+          isNotNull(games.screenshots)
+        )
+      )
+      .all()
+    const fields = [
+      ['coverPath', 'cover'],
+      ['heroPath', 'hero'],
+      ['logoPath', 'logo']
+    ] as const
+    let replaced = 0
+    for (const row of rows) {
+      const changes: { coverPath?: string; heroPath?: string; logoPath?: string } = {}
+      let count = 0
+      for (const [field, kind] of fields) {
+        const name = row[field]
+        const next = name ? await this.cache.compact(name, kind, `${row.id}-${kind}`) : null
+        if (next) {
+          changes[field] = next
+          count++
+        }
+      }
+      const shots: string[] = []
+      let shotsChanged = false
+      for (const name of row.screenshots ?? []) {
+        const next = await this.cache.compact(name, 'shot', `${row.id}-shot`)
+        if (next) {
+          shotsChanged = true
+          count++
+        }
+        shots.push(next ?? name)
+      }
+      if (!count) continue
+      this.db
+        .update(games)
+        .set({ ...changes, ...(shotsChanged ? { screenshots: shots } : {}) })
+        .where(eq(games.id, row.id))
+        .run()
+      replaced += count
+      onProgress?.()
+    }
+    return replaced
   }
 
   cacheInfo() {
@@ -267,7 +422,13 @@ export class MetadataService {
     this.cache.clear()
     this.db
       .update(games)
-      .set({ coverPath: null, heroPath: null, logoPath: null, screenshots: null })
+      .set({
+        coverPath: null,
+        heroPath: null,
+        logoPath: null,
+        screenshots: null,
+        artworkCheckedAt: null
+      })
       .run()
   }
 }

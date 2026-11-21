@@ -1,0 +1,1 @@
+ALTER TABLE `games` ADD `artwork_checked_at` integer;

@@ -30,6 +30,8 @@ export interface AppContext {
   insights: InsightsService
   /** Queues artwork/metadata for games added by an account sync. */
   onSynced: () => void
+  /** Queues the shrinking of artwork downloaded at full size by older versions. */
+  compactMedia: () => void
   /** Re-reads the launchers' files: install states and pending updates (one run at a time). */
   checkUpdates: () => Promise<void>
   /** Installs in the background (Steam, Epic via Legendary), followed until done. */

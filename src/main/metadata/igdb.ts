@@ -83,22 +83,47 @@ export function apicalypseString(value: string): string {
   return `"${value.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
 }
 
+/** IGDB allows 4 requests per second: request starts are spaced by this much. */
+export const IGDB_SPACING_MS = 260
+
 export class IgdbClient {
   private token: { value: string; expiresAt: number } | null = null
+  /** Token request in flight: parallel queries share it. */
+  private tokenRequest: Promise<string> | null = null
+  private nextStart = 0
 
   constructor(
     private readonly clientId: string,
     private readonly clientSecret: string,
     private readonly fetch?: FetchLike,
-    private readonly now: () => number = Date.now
+    private readonly now: () => number = Date.now,
+    private readonly wait: (ms: number) => Promise<void> = (ms) =>
+      new Promise((resolve) => setTimeout(resolve, ms))
   ) {}
+
+  /** Waits for this request's turn so parallel enrichment stays under IGDB's rate limit. */
+  private async turn(): Promise<void> {
+    const now = this.now()
+    const start = Math.max(now, this.nextStart)
+    this.nextStart = start + IGDB_SPACING_MS
+    if (start > now) await this.wait(start - now)
+  }
 
   private options(service = 'IGDB'): HttpOptions {
     return { service, fetch: this.fetch }
   }
 
-  private async accessToken(): Promise<string> {
-    if (this.token && this.token.expiresAt > this.now() + 60_000) return this.token.value
+  private accessToken(): Promise<string> {
+    if (this.token && this.token.expiresAt > this.now() + 60_000) {
+      return Promise.resolve(this.token.value)
+    }
+    this.tokenRequest ??= this.requestToken().finally(() => {
+      this.tokenRequest = null
+    })
+    return this.tokenRequest
+  }
+
+  private async requestToken(): Promise<string> {
     const query = new URLSearchParams({
       client_id: this.clientId,
       client_secret: this.clientSecret,
@@ -124,6 +149,7 @@ export class IgdbClient {
 
   private async query(body: string): Promise<IgdbGame[]> {
     const token = await this.accessToken()
+    await this.turn()
     return requestJson<IgdbGame[]>(
       'https://api.igdb.com/v4/games',
       {

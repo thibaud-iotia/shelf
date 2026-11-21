@@ -25,6 +25,9 @@ export const games = sqliteTable(
     logoPath: text('logo_path'),
     // JSON array of file names in the covers cache.
     screenshots: text('screenshots', { mode: 'json' }).$type<string[]>(),
+    // Last artwork lookup that ended (found or not): games without art are not looked up
+    // again at every startup. Reset when the API keys or the cache change.
+    artworkCheckedAt: integer('artwork_checked_at', { mode: 'timestamp_ms' }),
     description: text('description'),
     releaseDate: text('release_date'),
     developer: text('developer'),

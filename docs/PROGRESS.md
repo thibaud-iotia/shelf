@@ -71,6 +71,23 @@ Bilan des tests : 238 unitaires, 37 e2e (+ 1 test de fumée de l'app packagée).
 - Clés chiffrées par `safeStorage` dans `secrets.json`, jamais renvoyées au renderer (champs masqués).
 - Choix de correspondance IGDB dans l'import, dialogue « Rechercher les métadonnées », « Actualiser les visuels »,
   jaquette personnalisée ; enrichissement en arrière-plan après import et synchro (titre exact seulement si aucun choix).
+- Visuels lents après l'arrivée de 160 jeux Epic (retour : « les images ont mis du temps à afficher »).
+  Causes mesurées : images SteamGridDB enregistrées en taille originale (573 Mo, logos jusqu'à 15 Mo),
+  un jeu à la fois, héros et logos avant la jaquette du jeu suivant, lots de 100, jeux sans visuel
+  recherchés à chaque démarrage. Corrections :
+  - `MediaCache` enregistre chaque visuel à sa taille d'affichage (`media/shrink-policy.ts` : jaquette
+    600×900, héros 1920×1080, logo 800×400 en PNG, capture 1280×720 ; JPEG 85 sauf transparence ; on
+    garde l'original si rien n'est gagné) via `nativeImage` (`media/shrink.ts`, une image à la fois).
+  - Enrichissement en 2 passes, `ENRICH_CONCURRENCY` = 4 jeux à la fois (I/O réseau : pas de processus
+    séparés) : métadonnées + jaquettes de tous les jeux, puis héros, logos, captures. Id SteamGridDB
+    mémorisé entre les passes (ids trouvés seulement) ; la recherche IGDB sert d'entrée complète
+    (plus de `byId` après) ; IGDB : un seul jeton partagé, départs espacés de 260 ms (4 req/s).
+  - `games.artwork_checked_at` (migration 0007) : un jeu sans visuel n'est recherché qu'une fois par
+    semaine (remis à zéro par de nouvelles clés ou « Vider le cache ») ; une erreur réseau ne compte pas.
+    Plus de limite de 100.
+  - `compactCache()` au démarrage, après l'enrichissement : réduit les fichiers téléchargés en taille
+    originale par les versions précédentes. Mesuré sur la machine réelle : 635 Mo → 106 Mo, ~18 s.
+  - Rafraîchissement de la bibliothèque regroupé (au plus un toutes les 500 ms).
 
 ## Phase 4 — UI
 

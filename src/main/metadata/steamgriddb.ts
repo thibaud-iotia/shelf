@@ -22,10 +22,17 @@ export interface Artwork {
 /** Target game: a Steam app id when known (exact), otherwise a title search. */
 export type SgdbTarget = { steamAppId: string } | { title: string }
 
+const ALL_KINDS: readonly ArtworkKind[] = ['grids', 'heroes', 'logos']
+
 export class SteamGridDbClient {
   constructor(
     private readonly apiKey: string,
-    private readonly fetch?: FetchLike
+    private readonly fetch?: FetchLike,
+    /**
+     * SteamGridDB id per searched title, shared across clients (one search per game). Only
+     * found ids: a title without a match is searched again at its next lookup.
+     */
+    private readonly ids: Map<string, number> = new Map()
   ) {}
 
   private options(): HttpOptions {
@@ -51,10 +58,14 @@ export class SteamGridDbClient {
   }
 
   async searchId(title: string): Promise<number | null> {
+    const known = this.ids.get(title)
+    if (known !== undefined) return known
     const results = await this.get<{ id: number; name: string }[]>(
       `/search/autocomplete/${encodeURIComponent(title)}`
     )
-    return results?.[0]?.id ?? null
+    const id = results?.[0]?.id ?? null
+    if (id !== null) this.ids.set(title, id)
+    return id
   }
 
   private async first(kind: ArtworkKind, base: string, query = ''): Promise<string | null> {
@@ -62,7 +73,8 @@ export class SteamGridDbClient {
     return images?.[0]?.url ?? null
   }
 
-  async artwork(target: SgdbTarget): Promise<Artwork> {
+  /** The first image of each requested kind (the others stay null). */
+  async artwork(target: SgdbTarget, kinds: readonly ArtworkKind[] = ALL_KINDS): Promise<Artwork> {
     let base: string
     if ('steamAppId' in target) {
       base = `steam/${encodeURIComponent(target.steamAppId)}`
@@ -71,10 +83,12 @@ export class SteamGridDbClient {
       if (id === null) return { cover: null, hero: null, logo: null }
       base = `game/${id}`
     }
+    const want = (kind: ArtworkKind, query = '') =>
+      kinds.includes(kind) ? this.first(kind, base, query) : Promise.resolve(null)
     const [cover, hero, logo] = await Promise.all([
-      this.first('grids', base, '?dimensions=600x900'),
-      this.first('heroes', base),
-      this.first('logos', base)
+      want('grids', '?dimensions=600x900'),
+      want('heroes'),
+      want('logos')
     ])
     return { cover, hero, logo }
   }

@@ -30,6 +30,7 @@ import { MediaCache } from './media/cache'
 import { allowYouTubeEmbeds } from './media/embeds'
 import { handleMediaProtocol, registerMediaScheme } from './media/protocol'
 import { RemoteImageCache } from './media/remote'
+import { shrinkWithNativeImage } from './media/shrink'
 import { InsightsService } from './insights/service'
 import { MetadataService, type EnrichTarget } from './metadata/service'
 import { applyUserDataOverride, launcherLocations, paths } from './platform/paths'
@@ -52,6 +53,8 @@ registerMediaScheme()
 const STEAM_SYNC_DELAY_MS = 60_000
 /** Launchers' files are re-read this often: install states and pending updates. */
 const UPDATE_CHECK_INTERVAL_MS = 15 * 60_000
+/** Background artwork: at most one library refresh this often. */
+const PROGRESS_MS = 500
 
 let ctx: AppContext | undefined
 let tray: ShelfTray | undefined
@@ -120,7 +123,11 @@ function createContext(): AppContext {
     encrypt: (plain) => safeStorage.encryptString(plain),
     decrypt: (data) => safeStorage.decryptString(data)
   })
-  const metadata = new MetadataService(db, secrets, new MediaCache(paths.covers()))
+  const metadata = new MetadataService(
+    db,
+    secrets,
+    new MediaCache(paths.covers(), undefined, shrinkWithNativeImage)
+  )
 
   // Metadata enrichment runs in the background, one batch at a time.
   let queue = Promise.resolve()
@@ -132,7 +139,14 @@ function createContext(): AppContext {
       })
       .catch((error: unknown) => console.warn('[metadata] background job failed', error))
   }
-  const progress = () => broadcast('library:changed', { reason: 'metadata' })
+  // Covers arrive several per second: one library refresh every PROGRESS_MS at most.
+  let progressTimer: NodeJS.Timeout | null = null
+  const progress = () => {
+    progressTimer ??= setTimeout(() => {
+      progressTimer = null
+      broadcast('library:changed', { reason: 'metadata' })
+    }, PROGRESS_MS)
+  }
   const enrich = (targets: EnrichTarget[]) => enqueue(() => metadata.enrich(targets, progress))
 
   const importer = new ImportService(db, settings, createSources(launcherLocations), enrich)
@@ -140,7 +154,8 @@ function createContext(): AppContext {
     // GOG option B stays behind its flag.
     isEnabled: (kind) => kind !== 'gog-oauth' || settings.get('gogOAuthEnabled')
   })
-  const onSynced = () => enqueue(() => metadata.enrichMissing(100, progress))
+  const onSynced = () => enqueue(() => metadata.enrichMissing(progress))
+  const compactMedia = () => enqueue(() => metadata.compactCache(progress))
 
   // End of a Steam session: Steam updates its playtime, fetch it (the Web API lags a little).
   steamWatch.on('ended', () => {
@@ -254,6 +269,7 @@ function createContext(): AppContext {
     metadata,
     insights,
     onSynced,
+    compactMedia,
     checkUpdates,
     installs,
     uninstallWatch,
@@ -309,6 +325,8 @@ if (!app.requestSingleInstanceLock()) {
           ctx?.onSynced()
         })
         .catch((error: unknown) => console.warn('[startup] sync failed', error))
+        // After the new covers: artwork downloaded at full size by older versions.
+        .finally(() => ctx?.compactMedia())
 
       // Store: deals, wishlist and first images fetched in the background once the library is
       // shown, so the first visit to "Boutique" does not wait for the network.

@@ -3,6 +3,7 @@ import {
   existsSync,
   mkdirSync,
   readdirSync,
+  readFileSync,
   rmSync,
   statSync,
   writeFileSync
@@ -11,6 +12,7 @@ import { extname, join } from 'node:path'
 import { AppError } from '../../shared/errors'
 import type { CacheInfo } from '../../shared/models'
 import { requestBinary, type FetchLike } from '../net/http'
+import { IMAGE_RULES, type ImageKind, type ImageShrinker } from './shrink-policy'
 
 const EXTENSIONS: Record<string, string> = {
   'image/jpeg': '.jpg',
@@ -54,8 +56,21 @@ export function resolveMediaPath(dir: string, url: string): string | null {
 export class MediaCache {
   constructor(
     private readonly dir: string,
-    private readonly fetch?: FetchLike
+    private readonly fetch?: FetchLike,
+    /** Stores artwork at its display size (Electron's codec in the app, none in unit tests). */
+    private readonly shrink?: ImageShrinker
   ) {}
+
+  /** The image for its use, or the downloaded bytes when they cannot be made smaller. */
+  private async fitted(
+    data: Uint8Array,
+    extension: string,
+    kind: ImageKind | undefined
+  ): Promise<{ data: Uint8Array; extension: string }> {
+    if (!kind || !this.shrink) return { data, extension }
+    const shrunk = await this.shrink(data, kind).catch(() => null)
+    return shrunk ?? { data, extension }
+  }
 
   private ensureDir(): void {
     mkdirSync(this.dir, { recursive: true })
@@ -66,17 +81,35 @@ export class MediaCache {
     return `${prefix}-${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}${extension}`
   }
 
-  async download(url: string, prefix: string): Promise<string> {
+  /** Downloads an image; with a `kind`, it is stored at its display size. */
+  async download(url: string, prefix: string, kind?: ImageKind): Promise<string> {
     const { data, contentType } = await requestBinary(url, { service: 'images', fetch: this.fetch })
     const type = contentType?.split(';')[0]?.trim().toLowerCase() ?? ''
     const extension = EXTENSIONS[type] ?? (extname(new URL(url).pathname).toLowerCase() || '.jpg')
     if (!Object.values(EXTENSIONS).includes(extension)) {
       throw new AppError('NETWORK', `Format d’image non pris en charge : ${type || extension}`)
     }
+    const image = await this.fitted(data, extension, kind)
     this.ensureDir()
-    const name = MediaCache.fileName(prefix, extension)
-    writeFileSync(join(this.dir, name), data)
+    const name = MediaCache.fileName(prefix, image.extension)
+    writeFileSync(join(this.dir, name), image.data)
     return name
+  }
+
+  /**
+   * Shrinks a file downloaded before artwork was resized. Returns the new file name (the old
+   * file is removed), or null when the file is missing, already small or cannot be shrunk.
+   */
+  async compact(name: string, kind: ImageKind, prefix: string): Promise<string | null> {
+    if (!this.shrink || !isSafeMediaName(name)) return null
+    const path = join(this.dir, name)
+    if (!existsSync(path) || statSync(path).size <= IMAGE_RULES[kind].compactAbove) return null
+    const shrunk = await this.shrink(readFileSync(path), kind).catch(() => null)
+    if (!shrunk) return null
+    const next = MediaCache.fileName(prefix, shrunk.extension)
+    writeFileSync(join(this.dir, next), shrunk.data)
+    rmSync(path, { force: true })
+    return next
   }
 
   /** Same file, kept across calls (match thumbnails). */
