@@ -1,6 +1,6 @@
 import { readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
-import { expect, NODE_PATH, stubFetch, test } from './fixtures'
+import { expect, NODE_PATH, stubFetch, stubKeyring, test } from './fixtures'
 
 test('SteamGridDB artwork is stored at its display size, not as downloaded', async ({
   app,
@@ -37,13 +37,16 @@ test('SteamGridDB artwork is stored at its display size, not as downloaded', asy
     { match: 'cdn2.steamgriddb.com/logo/', image: originals.logo }
   ])
 
+  await stubKeyring(app)
+
   const gameId = await page.evaluate(async (exe) => {
     const created = await window.shelf.invoke('games:create', {
       title: 'Noise',
       executablePath: exe
     })
     if (!created.ok) throw new Error(created.error.message)
-    await window.shelf.invoke('keys:set', { steamGridDbKey: 'k' })
+    const keys = await window.shelf.invoke('keys:set', { steamGridDbKey: 'k' })
+    if (!keys.ok) throw new Error(keys.error.message)
     const applied = await window.shelf.invoke('metadata:refreshArtwork', created.data.id)
     if (!applied.ok) throw new Error(applied.error.message)
     return created.data.id

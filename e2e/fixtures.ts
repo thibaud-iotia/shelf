@@ -182,6 +182,21 @@ export async function stubSaveDialog(app: ElectronApplication, path: string): Pr
   }, path)
 }
 
+/**
+ * Without a system keyring (headless Linux CI) Shelf refuses to store API keys. Tests that
+ * need a key for something else (artwork, metadata) get a reversible stand-in for
+ * safeStorage there; where a real keyring exists it is left untouched.
+ */
+export async function stubKeyring(app: ElectronApplication): Promise<void> {
+  await app.evaluate(({ safeStorage }) => {
+    if (safeStorage.isEncryptionAvailable()) return
+    const tag = 'e2e:'
+    safeStorage.isEncryptionAvailable = () => true
+    safeStorage.encryptString = (plain: string) => Buffer.from(tag + plain, 'utf8')
+    safeStorage.decryptString = (data: Buffer) => data.toString('utf8').slice(tag.length)
+  })
+}
+
 /** Stand-in game: `node fake-game.cjs <ms>` (see tests/fixtures). */
 export const FAKE_GAME_SCRIPT = resolve('tests/fixtures/fake-game.cjs')
 export const NODE_PATH = process.execPath

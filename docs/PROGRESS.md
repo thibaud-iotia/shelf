@@ -355,6 +355,10 @@ Bilan des tests : 238 unitaires, 37 e2e (+ 1 test de fumée de l'app packagée).
   version tentée notée dans `userData/update-attempt.json` avant le redémarrage ; au démarrage
   suivant, encore l'ancienne version → bannière « ne s'est pas installée (antivirus ?) » avec
   téléchargement de l'installeur ; sinon toast « Shelf a été mis à jour ». v1.4.0.
+- e2e sans trousseau (Linux headless en CI) : `keys:set` y est refusé, donc un test qui a besoin
+  d'une clé pour autre chose (ex. `artwork.spec.ts`) appelle `stubKeyring(app)` (fixtures), qui
+  remplace `safeStorage` par un chiffrement réversible factice seulement si aucun trousseau n'existe.
+  Le refus lui-même reste couvert par `metadata.spec.ts`.
 
 ## Points ouverts
 
