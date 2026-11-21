@@ -1,8 +1,13 @@
-import { readFileSync } from 'node:fs'
+import { readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import Database from 'better-sqlite3'
 import { eq } from 'drizzle-orm'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import {
+  decodeCatalogCache,
+  epicLauncherProvider,
+  parseEpicCatalog
+} from '../../src/main/accounts/epic-launcher'
 import {
   epicLegendaryProvider,
   parseLegendaryList,
@@ -334,6 +339,128 @@ describe('Epic via Legendary', () => {
     expect(await provider.connect({})).toMatchObject({ displayName: 'epicfan' })
     expect((await provider.fetchOwned({ externalUserId: 'epicfan' }, null)).games).toHaveLength(2)
     expect(calls.at(-1)).toEqual(heroic)
+  })
+})
+
+describe('Epic via the Epic Games Launcher cache', () => {
+  const raw = () => readFileSync(join(__dirname, '../fixtures/api/epic-catcache.json'), 'utf8')
+  const writeCache = (content: string) => {
+    const file = join(tempDir(), 'catcache.bin')
+    writeFileSync(file, content)
+    return file
+  }
+
+  it('decodes catcache.bin (base64 JSON, or plain JSON)', () => {
+    const items = JSON.parse(raw())
+    expect(decodeCatalogCache(Buffer.from(raw()).toString('base64'))).toEqual(items)
+    expect(decodeCatalogCache(`\n${raw()}\n`)).toEqual(items)
+    expect(() => decodeCatalogCache('%%% not base64 %%%')).toThrow(/illisible/)
+    expect(() => decodeCatalogCache(Buffer.from('{"a":1}').toString('base64'))).toThrow(/inattendu/)
+  })
+
+  it('keeps owned games, attaches add-ons, leaves engines, assets and hidden content out', () => {
+    expect(parseEpicCatalog(JSON.parse(raw()))).toEqual([
+      { source: 'epic', sourceId: 'Salt', title: 'Celeste' },
+      { source: 'epic', sourceId: 'Fortnite', title: 'Fortnite' },
+      {
+        source: 'epic',
+        sourceId: 'afdb5a85efcc45d8ae8e406e2121d81c',
+        title: 'Fortnite Battle Royale',
+        dlcOf: 'Fortnite'
+      },
+      { source: 'epic', sourceId: '04a54ed532ce4fbfbf8fd5833f60def0', title: 'Dying Light' },
+      {
+        source: 'epic',
+        sourceId: 'f653266870894ee1acbb5250e3b04bd1',
+        title: 'Dying Light The Following',
+        dlcOf: '04a54ed532ce4fbfbf8fd5833f60def0'
+      },
+      // Add-on of a game the account does not own.
+      {
+        source: 'epic',
+        sourceId: 'perilongorgon',
+        title: 'The Outer Worlds Peril on Gorgon',
+        unlisted: true
+      },
+      { source: 'epic', sourceId: 'InfinifactoryWin', title: 'Infinifactory' }
+    ])
+  })
+
+  it('uses the app name of the current platform', () => {
+    const ids = parseEpicCatalog(JSON.parse(raw()), 'Mac').map((g) => g.sourceId)
+    expect(ids).toContain('InfinifactoryMac')
+    expect(ids).not.toContain('InfinifactoryWin')
+  })
+
+  it('reads the cache without credentials, clear message when the launcher is missing', async () => {
+    const file = writeCache(Buffer.from(raw()).toString('base64'))
+    const provider = epicLauncherProvider(() => [join(tempDir(), 'absent.bin'), file], 'Windows')
+    expect(provider.local).toBe(true)
+    expect(await provider.connect({})).toEqual({
+      displayName: 'Epic Games Launcher (local)',
+      externalUserId: 'epic-launcher-local',
+      secret: null
+    })
+    expect((await provider.fetchOwned({ externalUserId: 'x' }, null)).games).toHaveLength(7)
+
+    await expect(epicLauncherProvider(() => []).connect({})).rejects.toThrow(
+      /Bibliothèque Epic introuvable/
+    )
+    const broken = epicLauncherProvider(() => [writeCache('garbage!')])
+    await expect(broken.connect({})).rejects.toThrow(/illisible/)
+  })
+
+  it('merges with the installed copy and lists the rest as not installed', async () => {
+    const handle = openDatabase(':memory:', MIGRATIONS)
+    try {
+      // Fortnite detected through the launcher's `.item` manifest.
+      handle.db
+        .insert(games)
+        .values({
+          title: 'Fortnite',
+          source: 'epic',
+          sourceId: 'Fortnite',
+          ownership: 'owned',
+          installState: 'installed',
+          executablePath: 'C:\\Fortnite\\FortniteLauncher.exe'
+        })
+        .run()
+      const secrets = new SecretStore(join(tempDir(), 'secrets.json'), fakeCipher)
+      const file = writeCache(Buffer.from(raw()).toString('base64'))
+      const service = new AccountService(handle.db, secrets, [
+        epicLauncherProvider(() => [file], 'Windows')
+      ])
+      const { account, sync } = await service.connect({ kind: 'epic-launcher' })
+      expect(sync).toMatchObject({ added: 3, updated: 1, total: 4, error: null })
+      expect(account).toMatchObject({ kind: 'epic-launcher', source: 'epic', gameCount: 4 })
+      expect(secrets.has('account:epic-launcher:epic-launcher-local')).toBe(false)
+
+      const rows = handle.db
+        .select()
+        .from(games)
+        .all()
+        .map((r) => [r.title, r.installState] as const)
+        .sort((a, b) => a[0].localeCompare(b[0]))
+      expect(rows).toEqual([
+        ['Celeste', 'not_installed'],
+        ['Dying Light', 'not_installed'],
+        ['Fortnite', 'installed'],
+        ['Infinifactory', 'not_installed']
+      ])
+      const dlcs = handle.db.select().from(gameDlcs).all()
+      expect(dlcs.map((d) => d.title).sort()).toEqual([
+        'Dying Light The Following',
+        'Fortnite Battle Royale'
+      ])
+
+      // Local read: synced again at every startup, no duplicate rows.
+      expect(await service.syncDue()).toMatchObject([
+        { accountId: 'epic-launcher:epic-launcher-local', added: 0, updated: 4, error: null }
+      ])
+      expect(handle.db.select().from(games).all()).toHaveLength(4)
+    } finally {
+      handle.close()
+    }
   })
 })
 

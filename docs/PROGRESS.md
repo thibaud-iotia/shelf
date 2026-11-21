@@ -51,6 +51,13 @@ Bilan des tests : 238 unitaires, 37 e2e (+ 1 test de fumée de l'app packagée).
 - Steam Web API (SteamID64, URL de profil ou nom personnalisé ; profil privé expliqué ; `playtime_forever` affiché à part).
 - GOG option A (base locale Galaxy 2.0) ; option B derrière le réglage « Activer la connexion au compte GOG »
   (fenêtre de connexion dédiée, refresh token tourné et chiffré).
+- Epic sans logiciel tiers (compte `epic-launcher`, local, resynchro à chaque démarrage) : l'Epic Games
+  Launcher garde le catalogue de tout ce que le compte possède dans `Data/Catalog/catcache.bin` (base64
+  d'un tableau JSON, rafraîchi quand le launcher affiche sa bibliothèque). Gardés : catégorie `games` avec
+  un `releaseInfo[].appId` (= `AppName` des `.item`, donc même ligne que le jeu détecté) ; add-ons
+  (`mainGameItem.id` ≠ '') rattachés au jeu de base, ou écartés s'il n'est pas possédé ; moteurs, assets
+  Fab et contenus `hidden` ignorés. Retour : « je ne vois que Fortnite […] j'ai déjà Epic, pas envie
+  d'installer Legendary » → sur la machine réelle, 160 jeux et 17 add-ons au lieu de Fortnite seul.
 - Epic via Legendary (`status --json`, `list --json`), sans réimplémenter l'auth Epic ; itch.io (clés possédées, paginé).
   La copie de Legendary fournie par Heroic est lancée avec `LEGENDARY_CONFIG_PATH` = `<config Heroic>/legendaryConfig/legendary`
   (sinon elle lit `~/.config/legendary` et ne voit aucun compte) ; le premier binaire connecté à un compte est retenu.
@@ -320,8 +327,10 @@ Bilan des tests : 238 unitaires, 37 e2e (+ 1 test de fumée de l'app packagée).
 - macOS et Linux non testés sur machine réelle (code et CI prêts) ; dmg non signé.
 - Steam ne permet pas de mesurer la durée des sessions lancées via `steam://` : le temps vient du compte, à jour après synchro.
 - Temps Epic non récupéré (Legendary ne l'expose pas).
-- Jeux Epic possédés non installés : visibles uniquement via la synchro Legendary/Heroic. Le launcher Epic
-  ne garde plus de cache local de la bibliothèque (`OC_<compte>.dat` ne liste que les jeux installés et les assets Unreal).
+- Jeux Epic possédés non installés : lus dans `catcache.bin` du launcher Epic (ou via Legendary/Heroic).
+  Format non documenté : s'il change, seule la synchro du compte « Epic Games Launcher (local) » échoue
+  (`lastError`). Le cache n'est à jour qu'après une ouverture du launcher Epic ; un jeu réclamé depuis
+  n'apparaît qu'ensuite. Pas de temps de jeu ni de jaquette tirés du cache (métadonnées IGDB/SteamGridDB).
 - Polices : sous-ensemble latin uniquement.
 - Thème clair non exposé (le DS le fournit, l'UI utilise les tokens sombres).
 - Mises à jour GOG (Galaxy) et itch non détectées : aucune information locale fiable.

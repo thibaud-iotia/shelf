@@ -293,7 +293,14 @@ export interface ImportReport {
 
 // Accounts (phase 2b)
 
-export const ACCOUNT_KINDS = ['steam', 'gog-galaxy', 'gog-oauth', 'epic-legendary', 'itch'] as const
+export const ACCOUNT_KINDS = [
+  'steam',
+  'gog-galaxy',
+  'gog-oauth',
+  'epic-launcher',
+  'epic-legendary',
+  'itch'
+] as const
 export type AccountKind = (typeof ACCOUNT_KINDS)[number]
 
 export interface Account {
@@ -312,6 +319,7 @@ export type ConnectInput =
   | { kind: 'itch'; apiKey: string }
   | { kind: 'gog-galaxy' }
   | { kind: 'gog-oauth' }
+  | { kind: 'epic-launcher' }
   | { kind: 'epic-legendary' }
 
 export interface SyncReport {

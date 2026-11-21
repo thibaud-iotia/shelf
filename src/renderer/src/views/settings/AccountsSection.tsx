@@ -267,10 +267,19 @@ export function AccountsSection() {
       </ProviderCard>
 
       <ProviderCard
+        kind="epic-launcher"
+        title="Epic Games Launcher (local)"
+        accounts={list}
+        description="Lit la bibliothèque que l’Epic Games Launcher garde sur le disque : aucun identifiant, aucune connexion réseau. Elle se met à jour quand le launcher Epic est ouvert."
+      >
+        <ConnectButton input={{ kind: 'epic-launcher' }} label="Lire mes jeux Epic Games" />
+      </ProviderCard>
+
+      <ProviderCard
         kind="epic-legendary"
         title="Epic Games (via Legendary)"
         accounts={list}
-        description="Shelf n’implémente pas l’authentification Epic : il lit la bibliothèque de Legendary ou Heroic, une fois connecté là-bas."
+        description="Alternative sans le launcher Epic (Linux…) : Shelf n’implémente pas l’authentification Epic, il lit la bibliothèque de Legendary ou Heroic, une fois connecté là-bas."
       >
         <ConnectButton input={{ kind: 'epic-legendary' }} label="Utiliser Legendary" />
       </ProviderCard>

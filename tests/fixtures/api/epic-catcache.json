@@ -1,0 +1,102 @@
+[
+  {
+    "id": "cel0000000000000000000000000000a",
+    "namespace": "salt",
+    "title": "Celeste",
+    "categories": [{ "path": "public" }, { "path": "games" }, { "path": "applications" }],
+    "releaseInfo": [{ "appId": "Salt", "compatibleApps": [], "platform": ["Windows", "Mac"] }],
+    "mainGameItem": { "namespace": "", "id": "" },
+    "keyImages": [{ "type": "DieselGameBoxTall", "url": "https://cdn1.epicgames.com/salt/tall.jpg" }]
+  },
+  {
+    "id": "fn00000000000000000000000000000a",
+    "namespace": "fn",
+    "title": "Fortnite",
+    "categories": [{ "path": "games" }, { "path": "applications" }],
+    "releaseInfo": [{ "appId": "Fortnite", "platform": ["Windows", "Android", "iOS"] }],
+    "mainGameItem": { "namespace": "", "id": "" }
+  },
+  {
+    "id": "fn00000000000000000000000000000b",
+    "namespace": "fn",
+    "title": "Fortnite Battle Royale",
+    "categories": [{ "path": "addons/launchable" }, { "path": "addons" }, { "path": "applications" }],
+    "releaseInfo": [{ "appId": "afdb5a85efcc45d8ae8e406e2121d81c", "platform": ["Windows"] }],
+    "mainGameItem": { "namespace": "fn", "id": "fn00000000000000000000000000000a" }
+  },
+  {
+    "id": "fn00000000000000000000000000000c",
+    "namespace": "fn",
+    "title": "Contenu de Fortnite Sauver le monde",
+    "categories": [{ "path": "hidden" }],
+    "releaseInfo": [{ "appId": "aa31f9e94e844b299ca757d1d0b97a09", "platform": ["Windows"] }],
+    "mainGameItem": { "namespace": "fn", "id": "fn00000000000000000000000000000a" }
+  },
+  {
+    "id": "dl00000000000000000000000000000a",
+    "namespace": "dl",
+    "title": "Dying Light",
+    "categories": [{ "path": "games" }, { "path": "applications" }],
+    "releaseInfo": [{ "appId": "04a54ed532ce4fbfbf8fd5833f60def0", "platform": ["Windows"] }],
+    "mainGameItem": { "namespace": "", "id": "" }
+  },
+  {
+    "id": "dl00000000000000000000000000000b",
+    "namespace": "dl",
+    "title": "Dying Light The Following",
+    "categories": [{ "path": "games" }, { "path": "applications" }],
+    "releaseInfo": [{ "appId": "f653266870894ee1acbb5250e3b04bd1", "platform": ["Windows"] }],
+    "mainGameItem": { "namespace": "dl", "id": "dl00000000000000000000000000000a" }
+  },
+  {
+    "id": "ow00000000000000000000000000000b",
+    "namespace": "ow",
+    "title": "The Outer Worlds Peril on Gorgon",
+    "categories": [{ "path": "games" }, { "path": "applications" }],
+    "releaseInfo": [{ "appId": "perilongorgon", "platform": ["Windows"] }],
+    "mainGameItem": { "namespace": "ow", "id": "ow-base-not-owned" }
+  },
+  {
+    "id": "if00000000000000000000000000000a",
+    "namespace": "if",
+    "title": "Infinifactory",
+    "categories": [{ "path": "games" }, { "path": "applications" }],
+    "releaseInfo": [
+      { "appId": "InfinifactoryMac", "platform": ["Mac"] },
+      { "appId": "InfinifactoryWin", "platform": ["Windows"] }
+    ],
+    "mainGameItem": { "namespace": "", "id": "" }
+  },
+  {
+    "id": "cel0000000000000000000000000000b",
+    "namespace": "salt",
+    "title": "Celeste (copie)",
+    "categories": [{ "path": "games" }, { "path": "applications" }],
+    "releaseInfo": [{ "appId": "Salt", "platform": ["Windows"] }],
+    "mainGameItem": { "namespace": "", "id": "" }
+  },
+  {
+    "id": "ue00000000000000000000000000000a",
+    "namespace": "ue",
+    "title": "Unreal Engine",
+    "categories": [{ "path": "engines/ue5" }, { "path": "engines" }],
+    "releaseInfo": [{ "appId": "UE_5.4", "platform": ["Windows", "Mac"] }],
+    "mainGameItem": { "namespace": "", "id": "" }
+  },
+  {
+    "id": "fab0000000000000000000000000000a",
+    "namespace": "fab",
+    "title": "Free Furniture Pack",
+    "categories": [{ "path": "assets/props" }, { "path": "assets" }],
+    "releaseInfo": [{ "appId": "FreeFurniturePack", "platform": ["Windows"] }],
+    "mainGameItem": { "namespace": "", "id": "" }
+  },
+  {
+    "id": "aud0000000000000000000000000000a",
+    "namespace": "salt",
+    "title": "SaltGeneralAudience",
+    "categories": [{ "path": "audience" }, { "path": "public" }],
+    "releaseInfo": [],
+    "mainGameItem": { "namespace": "", "id": "" }
+  }
+]

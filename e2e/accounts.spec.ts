@@ -28,6 +28,11 @@ test('accounts page validates input without touching the network', async ({ page
   const galaxy = page.getByTestId('provider-gog-galaxy')
   await galaxy.getByRole('button', { name: 'Lire la bibliothèque GOG Galaxy' }).click()
   await expect(galaxy.getByRole('alert')).toContainText('GOG Galaxy introuvable')
+
+  // Same for the Epic Games Launcher.
+  const epic = page.getByTestId('provider-epic-launcher')
+  await epic.getByRole('button', { name: 'Lire mes jeux Epic Games' }).click()
+  await expect(epic.getByRole('alert')).toContainText('Bibliothèque Epic introuvable')
 })
 
 test.describe('uninstalled launcher games', () => {
@@ -192,6 +197,36 @@ test.describe('GOG Galaxy add-ons', () => {
     await expect(page.getByTestId('dlcs').getByRole('listitem')).toHaveText([
       'Alternative Look for Ciri',
       'Hearts of Stone'
+    ])
+  })
+})
+
+test.describe('Epic Games library without Legendary', () => {
+  // The launcher fixtures hold an Epic Games Launcher `catcache.bin`.
+  test.use({ launcherRoot: LAUNCHER_FIXTURES })
+
+  test('lists owned games from the launcher’s cache, add-ons on their game', async ({ page }) => {
+    await page.getByRole('button', { name: 'Réglages' }).click()
+    await page.getByRole('button', { name: 'Comptes' }).click()
+    const epic = page.getByTestId('provider-epic-launcher')
+    await expect(epic).toContainText('non connecté')
+    await epic.getByRole('button', { name: 'Lire mes jeux Epic Games' }).click()
+    await expect(epic).toContainText('Epic Games Launcher (local)')
+    await expect(epic).toContainText('4 jeux possédés')
+
+    await page
+      .getByRole('navigation', { name: 'Navigation principale' })
+      .getByRole('button', { name: 'Bibliothèque' })
+      .click()
+    await expect(page.getByTestId('game-count')).toHaveText('4 jeux')
+    // Engines, assets and hidden content stay out; add-ons are not games.
+    await expect(page.getByRole('button', { name: 'Unreal Engine' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Dying Light The Following' })).toHaveCount(0)
+
+    await page.getByRole('button', { name: 'Dying Light', exact: true }).click()
+    await expect(page.getByText('Epic · non installé')).toBeVisible()
+    await expect(page.getByTestId('dlcs').getByRole('listitem')).toHaveText([
+      'Dying Light The Following'
     ])
   })
 })

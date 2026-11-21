@@ -48,6 +48,8 @@ export interface LauncherLocations {
   /** Steam client executable, used to start games with Steam minimized (`-silent`). Null: use the URI. */
   steamExecutable: () => Promise<string | null>
   epicManifestDirs: string[]
+  /** Epic Games Launcher's catalog cache: every game the logged-in account owns. */
+  epicCatalogCaches: string[]
   /** Legendary / Heroic `installed.json` files (Epic on Linux and macOS). */
   legendaryInstalled: string[]
   /** Candidate Legendary executables; `legendary` alone means "on PATH". Heroic's copy uses its config. */
@@ -67,6 +69,7 @@ function fixtureLocations(root: string): LauncherLocations {
     steamStatus: (appIds) => readSteamStatusFromVdf([join(root, 'steam', 'registry.vdf')], appIds),
     steamExecutable: async () => null,
     epicManifestDirs: [join(root, 'epic', 'Manifests')],
+    epicCatalogCaches: [join(root, 'epic', 'Catalog', 'catcache.bin')],
     legendaryInstalled: [join(root, 'legendary', 'installed.json')],
     legendaryBinaries: [],
     gogRegistry: async () => [],
@@ -131,6 +134,9 @@ export function launcherLocations(): LauncherLocations {
         return candidates.find((file) => existsSync(file)) ?? null
       },
       epicManifestDirs: [join(programData, 'Epic', 'EpicGamesLauncher', 'Data', 'Manifests')],
+      epicCatalogCaches: [
+        join(programData, 'Epic', 'EpicGamesLauncher', 'Data', 'Catalog', 'catcache.bin')
+      ],
       legendaryInstalled: [
         join(appData, 'heroic', 'legendaryConfig', 'legendary', 'installed.json'),
         join(home, '.config', 'legendary', 'installed.json')
@@ -176,6 +182,9 @@ export function launcherLocations(): LauncherLocations {
         readSteamStatusFromVdf([join(support, 'Steam', 'registry.vdf')], appIds),
       steamExecutable: async () => null,
       epicManifestDirs: [join(support, 'Epic', 'EpicGamesLauncher', 'Data', 'Manifests')],
+      epicCatalogCaches: [
+        join(support, 'Epic', 'EpicGamesLauncher', 'Data', 'Catalog', 'catcache.bin')
+      ],
       legendaryInstalled: [
         join(support, 'heroic', 'legendaryConfig', 'legendary', 'installed.json'),
         join(home, '.config', 'legendary', 'installed.json')
@@ -220,6 +229,7 @@ export function launcherLocations(): LauncherLocations {
       ),
     steamExecutable: async () => null,
     epicManifestDirs: [],
+    epicCatalogCaches: [],
     legendaryInstalled: [
       join(config, 'heroic', 'legendaryConfig', 'legendary', 'installed.json'),
       join(flatpakHeroic, 'legendaryConfig', 'legendary', 'installed.json'),
