@@ -26,6 +26,8 @@ export const paths = {
   covers: (): string => join(app.getPath('userData'), 'covers'),
   /** Encrypted secrets (safeStorage blobs), never stored in the DB. */
   secrets: (): string => join(app.getPath('userData'), 'secrets.json'),
+  /** Update Shelf restarted on, checked at the next startup (install blocked by an antivirus?). */
+  updateAttempt: (): string => join(app.getPath('userData'), 'update-attempt.json'),
   // Wine prefix handed to Proton for non-Steam .exe games (Linux).
   protonPrefix: (): string => join(app.getPath('userData'), 'proton-prefix'),
   // Packaged: copied via electron-builder extraResources. Dev/e2e: repo root, relative to out/main.

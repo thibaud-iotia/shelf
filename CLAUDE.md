@@ -21,10 +21,10 @@ Identité : `productName: Shelf`, `appId: fr.perso.shelf`, données dans `app.ge
 | Tests e2e (Playwright + Electron, build inclus) | `npm run test:e2e`                                                    |
 | Tout sauf e2e                                   | `npm run check`                                                       |
 | Nouvelle migration après modif de `schema.ts`   | `npm run db:generate -- --name <nom>`                                 |
-| Installeur de l'OS courant (release/)           | `npm run dist` (`npm run dist:dir` : dossier non empaqueté)           |
+| Installeur de l'OS courant (release/)           | `npm run dist` (`dist:dir` : dossier seul, sans `app-update.yml`)     |
 | Test de fumée de l'app packagée                 | `SHELF_PACKAGED=release/win-unpacked/Shelf.exe npm run test:packaged` |
 | Régénérer les icônes (resources/)               | `npm run icons`                                                       |
-| Publier une version (CI : 3 installeurs)        | `git tag v<version de package.json> && git push --tags`               |
+| Publier une version (CI : 3 installeurs + flux) | `git tag v<version de package.json> && git push --tags`               |
 
 Node 24, npm. `better-sqlite3` v13 fournit des prebuilds N-API : même binaire pour Node (Vitest) et Electron, pas de rebuild (`npmRebuild: false`).
 
@@ -61,6 +61,7 @@ src/
     secrets/       SecretStore (safeStorage) — fichier secrets.json chiffré, jamais la DB
     saves/         export zip des sauvegardes
     settings/      SettingsStore (table settings, valeurs validées)
+    updates/       mise à jour de Shelf : service (états, planification), electron-updater (GitHub Releases), simulated (e2e)
     ipc/           handle.ts (émetteur vérifié, enveloppe { ok, data | error }) + un fichier par domaine
   preload/index.ts expose window.shelf.invoke / on (listes blanches), rien d'autre
   renderer/        React + Tailwind v4 + Zustand (état UI) + TanStack Query (données IPC)
@@ -81,9 +82,9 @@ design/            export de la maquette Claude Design (référence, non buildé
 - `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`. Le renderer n'a ni `require` ni `process` (testé en e2e). CSP stricte dans `index.html` (`img-src 'self' data: shelf-media:` ; seules exceptions : `media-src` du CDN vidéo Steam, `frame-src` de youtube-nocookie). Une image distante passe par `remoteImageUrl()` (proxy `shelf-media://remote/…`, hôtes `IMAGE_HOSTS`).
 - **Ajouter un canal IPC** : (1) type dans `IpcChannels` + entrée dans `CHANNELS` de `src/shared/ipc.ts`, (2) `handle()` dans le fichier de domaine de `src/main/ipc/`, (3) hook dans `src/renderer/src/lib/queries.ts`. Le preload ne change pas. Même principe pour un événement (`IpcEvents` / `EVENTS`, `broadcast()`, `window.shelf.on`).
 - Les handlers valident leurs arguments et lèvent des `AppError(code, message)` ; le message est affiché tel quel dans l'UI → en français, clair.
-- Aucun chemin en dur hors `src/main/platform/paths.ts`. `SHELF_USER_DATA` et `SHELF_LAUNCHER_ROOT` isolent les données et les launchers (tests) ; `SHELF_STORE_PREWARM_MS` règle le préchauffage de la Boutique (`off` en e2e par défaut).
+- Aucun chemin en dur hors `src/main/platform/paths.ts`. `SHELF_USER_DATA` et `SHELF_LAUNCHER_ROOT` isolent les données et les launchers (tests) ; `SHELF_STORE_PREWARM_MS` règle le préchauffage de la Boutique (`off` en e2e par défaut) ; `SHELF_UPDATE_SIMULATE=<version>` (ou `manual:<version>`) simule une nouvelle version de Shelf (e2e, option de fixture `appEnv`).
 - Secrets (clés API, tokens) : uniquement via `SecretStore` (safeStorage) ; la DB ne stocke qu'une référence (`credentialsRef`).
-- Réseau : uniquement via `main/net/http.ts` (liste blanche : Steam Web API et boutique, Twitch/IGDB, SteamGridDB, itch.io, GOG, CheapShark, Instant Gaming, CDN d'images). Aucun appel réseau dans les tests : `fetch` injecté + réponses enregistrées (`tests/fixtures/api`) ; en e2e le `fetch` du main échoue par défaut, `stubFetch(app, routes)` rejoue des réponses.
+- Réseau : uniquement via `main/net/http.ts` (liste blanche : Steam Web API et boutique, Twitch/IGDB, SteamGridDB, itch.io, GOG, CheapShark, Instant Gaming, CDN d'images). Seule exception : `main/updates/electron-updater.ts` (client HTTP propre à electron-updater, GitHub Releases, app packagée uniquement). Aucun appel réseau dans les tests : `fetch` injecté + réponses enregistrées (`tests/fixtures/api`) ; en e2e le `fetch` du main échoue par défaut, `stubFetch(app, routes)` rejoue des réponses.
 - Un jeu est unique par `(source, sourceId)` : détection locale, import et synchro font un upsert sur la même ligne. Jeux manuels : `sourceId` = UUID.
 - Intégrations non officielles (cache du launcher Epic, installs Epic via Legendary, GOG option B) isolées dans leur module : une erreur est stockée sur le compte (`lastError`) ou la source, jamais propagée au reste.
 - Imports : `@shared/*` et `@renderer/*` côté renderer ; chemins relatifs dans main/preload/tests (drizzle-kit ne résout pas les alias).

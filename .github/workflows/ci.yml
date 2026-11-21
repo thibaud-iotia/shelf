@@ -79,12 +79,14 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # latest*.yml: update feed read by electron-updater; .blockmap: differential download
+          # (the AppImage carries its blockmap inside the file).
           - os: windows-latest
-            files: release/*.exe
+            files: release/*.exe release/*.exe.blockmap release/latest.yml
           - os: macos-latest
-            files: release/*.dmg
+            files: release/*.dmg release/*.dmg.blockmap release/latest-mac.yml
           - os: ubuntu-latest
-            files: release/*.AppImage release/*.deb
+            files: release/*.AppImage release/*.deb release/latest-linux.yml
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write

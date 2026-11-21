@@ -7,6 +7,7 @@ import { prefetchStore, useGames } from '@renderer/lib/queries'
 import { useRunningStore } from '@renderer/stores/running'
 import { useUiStore, type Route } from '@renderer/stores/ui'
 import { SidebarCollections } from './SidebarCollections'
+import { UpdateBanner } from './UpdateBanner'
 import logo from '@renderer/assets/logo.png'
 
 // Mockup 01 — "navigation hybride" sidebar (248px, ink-900).
@@ -159,6 +160,7 @@ export function Sidebar() {
 
       <div className="mt-auto pt-3 flex flex-col">
         <RunningGames games={games.data ?? []} />
+        <UpdateBanner />
         <NavItem route={{ name: 'settings', section: 'metadata' }} label="Réglages" />
       </div>
     </nav>

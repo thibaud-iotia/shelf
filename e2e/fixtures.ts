@@ -23,6 +23,8 @@ interface Options {
    * Wrapped in an object: Playwright reads an array option as a [value, options] tuple.
    */
   launchFetch: { routes: FetchRoute[] }
+  /** Extra environment variables of the app (e.g. SHELF_UPDATE_SIMULATE). */
+  appEnv: Record<string, string>
 }
 
 interface Fixtures {
@@ -42,6 +44,7 @@ export const test = base.extend<Fixtures & Options>({
   onboarded: [true, { option: true }],
   storePrewarmMs: [null, { option: true }],
   launchFetch: [{ routes: [] }, { option: true }],
+  appEnv: [{}, { option: true }],
 
   // eslint-disable-next-line no-empty-pattern
   userDataDir: async ({}, use) => {
@@ -49,22 +52,8 @@ export const test = base.extend<Fixtures & Options>({
     await use(dir)
     rmSync(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })
   },
-  app: async ({ userDataDir, launcherRoot, storePrewarmMs, launchFetch }, use) => {
-    // Drop dev-server / run-as-node variables so the built app starts normally.
-    const env = Object.fromEntries(
-      Object.entries(process.env).filter(
-        (entry): entry is [string, string] =>
-          entry[1] !== undefined &&
-          !['ELECTRON_RENDERER_URL', 'ELECTRON_RUN_AS_NODE'].includes(entry[0])
-      )
-    )
-    env.SHELF_USER_DATA = userDataDir
-    // Never read the real launchers of the machine running the tests.
-    const noLaunchers = join(userDataDir, 'no-launchers')
-    mkdirSync(noLaunchers, { recursive: true })
-    env.SHELF_LAUNCHER_ROOT = launcherRoot ?? noLaunchers
-    env.SHELF_STORE_PREWARM_MS = storePrewarmMs === null ? 'off' : String(storePrewarmMs)
-    const app = await electron.launch({ args: [resolve('.')], env })
+  app: async ({ userDataDir, launcherRoot, storePrewarmMs, launchFetch, appEnv }, use) => {
+    const app = await launchShelf({ userDataDir, launcherRoot, storePrewarmMs, appEnv })
     // No test reaches the real network: the main process fetch fails unless a test
     // replays recorded responses with stubFetch() (or the launchFetch option).
     await stubFetch(app, launchFetch.routes)
@@ -84,6 +73,39 @@ export const test = base.extend<Fixtures & Options>({
 })
 
 export { expect } from '@playwright/test'
+
+/**
+ * Starts the built app on `userDataDir` (also used to restart it within a test). The caller
+ * closes it; its main process fetch is real until stubFetch() is called.
+ */
+export async function launchShelf({
+  userDataDir,
+  launcherRoot = null,
+  storePrewarmMs = null,
+  appEnv = {}
+}: {
+  userDataDir: string
+  launcherRoot?: string | null
+  storePrewarmMs?: number | null
+  appEnv?: Record<string, string>
+}): Promise<ElectronApplication> {
+  // Drop dev-server / run-as-node variables so the built app starts normally.
+  const env = Object.fromEntries(
+    Object.entries(process.env).filter(
+      (entry): entry is [string, string] =>
+        entry[1] !== undefined &&
+        !['ELECTRON_RENDERER_URL', 'ELECTRON_RUN_AS_NODE'].includes(entry[0])
+    )
+  )
+  env.SHELF_USER_DATA = userDataDir
+  // Never read the real launchers of the machine running the tests.
+  const noLaunchers = join(userDataDir, 'no-launchers')
+  mkdirSync(noLaunchers, { recursive: true })
+  env.SHELF_LAUNCHER_ROOT = launcherRoot ?? noLaunchers
+  env.SHELF_STORE_PREWARM_MS = storePrewarmMs === null ? 'off' : String(storePrewarmMs)
+  Object.assign(env, appEnv)
+  return electron.launch({ args: [resolve('.')], env })
+}
 
 /** Makes the next native "open" dialogs return `paths` (one per call, last one repeats). */
 export async function stubOpenDialog(app: ElectronApplication, ...paths: string[]): Promise<void> {

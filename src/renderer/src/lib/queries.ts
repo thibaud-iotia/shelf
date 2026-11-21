@@ -7,6 +7,7 @@ import type {
   ApiKeyService,
   ApiKeysInput,
   AppSettings,
+  AppUpdateState,
   CommunityKind,
   ConnectInput,
   Game,
@@ -26,6 +27,7 @@ import { call } from './ipc'
 export const queryKeys = {
   ping: ['app', 'ping'] as const,
   appInfo: ['app', 'info'] as const,
+  updater: ['app', 'updater'] as const,
   games: ['games'] as const,
   game: (id: number) => ['games', id] as const,
   settings: ['settings'] as const,
@@ -53,6 +55,51 @@ export function usePing() {
 
 export function useAppInfo() {
   return useQuery({ queryKey: queryKeys.appInfo, queryFn: () => call('app:info') })
+}
+
+// Shelf's own updates: the state is pushed by `updater:changed` (see useMainEvents).
+
+export function useUpdaterState() {
+  return useQuery({
+    queryKey: queryKeys.updater,
+    queryFn: () => call('updater:state'),
+    staleTime: Infinity
+  })
+}
+
+export function useCheckForUpdates() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: () => call('updater:check'),
+    onSuccess: (state) => client.setQueryData(queryKeys.updater, state),
+    onError: (error) => toast.error(error)
+  })
+}
+
+export function useInstallUpdate() {
+  return useMutation({
+    mutationFn: () => call('updater:install'),
+    onError: (error) => toast.error(error)
+  })
+}
+
+export function useOpenUpdateDownload() {
+  return useMutation({
+    mutationFn: () => call('updater:openDownload'),
+    onSuccess: () =>
+      toast.info(
+        'Téléchargement ouvert dans le navigateur : installez par-dessus, sans désinstaller.'
+      ),
+    onError: (error) => toast.error(error)
+  })
+}
+
+export function useDismissUpdateNotice() {
+  const client = useQueryClient()
+  return useMutation({
+    mutationFn: () => call('updater:dismiss'),
+    onSuccess: (state) => client.setQueryData(queryKeys.updater, state)
+  })
 }
 
 // Games
@@ -602,6 +649,14 @@ export function useMainEvents() {
     void call('games:running').then(setRunning)
     void call('games:launching').then(setLaunching)
     void call('games:installing').then(setInstalling)
+    // Restarted on an update: say it worked (a blocked install shows in the sidebar banner).
+    void call('updater:state').then((state) => {
+      client.setQueryData(queryKeys.updater, state)
+      if (state.lastInstall?.outcome === 'installed') {
+        toast.success(`Shelf a été mis à jour en version ${state.currentVersion}.`)
+        void call('updater:dismiss').then((next) => client.setQueryData(queryKeys.updater, next))
+      }
+    })
     const offInstalling = window.shelf.on('games:installing', setInstalling)
     const offInstallEnded = window.shelf.on('games:installEnded', ({ title, outcome, error }) => {
       if (outcome === 'installed') toast.success(`« ${title} » est installé.`)
@@ -624,7 +679,15 @@ export function useMainEvents() {
       void client.invalidateQueries({ queryKey: queryKeys.store })
       toast.success(`Achat détecté : « ${title} » est dans votre bibliothèque.`)
     })
+    const offUpdater = window.shelf.on('updater:changed', (state) => {
+      const previous = client.getQueryData<AppUpdateState>(queryKeys.updater)
+      client.setQueryData(queryKeys.updater, state)
+      if (state.phase === 'ready' && previous?.phase !== 'ready') {
+        toast.success(`Shelf ${state.version} est prête : redémarrez pour l’installer.`)
+      }
+    })
     return () => {
+      offUpdater()
       offRunning()
       offLaunching()
       offInstalling()

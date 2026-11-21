@@ -12,6 +12,7 @@ import type { SecretStore } from './secrets/store'
 import type { SettingsStore } from './settings/store'
 import type { StoreService } from './store/service'
 import type { PurchaseWatcher } from './store/watcher'
+import type { UpdateService } from './updates/service'
 
 /** Long-lived services shared by the IPC handlers. */
 export interface AppContext {
@@ -42,4 +43,6 @@ export interface AppContext {
   store: StoreService
   /** Purchases opened from the store, followed until the game is in the library. */
   purchases: PurchaseWatcher
+  /** Updates of Shelf itself (GitHub Releases): check, background download, restart. */
+  updater: UpdateService
 }

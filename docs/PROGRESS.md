@@ -340,9 +340,27 @@ Bilan des tests : 238 unitaires, 37 e2e (+ 1 test de fumée de l'app packagée).
 - Lancement au démarrage non appliqué en dev (il enregistrerait le binaire Electron nu).
 - Dépendance ajoutée : `fflate` (zip pur JS, sans dépendance).
 
+- Mise à jour de Shelf depuis l'app (retour : « que l'utilisateur ne soit pas obligé de désinstaller
+  l'appli à chaque nouvelle version », détail dans [feature/app-update.md](../feature/app-update.md),
+  guide générique [docs/guide-mise-a-jour-electron.md](guide-mise-a-jour-electron.md)) :
+  `electron-updater` lit les `latest*.yml` de la dernière release GitHub (15 s après le démarrage
+  puis toutes les 4 h, réglage « Rechercher automatiquement », bouton dans Réglages › À propos).
+  Windows (NSIS) et AppImage : téléchargement en arrière-plan, bannière « Redémarrer » dans la
+  sidebar (désactivée pendant une partie), sinon installée en silence à la fermeture ; NSIS
+  réinstalle dans le même dossier, userData intact. macOS non signé et `.deb` : détection + lien
+  vers l'installeur. `publish: github` (app-update.yml embarqué), `dist` en `--publish never`, la CI
+  envoie aussi `latest*.yml` et `.blockmap`. Les versions ≤ 1.3.0 doivent installer une fois à la
+  main (par-dessus) la première version qui embarque l'updater.
+  Installation bloquée (retour : « mon anti-virus Avast ne va pas bloquer ce processus ? ») :
+  version tentée notée dans `userData/update-attempt.json` avant le redémarrage ; au démarrage
+  suivant, encore l'ancienne version → bannière « ne s'est pas installée (antivirus ?) » avec
+  téléchargement de l'installeur ; sinon toast « Shelf a été mis à jour ». v1.4.0.
+
 ## Points ouverts
 
-- macOS et Linux non testés sur machine réelle (code et CI prêts) ; dmg non signé.
+- macOS et Linux non testés sur machine réelle (code et CI prêts) ; dmg non signé (donc mise à jour
+  de Shelf par lien, pas en place). Mise à jour en place non encore vérifiée de bout en bout
+  (nécessite deux versions publiées avec l'updater).
 - Steam ne permet pas de mesurer la durée des sessions lancées via `steam://` : le temps vient du compte, à jour après synchro.
 - Temps Epic non récupéré (le cache du launcher Epic ne l'expose pas).
 - Jeux Epic possédés non installés : lus dans `catcache.bin` du launcher Epic (Linux : pas de launcher Epic, seuls les jeux installés via Heroic/Legendary sont vus).

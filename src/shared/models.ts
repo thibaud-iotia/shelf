@@ -376,6 +376,48 @@ export interface AppSettings {
   askInstallLocation: boolean
   /** Default install location per launcher; null: Shelf picks (most free space, Heroic's). */
   installPaths: Record<InstallSource, string | null>
+  /** Look for a new version of Shelf at startup and every few hours. */
+  autoUpdateCheck: boolean
+}
+
+// Updates of Shelf itself (GitHub Releases, electron-updater).
+
+/**
+ * - `auto`: downloaded in the background, installed in place on restart (Windows NSIS, AppImage).
+ * - `manual`: detected only; the user downloads the new installer (unsigned macOS, .deb).
+ * - `disabled`: development build, nothing to update.
+ */
+export type AppUpdateMode = 'auto' | 'manual' | 'disabled'
+
+export type AppUpdatePhase =
+  | 'idle'
+  | 'checking'
+  | 'up-to-date'
+  /** Newer version found; `manual` mode stays here (download link). */
+  | 'available'
+  | 'downloading'
+  /** Downloaded: installed on restart, or when Shelf quits. */
+  | 'ready'
+  | 'error'
+
+export interface AppUpdateState {
+  mode: AppUpdateMode
+  phase: AppUpdatePhase
+  currentVersion: string
+  /** The newer version, once found. */
+  version: string | null
+  /** Download progress, 0–100 (`downloading`). */
+  percent: number | null
+  /** Release page of `version` (notes, every installer). */
+  releaseUrl: string | null
+  /** ms since epoch of the last finished check. */
+  checkedAt: number | null
+  error: string | null
+  /**
+   * Outcome of the last restart on a downloaded update, known at the next startup: `failed`
+   * when Shelf is still on the old version (installer blocked, e.g. by an antivirus).
+   */
+  lastInstall: { version: string; outcome: 'installed' | 'failed' } | null
 }
 
 export interface SettingsView extends AppSettings {

@@ -34,6 +34,13 @@ test('packaged app starts, migrates its database and finds its resources', async
     const resources = await app.evaluate(() => process.resourcesPath)
     expect(existsSync(join(resources, 'resources', 'tray.png'))).toBe(true)
     expect(existsSync(join(resources, 'drizzle', 'meta', '_journal.json'))).toBe(true)
+    // Update feed written by electron-builder (publish: github): read by electron-updater.
+    expect(existsSync(join(resources, 'app-update.yml'))).toBe(true)
+    const updater = await page.evaluate(() => window.shelf.invoke('updater:state'))
+    expect(updater).toMatchObject({
+      ok: true,
+      data: { mode: process.platform === 'win32' ? 'auto' : 'manual', phase: 'idle' }
+    })
   } finally {
     await app.close()
     rmSync(userData, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })

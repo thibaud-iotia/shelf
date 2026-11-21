@@ -7,6 +7,7 @@ import { AppearanceSection, ShortcutsSection } from './settings/AppearanceSectio
 import { CacheSection, MetadataSection } from './settings/MetadataSections'
 import { FoldersSection, LaunchersSection } from './settings/LibrarySections'
 import { SystemSection } from './settings/SystemSection'
+import { UpdatesCard } from './settings/UpdatesCard'
 
 const NAV: { id: SettingsSection; label: string }[] = [
   { id: 'metadata', label: 'Métadonnées' },
@@ -51,6 +52,7 @@ function AboutSection() {
         )}
         {info.error && <p className="text-red-300">{info.error.message}</p>}
       </Card>
+      <UpdatesCard />
     </>
   )
 }

@@ -1,4 +1,5 @@
-# Packaging for the three OSes. Auto-update stays disabled (personal use): publish: null.
+# Packaging for the three OSes. Auto-update: electron-updater reads the GitHub releases
+# (publish below). See feature/app-update.md.
 appId: fr.perso.shelf
 productName: Shelf
 copyright: Copyright © 2026 Thibaud
@@ -46,4 +47,12 @@ mac:
   category: public.app-category.games
   # Personal build: unsigned. Gatekeeper asks once (right click › Open).
   identity: null
-publish: null
+# Update feed. electron-builder writes app-update.yml into resources/ (read by electron-updater)
+# and latest.yml / latest-linux.yml / latest-mac.yml next to the installers. It never uploads
+# anything itself (`--publish never`): the CI attaches these files to the release. Must name
+# the repository the releases go to (vars.RELEASES_REPO in the CI, this one by default).
+publish:
+  provider: github
+  owner: thibaud-iotia
+  repo: shelf
+  releaseType: release

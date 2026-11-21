@@ -18,7 +18,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   showHidden: false,
   backgroundInstall: true,
   askInstallLocation: true,
-  installPaths: { steam: null, epic: null }
+  installPaths: { steam: null, epic: null },
+  autoUpdateCheck: true
 }
 
 type Validator<K extends keyof AppSettings> = (value: unknown) => AppSettings[K]
@@ -77,7 +78,8 @@ const validators: { [K in keyof AppSettings]: Validator<K> } = {
     }
     const paths = v as Record<string, unknown>
     return { steam: path(paths.steam), epic: path(paths.epic) }
-  }
+  },
+  autoUpdateCheck: boolean('Mises à jour automatiques')
 }
 
 /** Typed key/value settings persisted as JSON in the `settings` table. */

@@ -42,6 +42,7 @@ import { prewarmDelay, StoreService } from './store/service'
 import { PurchaseWatcher } from './store/watcher'
 import { dropBought, ownedIndex } from './store/wishlist'
 import { applyLaunchAtStartup, ShelfTray, showMainWindow, startedHidden } from './system'
+import { createUpdateService } from './updates'
 import { createMainWindow } from './window'
 
 app.setName('Shelf')
@@ -257,6 +258,12 @@ function createContext(): AppContext {
     userAgent: `Shelf/${app.getVersion()} (+https://github.com/thibaud-iotia/shelf)`
   })
 
+  // Shelf's own updates (GitHub Releases): downloaded in the background, installed on restart.
+  const updater = createUpdateService({
+    enabled: () => settings.get('autoUpdateCheck'),
+    onChange: (state) => broadcast('updater:changed', state)
+  })
+
   return {
     database,
     settings,
@@ -274,7 +281,8 @@ function createContext(): AppContext {
     installs,
     uninstallWatch,
     store,
-    purchases
+    purchases,
+    updater
   }
 }
 
@@ -337,6 +345,9 @@ if (!app.requestSingleInstanceLock()) {
         }, storeDelay).unref()
       }
 
+      // New version of Shelf: first check shortly after startup, then every 4 h.
+      ctx.updater.start()
+
       // Back from the launcher's checkout: look for the game bought from the store.
       app.on('browser-window-focus', () => ctx?.purchases.nudge())
 
@@ -367,5 +378,6 @@ app.on('will-quit', () => {
   ctx?.uninstallWatch.dispose()
   ctx?.installs.dispose()
   ctx?.purchases.dispose()
+  ctx?.updater.dispose()
   ctx?.database.close()
 })

@@ -9,6 +9,7 @@ import type {
   AchievementsView,
   ApiKeysInput,
   AppSettings,
+  AppUpdateState,
   CacheInfo,
   Collection,
   CommunityItem,
@@ -78,6 +79,17 @@ export interface AppInfo {
 export interface IpcChannels {
   'app:ping': { args: []; result: PingResult }
   'app:info': { args: []; result: AppInfo }
+
+  // Updates of Shelf itself.
+  'updater:state': { args: []; result: AppUpdateState }
+  /** Looks for a new version now (an automatic download follows in `auto` mode). */
+  'updater:check': { args: []; result: AppUpdateState }
+  /** `ready`: quits, installs in place and restarts Shelf. */
+  'updater:install': { args: []; result: void }
+  /** `manual` mode or blocked install: opens the new installer (or the release page) in the browser. */
+  'updater:openDownload': { args: []; result: void }
+  /** Hides the notice about the last install (`lastInstall`). */
+  'updater:dismiss': { args: []; result: AppUpdateState }
 
   'games:list': { args: []; result: Game[] }
   'games:get': { args: [id: number]; result: GameDetail }
@@ -189,6 +201,11 @@ export type IpcResult<C extends IpcChannel> = IpcChannels[C]['result']
 const CHANNELS: Record<IpcChannel, true> = {
   'app:ping': true,
   'app:info': true,
+  'updater:state': true,
+  'updater:check': true,
+  'updater:install': true,
+  'updater:openDownload': true,
+  'updater:dismiss': true,
   'games:list': true,
   'games:get': true,
   'games:create': true,
@@ -282,6 +299,8 @@ export interface IpcEvents {
   'library:changed': { reason: string }
   /** A game bought from the store showed up in the library. */
   'store:purchased': { title: string; gameId: number }
+  /** Shelf's own update: checking, found, downloading (progress), ready, failed. */
+  'updater:changed': AppUpdateState
 }
 export type IpcEvent = keyof IpcEvents
 
@@ -293,7 +312,8 @@ const EVENTS: Record<IpcEvent, true> = {
   'games:installing': true,
   'games:installEnded': true,
   'library:changed': true,
-  'store:purchased': true
+  'store:purchased': true,
+  'updater:changed': true
 }
 
 export function isIpcEvent(value: unknown): value is IpcEvent {
