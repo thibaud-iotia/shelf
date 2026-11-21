@@ -276,15 +276,6 @@ export function AccountsSection() {
       </ProviderCard>
 
       <ProviderCard
-        kind="epic-legendary"
-        title="Epic Games (via Legendary)"
-        accounts={list}
-        description="Alternative sans le launcher Epic (Linux…) : Shelf n’implémente pas l’authentification Epic, il lit la bibliothèque de Legendary ou Heroic, une fois connecté là-bas."
-      >
-        <ConnectButton input={{ kind: 'epic-legendary' }} label="Utiliser Legendary" />
-      </ProviderCard>
-
-      <ProviderCard
         kind="itch"
         title="itch.io"
         accounts={list}

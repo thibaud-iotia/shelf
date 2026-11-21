@@ -58,9 +58,10 @@ Bilan des tests : 238 unitaires, 37 e2e (+ 1 test de fumée de l'app packagée).
   (`mainGameItem.id` ≠ '') rattachés au jeu de base, ou écartés s'il n'est pas possédé ; moteurs, assets
   Fab et contenus `hidden` ignorés. Retour : « je ne vois que Fortnite […] j'ai déjà Epic, pas envie
   d'installer Legendary » → sur la machine réelle, 160 jeux et 17 add-ons au lieu de Fortnite seul.
-- Epic via Legendary (`status --json`, `list --json`), sans réimplémenter l'auth Epic ; itch.io (clés possédées, paginé).
-  La copie de Legendary fournie par Heroic est lancée avec `LEGENDARY_CONFIG_PATH` = `<config Heroic>/legendaryConfig/legendary`
-  (sinon elle lit `~/.config/legendary` et ne voit aucun compte) ; le premier binaire connecté à un compte est retenu.
+  L'ancien compte « Epic Games (via Legendary) » (`legendary list --json`) est retiré : migration
+  `0008` supprime ces comptes (sans secret), leurs jeux restent et sont repris par la lecture du cache.
+  Legendary ne sert plus qu'à l'installation en arrière-plan et au lancement des jeux qu'il a installés.
+- itch.io (clés possédées, paginé).
 - Synchro manuelle + automatique au démarrage si > 24 h ; erreurs stockées sur le compte (`lastError`).
 - Bouton « Installer » → URI du launcher.
 
@@ -113,7 +114,7 @@ Bilan des tests : 238 unitaires, 37 e2e (+ 1 test de fumée de l'app packagée).
   temps du compte (Steam `playtime_forever`, GOG Galaxy `GameTimes`) + sessions mesurées par Shelf.
   Pas de double compte : un lancement par URI (`steam://`, Epic) n'ouvre jamais de session Shelf, et
   Galaxy ne voit pas un exécutable GOG lancé directement par Shelf. Fiche : « Selon Steam ».
-  Epic (Legendary) et itch n'exposent pas de temps : seul le temps mesuré par Shelf compte.
+  Epic et itch n'exposent pas de temps : seul le temps mesuré par Shelf compte.
 
 - Synchro Steam après chaque partie : un jeu lancé par `steam://` est suivi via le `RunningAppID` de Steam
   (registre Windows `HKCU\Software\Valve\Steam`, `registry.vdf` sous Linux/macOS), sondé toutes les 5 s
@@ -343,8 +344,8 @@ Bilan des tests : 238 unitaires, 37 e2e (+ 1 test de fumée de l'app packagée).
 
 - macOS et Linux non testés sur machine réelle (code et CI prêts) ; dmg non signé.
 - Steam ne permet pas de mesurer la durée des sessions lancées via `steam://` : le temps vient du compte, à jour après synchro.
-- Temps Epic non récupéré (Legendary ne l'expose pas).
-- Jeux Epic possédés non installés : lus dans `catcache.bin` du launcher Epic (ou via Legendary/Heroic).
+- Temps Epic non récupéré (le cache du launcher Epic ne l'expose pas).
+- Jeux Epic possédés non installés : lus dans `catcache.bin` du launcher Epic (Linux : pas de launcher Epic, seuls les jeux installés via Heroic/Legendary sont vus).
   Format non documenté : s'il change, seule la synchro du compte « Epic Games Launcher (local) » échoue
   (`lastError`). Le cache n'est à jour qu'après une ouverture du launcher Epic ; un jeu réclamé depuis
   n'apparaît qu'ensuite. Pas de temps de jeu ni de jaquette tirés du cache (métadonnées IGDB/SteamGridDB).
@@ -352,7 +353,7 @@ Bilan des tests : 238 unitaires, 37 e2e (+ 1 test de fumée de l'app packagée).
 - Thème clair non exposé (le DS le fournit, l'UI utilise les tokens sombres).
 - Mises à jour GOG (Galaxy) et itch non détectées : aucune information locale fiable.
   Epic sans Legendary : seules les mises à jour déjà mises en file par le launcher Epic sont vues.
-- Synchro GOG option B et Legendary non testées contre les vrais services (fixtures uniquement).
+- Synchro GOG option B non testée contre les vrais services (fixtures uniquement).
 - Fiche enrichie : communauté (`QueryFiles`) et succès (`GetSchemaForGame`, `GetPlayerAchievements`)
   demandent une clé Steam ; leurs fixtures suivent la documentation, pas une réponse réelle enregistrée.
   Lecture YouTube intégrée non vérifiée dans l'app packagée (en-tête `Referer` ajouté pour l'erreur 153).

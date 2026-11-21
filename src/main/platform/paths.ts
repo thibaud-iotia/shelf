@@ -4,7 +4,7 @@ import { existsSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { app } from 'electron'
-import type { LegendaryBinary } from '../accounts/epic-legendary'
+import type { LegendaryBinary } from '../install/legendary'
 import { readSteamStatusFromVdf, toSteamStatus, type SteamStatus } from '../sources/steam-running'
 import { queryRegistry, queryRegistryValue } from './registry'
 

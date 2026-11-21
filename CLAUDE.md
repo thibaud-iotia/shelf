@@ -52,7 +52,7 @@ src/
     sources/       détection locale : vdf, steam, epic, gog, itch, folder-scan, uris (launch/install/uninstall)
     import/        candidates (nouveau / màj / doublon / exclu) + ImportService
     install/       installation sans fenêtre du launcher : steam-manifest (appmanifest en file, libraryfolders), steam (écriture, nouvelle bibliothèque, redémarrage silencieux de Steam), steam-log (progression en direct : content_log + octets écrits par Steam), disk (espace libre), steam-client, legendary (Epic), service (suivi, progression)
-    accounts/      synchro des jeux possédés : steam, itch, gog-galaxy (option A), gog-oauth (option B), epic-legendary, service
+    accounts/      synchro des jeux possédés : steam, itch, gog-galaxy (option A), gog-oauth (option B), epic-launcher (cache local du launcher Epic), service
     metadata/      igdb, steamgriddb, service (clés, recherche, enrichissement)
     insights/      fiche enrichie : steam-store (actus, vidéos, avis, joueurs, communauté, succès), links, service (cache 10 min)
     store/         boutique : cheapshark (prix $), steam (souhaits, prix €), gog (catalogue), instant-gaming (revendeur de clés, JSON embarqué dans la page de recherche), purchase (URI launcher / URL), wishlist, watcher (détection d'achat), cache (TTL par id, limiter), service (+ prewarm au démarrage)
@@ -85,7 +85,7 @@ design/            export de la maquette Claude Design (référence, non buildé
 - Secrets (clés API, tokens) : uniquement via `SecretStore` (safeStorage) ; la DB ne stocke qu'une référence (`credentialsRef`).
 - Réseau : uniquement via `main/net/http.ts` (liste blanche : Steam Web API et boutique, Twitch/IGDB, SteamGridDB, itch.io, GOG, CheapShark, Instant Gaming, CDN d'images). Aucun appel réseau dans les tests : `fetch` injecté + réponses enregistrées (`tests/fixtures/api`) ; en e2e le `fetch` du main échoue par défaut, `stubFetch(app, routes)` rejoue des réponses.
 - Un jeu est unique par `(source, sourceId)` : détection locale, import et synchro font un upsert sur la même ligne. Jeux manuels : `sourceId` = UUID.
-- Intégrations non officielles (Epic via Legendary, GOG option B) isolées dans leur module : une erreur est stockée sur le compte (`lastError`) ou la source, jamais propagée au reste.
+- Intégrations non officielles (cache du launcher Epic, installs Epic via Legendary, GOG option B) isolées dans leur module : une erreur est stockée sur le compte (`lastError`) ou la source, jamais propagée au reste.
 - Imports : `@shared/*` et `@renderer/*` côté renderer ; chemins relatifs dans main/preload/tests (drizzle-kit ne résout pas les alias).
 - Fichiers avec antislashs ou séquences `\u` : les écrire avec l'outil d'écriture de fichiers, pas via heredoc shell (les échappements y sont altérés).
 

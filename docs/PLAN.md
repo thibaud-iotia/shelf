@@ -114,8 +114,8 @@ qui ouvre le launcher concerné.
   - Option B, derrière un flag : connexion OAuth au compte GOG comme le fait Heroic,
     fenêtre de login Electron dédiée, refresh token stocké via `safeStorage`.
 - Epic (non officiel)
-  - S'appuyer sur Legendary (CLI) s'il est installé : `legendary list --json`.
-    Ne pas réimplémenter l'authentification Epic.
+  - Lire le catalogue que l'Epic Games Launcher garde sur le disque (`catcache.bin`), sans connexion.
+    Ne pas réimplémenter l'authentification Epic. (Ancienne piste Legendary `list --json` abandonnée.)
 - itch.io
   - API avec clé utilisateur : endpoint des clés possédées, paginé.
 

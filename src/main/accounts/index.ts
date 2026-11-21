@@ -1,7 +1,6 @@
 import { BrowserWindow } from 'electron'
 import type { LauncherLocations } from '../platform/paths'
 import { epicLauncherProvider } from './epic-launcher'
-import { epicLegendaryProvider } from './epic-legendary'
 import { gogGalaxyProvider } from './gog-galaxy'
 import { openGogLogin } from './gog-login'
 import { gogOAuthProvider } from './gog-oauth'
@@ -15,7 +14,6 @@ export function createProviders(locations: () => LauncherLocations): AccountProv
     itchProvider() as AccountProvider,
     gogGalaxyProvider(() => locations().galaxyDatabases),
     gogOAuthProvider({ login: () => openGogLogin(BrowserWindow.getAllWindows()[0]) }),
-    epicLauncherProvider(() => locations().epicCatalogCaches),
-    epicLegendaryProvider(() => locations().legendaryBinaries)
+    epicLauncherProvider(() => locations().epicCatalogCaches)
   ]
 }

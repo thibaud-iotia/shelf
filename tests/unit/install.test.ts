@@ -12,7 +12,9 @@ import {
   legendaryInstallDir,
   LegendaryInstaller,
   legendaryOwnerOf,
+  loggedIn,
   parseLegendaryLine,
+  type LegendaryBinary,
   type LegendaryInstall,
   type LegendaryProgress
 } from '../../src/main/install/legendary'
@@ -548,6 +550,23 @@ describe('LegendaryInstaller', () => {
       runCommand: async () => JSON.stringify({ account: '<not logged in>' })
     })
     expect(await anonymous.available()).toBeNull()
+  })
+
+  it('needs a logged-in binary, tries each one', async () => {
+    const fixture = (name: string) => readFileSync(join(__dirname, '../fixtures/api', name), 'utf8')
+    const enoent = Object.assign(new Error('spawn legendary ENOENT'), { code: 'ENOENT' })
+    const heroic = { file: '/heroic/legendary', configPath: '/heroic/legendaryConfig/legendary' }
+    // Standalone copy missing, Heroic's copy logged in through its own config folder.
+    const run = async (binary: LegendaryBinary) => {
+      if (binary.file === 'legendary') throw enoent
+      return fixture(binary.configPath ? 'legendary-status.json' : 'legendary-status-anon.json')
+    }
+    expect(await loggedIn([{ file: 'legendary' }, { file: '/x' }, heroic], run)).toEqual({
+      binary: heroic,
+      account: 'epicfan'
+    })
+    await expect(loggedIn([{ file: '/x' }], run)).rejects.toThrow(/legendary auth/)
+    await expect(loggedIn([{ file: 'legendary' }], run)).rejects.toThrow(/Legendary introuvable/)
   })
 
   it('finds which Legendary installed a game', async () => {
