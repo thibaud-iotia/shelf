@@ -25,8 +25,9 @@ export const IMAGE_HOSTS = new Set([
 
 /**
  * The only hosts Shelf talks to (PLAN: Steam Web API and store, IGDB/Twitch, SteamGridDB,
- * itch.io, GOG option B, CheapShark, the GOG catalog and Instant Gaming for the store, plus
- * the image CDNs above). Every outgoing request goes through this module.
+ * itch.io, GOG option B, CheapShark, the GOG catalog and Instant Gaming for the store, the
+ * Rockstar Games Social Club (owned games), plus the image CDNs above). Every outgoing
+ * request goes through this module.
  */
 export const ALLOWED_HOSTS = new Set([
   'api.steampowered.com',
@@ -41,6 +42,9 @@ export const ALLOWED_HOSTS = new Set([
   'catalog.gog.com',
   // Store: key reseller prices, read from its search page (no API).
   'www.instant-gaming.com',
+  // Rockstar Games Social Club: games owned by the connected account (unofficial).
+  'socialclub.rockstargames.com',
+  'scapi.rockstargames.com',
   ...IMAGE_HOSTS
 ])
 

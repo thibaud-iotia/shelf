@@ -48,8 +48,12 @@ export function queryRegistryValue(key: string, name: string): Promise<string | 
 export function queryRegistry(key: string): Promise<RegistryKey[]> {
   if (process.platform !== 'win32') return Promise.resolve([])
   return new Promise((resolve) => {
-    execFile('reg', ['query', key, '/s'], { windowsHide: true, timeout: 10_000 }, (error, stdout) =>
-      resolve(error ? [] : parseRegQuery(stdout))
+    // Whole uninstall trees exceed execFile's default 1 MB of output.
+    execFile(
+      'reg',
+      ['query', key, '/s'],
+      { windowsHide: true, timeout: 10_000, maxBuffer: 32 * 1024 * 1024 },
+      (error, stdout) => resolve(error ? [] : parseRegQuery(stdout))
     )
   })
 }

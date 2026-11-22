@@ -1,4 +1,5 @@
 import { app, dialog, safeStorage, shell } from 'electron'
+import type { GameSourceId } from '../shared/domain'
 import { createProviders } from './accounts'
 import { AccountService } from './accounts/service'
 import type { AppContext } from './context'
@@ -13,16 +14,21 @@ import {
   markNotInstalled,
   openSession
 } from './games/repository'
+import { importRockstarSessions } from './games/rockstar-sessions'
 import { UninstallWatcher } from './games/uninstall-watch'
 import { followSteamLaunches, launchGame, runningGameIds } from './launch/launch-game'
 import { registerIpcHandlers } from './ipc/handlers'
 import { ImportService } from './import/service'
 import { LegendaryInstaller } from './install/legendary'
+import { RockstarLauncher } from './install/rockstar'
 import { InstallService } from './install/service'
 import { SteamInstaller } from './install/steam'
 import { steamClientControl } from './install/steam-client'
 import { readTail, steamContentLog } from './install/steam-log'
 import { processWriteMeter } from './platform/process-io'
+import { anyProcessRunning } from './platform/processes'
+import { RockstarWatcher } from './launch/rockstar-watch'
+import { launchRequests, readRockstarLogs, readSessions } from './sources/rockstar-log'
 import { LaunchTracker } from './launch/progress'
 import { GameRunner } from './launch/runner'
 import { SteamWatcher } from './launch/steam-watch'
@@ -102,21 +108,38 @@ function createContext(): AppContext {
   })
   const locations = launcherLocations()
   const steamWatch = new SteamWatcher({ readStatus: locations.steamStatus })
-  const running = () => broadcast('games:running', runningGameIds({ runner, steamWatch }))
+  // Rockstar Games Launcher: its current log tells the game it starts and when it exits.
+  const rockstarWatch = new RockstarWatcher({
+    readStatus: async (since) => {
+      const entries = await readRockstarLogs(locations.rockstarLogDir, 1)
+      return {
+        openSessions: readSessions(entries)
+          .filter((s) => s.endedAt === null)
+          .map((s) => s.path),
+        requested: launchRequests(entries, since)
+      }
+    },
+    ...(process.platform === 'win32' ? { isRunning: anyProcessRunning } : {})
+  })
+  const running = () =>
+    broadcast('games:running', runningGameIds({ runner, steamWatch, rockstarWatch }))
   runner.on('change', running)
   steamWatch.on('change', running)
+  rockstarWatch.on('change', running)
 
   // From the click on "Jouer" to the game running: what the UI shows meanwhile.
   const launches = new LaunchTracker()
   launches.on('change', (list) => broadcast('games:launching', list))
-  followSteamLaunches(launches, steamWatch, (gameId, launcher) => {
+  const launchTimeout = (gameId: number, launcher: GameSourceId | null) => {
     try {
       const { title } = getGameRow(db, gameId)
       broadcast('games:launchTimeout', { gameId, title, launcher })
     } catch {
       // Deleted meanwhile: nothing to tell.
     }
-  })
+  }
+  followSteamLaunches(launches, steamWatch, launchTimeout)
+  followSteamLaunches(launches, rockstarWatch, launchTimeout)
 
   const settings = new SettingsStore(db)
   const secrets = new SecretStore(paths.secrets(), {
@@ -169,13 +192,32 @@ function createContext(): AppContext {
     }, STEAM_SYNC_DELAY_MS)
   })
 
+  // Rockstar playtime: the game runs of the launcher's logs become play sessions.
+  const importRockstarPlay = async () => {
+    if (!locations.rockstarLogDir) return 0
+    const added = importRockstarSessions(
+      db,
+      readSessions(await readRockstarLogs(locations.rockstarLogDir))
+    )
+    if (added) broadcast('library:changed', { reason: 'session' })
+    return added
+  }
+  rockstarWatch.on('ended', () => {
+    void importRockstarPlay().catch((error: unknown) =>
+      console.warn('[rockstar] session import failed', error)
+    )
+  })
+
   // Launcher files (install states, pending updates): one read at a time, shared by callers.
   let checking: Promise<void> | null = null
   const checkUpdates = () =>
     (checking ??= importer
       .refreshInstalled()
-      .then((report) => {
+      .then(async (report) => {
         if (report) broadcast('library:changed', { reason: 'refresh' })
+        await importRockstarPlay().catch((error: unknown) =>
+          console.warn('[rockstar] session import failed', error)
+        )
       })
       .finally(() => {
         checking = null
@@ -201,9 +243,15 @@ function createContext(): AppContext {
       openExternal: (uri) => shell.openExternal(uri)
     })
   })
+  const rockstar = new RockstarLauncher({
+    launcher: locations.rockstarLauncher,
+    uninstallKeys: locations.rockstarUninstallKeys,
+    logDir: () => locations.rockstarLogDir
+  })
   const installs = new InstallService({
     steam: steamInstaller,
     legendary: new LegendaryInstaller({ binaries: () => launcherLocations().legendaryBinaries }),
+    rockstar,
     enabled: () => settings.get('backgroundInstall'),
     defaultPath: (source) => settings.get('installPaths')[source],
     // Live progress of Steam downloads: the appmanifest only gets it when they stop.
@@ -269,6 +317,7 @@ function createContext(): AppContext {
     settings,
     runner,
     steamWatch,
+    rockstarWatch,
     launches,
     importer,
     secrets,
@@ -278,7 +327,9 @@ function createContext(): AppContext {
     onSynced,
     compactMedia,
     checkUpdates,
+    importPlaySessions: importRockstarPlay,
     installs,
+    rockstar,
     uninstallWatch,
     store,
     purchases,
@@ -374,6 +425,7 @@ app.on('will-quit', () => {
   tray?.destroy()
   ctx?.runner.dispose()
   ctx?.steamWatch.dispose()
+  ctx?.rockstarWatch.dispose()
   ctx?.launches.dispose()
   ctx?.uninstallWatch.dispose()
   ctx?.installs.dispose()

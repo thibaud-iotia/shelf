@@ -1,0 +1,33 @@
+
+HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\7-Zip
+    DisplayName    REG_SZ    7-Zip 24.08 (x64)
+    Publisher    REG_SZ    Igor Pavlov
+    UninstallString    REG_SZ    "C:\Program Files\7-Zip\Uninstall.exe"
+
+HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\Rockstar Games Launcher
+    DisplayName    REG_SZ    Rockstar Games Launcher
+    Publisher    REG_SZ    Rockstar Games
+    InstallLocation    REG_SZ    C:\Program Files\Rockstar Games\Launcher
+    UninstallString    REG_SZ    "C:\Program Files\Rockstar Games\Launcher\uninstall.exe" -enableFullMode -uninstall=launcher
+    DisplayVersion    REG_SZ    1.0.110.3150
+
+HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\{5EFC6C07-6B87-43FC-9524-F9E967241741}
+    DisplayName    REG_SZ    Grand Theft Auto V
+    Publisher    REG_SZ    Rockstar Games
+    InstallLocation    REG_SZ    C:\Program Files\Rockstar Games\Grand Theft Auto V
+    UninstallString    REG_SZ    "C:\Program Files\Rockstar Games\Grand Theft Auto V\uninstall.exe" -enableFullMode -uninstall=gta5
+    DisplayIcon    REG_SZ    "C:\Program Files\Rockstar Games\Grand Theft Auto V\GTA5.exe"
+    EstimatedSize    REG_DWORD    0x70b1b42
+    DisplayVersion    REG_SZ    1.0.3351.0
+
+HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\Red Dead Redemption 2
+    DisplayName    REG_SZ    Red Dead Redemption 2
+    Publisher    REG_SZ    Rockstar Games
+    InstallLocation    REG_SZ    D:\Jeux\Red Dead Redemption 2
+    UninstallString    REG_SZ    "C:\Program Files\Rockstar Games\Launcher\Launcher.exe" -enableFullMode -uninstall=rdr2
+    DisplayVersion    REG_SZ    1.0.1491.50
+
+HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\Rockstar Games Social Club
+    DisplayName    REG_SZ    Rockstar Games SDK
+    Publisher    REG_SZ    Rockstar Games
+    UninstallString    REG_SZ    C:\Program Files\Rockstar Games\Social Club\uninstallRGSCRedistributable.exe

@@ -163,13 +163,19 @@ export interface InstallProgress {
   totalBytes: number | null
   /** When the install was started (ms since epoch). */
   startedAt: number
-  /** The install can really be stopped (Legendary download, Steam manifest not picked up yet). */
+  /**
+   * The install can really be stopped (Legendary download, Steam manifest not picked up yet),
+   * or, for an install run by the Rockstar Games Launcher, no longer followed.
+   */
   cancellable: boolean
 }
 
-/** How `games:install` went: in the background, or the launcher's install page was opened. */
+/**
+ * How `games:install` went: in the background, the launcher's install page was opened, or the
+ * launcher was opened on the install and Shelf follows it (Rockstar Games Launcher).
+ */
 export interface InstallStart {
-  mode: 'background' | 'launcher'
+  mode: 'background' | 'launcher' | 'followed'
 }
 
 /** Launchers Shelf installs to in the background, where the user may pick the folder. */
@@ -254,6 +260,8 @@ export interface ImportCandidate {
   title: string
   executablePath: string | null
   installPath: string | null
+  /** Saves folder found by the launcher's detection (kept if the game already has one). */
+  savePath?: string | null
   /** Launcher finds only: an update is pending for this install. */
   updateAvailable: boolean
   status: CandidateStatus
@@ -293,7 +301,14 @@ export interface ImportReport {
 
 // Accounts (phase 2b)
 
-export const ACCOUNT_KINDS = ['steam', 'gog-galaxy', 'gog-oauth', 'epic-launcher', 'itch'] as const
+export const ACCOUNT_KINDS = [
+  'steam',
+  'gog-galaxy',
+  'gog-oauth',
+  'epic-launcher',
+  'itch',
+  'rockstar-social'
+] as const
 export type AccountKind = (typeof ACCOUNT_KINDS)[number]
 
 export interface Account {
@@ -313,6 +328,7 @@ export type ConnectInput =
   | { kind: 'gog-galaxy' }
   | { kind: 'gog-oauth' }
   | { kind: 'epic-launcher' }
+  | { kind: 'rockstar-social' }
 
 export interface SyncReport {
   accountId: string

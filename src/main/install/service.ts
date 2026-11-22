@@ -16,6 +16,7 @@ import { readText } from '../sources/fs'
 import { installUri } from '../sources/uris'
 import { diskFree } from './disk'
 import type { LegendaryInstall, LegendaryInstaller, LegendaryProgress } from './legendary'
+import type { RockstarLauncher } from './rockstar'
 import { pickLibrary, readInstallState, samePath } from './steam-manifest'
 import type { SteamInstaller } from './steam'
 import { readSteamDownload, SteamProgressEstimator, type SteamLogDownload } from './steam-log'
@@ -32,6 +33,12 @@ export type InstallOutcome = 'installed' | 'failed' | 'cancelled'
 export interface InstallServiceDeps {
   steam: SteamInstaller
   legendary: LegendaryInstaller
+  /** Rockstar Games Launcher: opened on the game's install, then followed. */
+  rockstar?: RockstarLauncher
+  /** Polling of the Rockstar installs (log and uninstall entries). */
+  rockstarPollMs?: number
+  /** After this long, Shelf stops following a Rockstar install. */
+  rockstarTimeoutMs?: number
   /** Réglage « installer en arrière-plan ». */
   enabled: () => boolean
   /** Default location saved in the settings for a launcher (null: Shelf picks). */
@@ -66,7 +73,13 @@ interface EpicEntry {
   handle: LegendaryInstall | null
 }
 
-type Entry = { game: InstallTarget; progress: InstallProgress } & (SteamEntry | EpicEntry)
+interface RockstarEntry {
+  kind: 'rockstar'
+}
+
+type Entry = { game: InstallTarget; progress: InstallProgress } & (
+  SteamEntry | EpicEntry | RockstarEntry
+)
 
 const steamEntry = (appId: number, manifestPath: string): SteamEntry => ({
   kind: 'steam',
@@ -88,7 +101,9 @@ const steamAppId = (sourceId: string): number | null =>
 export class InstallService {
   private readonly entries = new Map<number, Entry>()
   private timer: NodeJS.Timeout | null = null
+  private rockstarTimer: NodeJS.Timeout | null = null
   private polling = false
+  private pollingRockstar = false
   private readonly now: () => number
 
   constructor(private readonly deps: InstallServiceDeps) {
@@ -154,6 +169,7 @@ export class InstallService {
     if (this.entries.has(game.id)) {
       throw new AppError('VALIDATION', 'L’installation de ce jeu est déjà en cours.')
     }
+    if (game.source === 'rockstar') return this.installRockstar(game)
     if (this.deps.enabled() && isInstallSource(game.source)) {
       const path = request.path ?? this.deps.defaultPath(game.source) ?? undefined
       if (game.source === 'steam' && (await this.installSteam(game, path))) {
@@ -187,6 +203,15 @@ export class InstallService {
   async cancel(gameId: number): Promise<void> {
     const entry = this.entries.get(gameId)
     if (!entry) return
+    if (entry.kind === 'rockstar') {
+      // Only Shelf stops following: the launcher goes on with its download.
+      this.end(
+        entry,
+        'cancelled',
+        `Shelf ne suit plus l’installation de « ${entry.game.title} » : elle continue dans le Rockstar Games Launcher.`
+      )
+      return
+    }
     if (entry.kind === 'epic') {
       if (entry.handle) entry.handle.cancel()
       else this.end(entry, 'cancelled')
@@ -203,6 +228,7 @@ export class InstallService {
 
   dispose(): void {
     this.stopTimer()
+    this.stopRockstarTimer()
     this.entries.clear()
     this.deps.legendary.dispose()
     this.deps.steam.dispose()
@@ -223,6 +249,67 @@ export class InstallService {
     this.track(game, steamEntry(appId, manifestPath), 'preparing')
     void this.pollSteam()
     return true
+  }
+
+  /**
+   * Rockstar: no silent install. The launcher opens on the game's install (folder, confirmation
+   * there), Shelf follows it until the launcher logs the end, then re-reads the library.
+   */
+  private async installRockstar(game: InstallTarget): Promise<InstallStart> {
+    const rockstar = this.deps.rockstar
+    if (!rockstar) throw new AppError('NOT_FOUND', 'Ce jeu ne peut pas être installé depuis Shelf.')
+    await rockstar.run('install', game.sourceId)
+    this.track<RockstarEntry>(game, { kind: 'rockstar' }, 'queued')
+    this.setProgress(this.entries.get(game.id)!, { cancellable: true })
+    this.rockstarTimer ??= setInterval(
+      () => void this.pollRockstar(),
+      this.deps.rockstarPollMs ?? 3_000
+    )
+    return { mode: 'followed' }
+  }
+
+  /** Reads the launcher's state for the Rockstar installs followed. */
+  private async pollRockstar(): Promise<void> {
+    const rockstar = this.deps.rockstar
+    if (this.pollingRockstar || !rockstar) return
+    this.pollingRockstar = true
+    try {
+      for (const entry of [...this.entries.values()]) {
+        if (entry.kind !== 'rockstar') continue
+        const { startedAt } = entry.progress
+        const state = await rockstar.state(entry.game.sourceId, entry.game.title, startedAt)
+        if (state.installed) {
+          await this.refreshQuietly()
+          this.end(entry, 'installed')
+          continue
+        }
+        if (state.outcome === 'failed') {
+          this.end(entry, 'failed', 'Le Rockstar Games Launcher signale l’échec de l’installation.')
+          continue
+        }
+        if (this.now() - startedAt > (this.deps.rockstarTimeoutMs ?? 12 * 3600_000)) {
+          this.end(entry, 'failed', 'Installation trop longue : Shelf ne la suit plus.')
+          continue
+        }
+        const total = state.totalBytes
+        this.setProgress(entry, {
+          phase: state.outcome === 'paused' ? 'paused' : total ? 'downloading' : 'queued',
+          progress: total ? Math.min(1, (state.downloadedBytes ?? 0) / total) : null,
+          downloadedBytes: total ? state.downloadedBytes : null,
+          totalBytes: total
+        })
+      }
+    } catch (error) {
+      console.warn('[install] Rockstar state failed', error)
+    } finally {
+      this.pollingRockstar = false
+      if (![...this.entries.values()].some((e) => e.kind === 'rockstar')) this.stopRockstarTimer()
+    }
+  }
+
+  private stopRockstarTimer(): void {
+    if (this.rockstarTimer) clearInterval(this.rockstarTimer)
+    this.rockstarTimer = null
   }
 
   private async installEpic(game: InstallTarget, path: string | undefined): Promise<boolean> {
@@ -268,7 +355,7 @@ export class InstallService {
     this.emitChange()
   }
 
-  private track<T extends SteamEntry | EpicEntry>(
+  private track<T extends SteamEntry | EpicEntry | RockstarEntry>(
     game: InstallTarget,
     kind: T,
     phase: InstallPhase

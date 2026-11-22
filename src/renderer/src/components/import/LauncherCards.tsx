@@ -7,6 +7,7 @@ const tiles: Record<GameSourceId, { letter: string; background: string }> = {
   epic: { letter: 'E', background: 'linear-gradient(160deg,#4a4a5e,#16161f)' },
   gog: { letter: 'G', background: 'linear-gradient(160deg,#8a45b8,#2a1438)' },
   itch: { letter: 'i', background: 'linear-gradient(160deg,#fa5c5c,#3a1414)' },
+  rockstar: { letter: 'R', background: 'linear-gradient(160deg,#f2a900,#3a2a05)' },
   manual: { letter: 'M', background: 'var(--ink-700)' }
 }
 

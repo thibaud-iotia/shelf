@@ -1,5 +1,6 @@
 import type { GameSourceId } from '../../shared/domain'
 import type { LaunchResult } from '../../shared/models'
+import { rockstarTitle } from '../../shared/rockstar'
 import type { AppContext } from '../context'
 import { getGameRow } from '../games/repository'
 import { legendaryOwnerOf } from '../install/legendary'
@@ -7,12 +8,14 @@ import { launcherLocations, paths, type LauncherLocations } from '../platform/pa
 import { epicLauncherHas } from '../sources/epic'
 import { buildLaunchPlan, launcherOf } from './plan'
 import type { LaunchTracker } from './progress'
+import type { RockstarWatcher } from './rockstar-watch'
 import type { SteamWatcher } from './steam-watch'
 
 type LaunchContext = Pick<
   AppContext,
   'database' | 'settings' | 'runner' | 'steamWatch' | 'launches'
->
+> &
+  Partial<Pick<AppContext, 'rockstarWatch'>>
 
 /**
  * Launches a game (detail page, palette, tray) and follows it when Shelf can. The launch is
@@ -28,6 +31,7 @@ export async function launchGame(ctx: LaunchContext, gameId: number): Promise<La
       platform: process.platform,
       steamExecutable: game.source === 'steam' ? await locations.steamExecutable() : null,
       legendary: game.source === 'epic' ? await legendaryLaunchFor(game.sourceId, locations) : null,
+      rockstarLauncher: game.source === 'rockstar' ? await locations.rockstarLauncher() : null,
       runnerPath: ctx.settings.get('runnerPath'),
       protonPrefix: paths.protonPrefix()
     })
@@ -41,9 +45,19 @@ export async function launchGame(ctx: LaunchContext, gameId: number): Promise<La
   if (!result.tracked && game.source === 'steam') {
     if (ctx.steamWatch.watch(game.id, Number(game.sourceId))) return result
   }
+  // The Rockstar Games Launcher logs the game it starts and when it exits.
+  if (!result.tracked && game.source === 'rockstar' && game.installPath && ctx.rockstarWatch) {
+    const target = {
+      titleId: game.sourceId,
+      installPath: game.installPath,
+      executable: rockstarTitle(game.sourceId)?.executable ?? null
+    }
+    if (ctx.rockstarWatch.watch(game.id, target)) return result
+  }
   // Shelf owns the process (the running badge takes over), or Steam just brings a running
   // game to the front; otherwise the launcher took over where Shelf cannot follow it.
-  if (result.tracked || ctx.steamWatch.isRunning(game.id)) ctx.launches.finish(game.id)
+  const followed = ctx.steamWatch.isRunning(game.id) || !!ctx.rockstarWatch?.isRunning(game.id)
+  if (result.tracked || followed) ctx.launches.finish(game.id)
   else ctx.launches.handoff(game.id)
   return result
 }
@@ -63,19 +77,25 @@ async function legendaryLaunchFor(
 
 /** Stops waiting for a launch; the launcher goes on on its own. */
 export function cancelLaunch(
-  ctx: Pick<AppContext, 'steamWatch' | 'launches'>,
+  ctx: Pick<AppContext, 'steamWatch' | 'launches'> & Partial<Pick<AppContext, 'rockstarWatch'>>,
   gameId: number
 ): void {
   ctx.steamWatch.unwatch(gameId)
+  ctx.rockstarWatch?.unwatch(gameId)
   ctx.launches.finish(gameId)
 }
 
-/** Keeps the launches in step with Steam: phases, game started, never showed up. */
+/**
+ * Keeps the launches in step with a launcher Shelf follows (Steam, Rockstar Games Launcher):
+ * phases, game started, never showed up.
+ */
 export function followSteamLaunches(
   launches: LaunchTracker,
-  steamWatch: SteamWatcher,
+  watcher: SteamWatcher | RockstarWatcher,
   onTimeout: (gameId: number, launcher: GameSourceId | null) => void
 ): void {
+  // Both watchers emit the same events; the union of their emitters is not callable as is.
+  const steamWatch = watcher as SteamWatcher
   steamWatch.on('phase', (gameId, phase) => launches.setPhase(gameId, phase))
   steamWatch.on('change', (ids) => {
     for (const gameId of ids) launches.finish(gameId)
@@ -88,7 +108,13 @@ export function followSteamLaunches(
   })
 }
 
-/** Games running right now: processes Shelf started, and Steam games it follows. */
-export function runningGameIds(ctx: Pick<AppContext, 'runner' | 'steamWatch'>): number[] {
-  return [...ctx.runner.runningIds(), ...ctx.steamWatch.runningIds()]
+/** Games running right now: processes Shelf started, Steam and Rockstar games it follows. */
+export function runningGameIds(
+  ctx: Pick<AppContext, 'runner' | 'steamWatch'> & Partial<Pick<AppContext, 'rockstarWatch'>>
+): number[] {
+  return [
+    ...ctx.runner.runningIds(),
+    ...ctx.steamWatch.runningIds(),
+    ...(ctx.rockstarWatch?.runningIds() ?? [])
+  ]
 }

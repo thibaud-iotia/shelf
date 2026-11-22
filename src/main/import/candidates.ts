@@ -45,6 +45,7 @@ export function buildCandidates(
       executablePath: game.executablePath,
       installPath: game.installPath,
       updateAvailable: game.updateAvailable ?? false,
+      ...(game.savePath ? { savePath: game.savePath } : {}),
       status: known ? 'update' : 'new',
       needsReview: false,
       duplicateOf: null,

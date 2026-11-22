@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
-import { and, eq, inArray, notInArray } from 'drizzle-orm'
+import { and, eq, inArray, notInArray, sql } from 'drizzle-orm'
 import type { GameSourceId } from '../../shared/domain'
 import { AppError } from '../../shared/errors'
 import type {
@@ -204,6 +204,7 @@ export class ImportService {
             updateAvailable: candidate.updateAvailable,
             installPath: candidate.installPath,
             executablePath: candidate.executablePath,
+            savePath: candidate.savePath ?? null,
             igdbId
           })
           .onConflictDoUpdate({
@@ -213,7 +214,11 @@ export class ImportService {
               updateAvailable: candidate.updateAvailable,
               ownership: 'owned',
               installPath: candidate.installPath,
-              ...(candidate.executablePath ? { executablePath: candidate.executablePath } : {})
+              ...(candidate.executablePath ? { executablePath: candidate.executablePath } : {}),
+              // A folder the user picked stays.
+              ...(candidate.savePath
+                ? { savePath: sql`COALESCE(${games.savePath}, ${candidate.savePath})` }
+                : {})
             }
           })
           .returning()
@@ -267,7 +272,7 @@ export class ImportService {
     const known = this.db
       .select({ source: games.source })
       .from(games)
-      .where(inArray(games.source, ['steam', 'epic', 'gog', 'itch']))
+      .where(inArray(games.source, ['steam', 'epic', 'gog', 'itch', 'rockstar']))
       .all()
     if (known.length === 0) return null
     const { result, state } = await this.detect({ folders: [] })

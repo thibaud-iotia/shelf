@@ -9,11 +9,11 @@ import type {
 } from '../../shared/models'
 import type { ShelfDatabase } from '../db/client'
 import { games } from '../db/schema'
-import { getGameRow } from '../games/repository'
+import { defaultSteamAppId, getGameRow } from '../games/repository'
 import type { IgdbExtras } from '../metadata/igdb'
 import type { FetchLike } from '../net/http'
 import { remoteImageUrl } from '../media/remote'
-import { buildLinks, youtubeVideos } from './links'
+import { buildLinks, withRockstarLink, youtubeVideos } from './links'
 import {
   communityHubUrl,
   matchStoreSearch,
@@ -84,7 +84,9 @@ export class InsightsService {
   async steamAppId(gameId: number): Promise<string | null> {
     const row = getGameRow(this.deps.db, gameId)
     if (row.steamAppId) return row.steamAppId
-    if (row.source === 'steam') return row.sourceId
+    // Steam games, and Rockstar games of the catalogue (all of them are also sold on Steam).
+    const known = defaultSteamAppId(row)
+    if (known) return known
     const key = `${row.id}:${row.title}`
     if (this.searched.has(key)) return this.searched.get(key) ?? null
     const found = matchStoreSearch(await this.client.search(row.title), row.title)
@@ -110,7 +112,9 @@ export class InsightsService {
   async overview(gameId: number): Promise<GameInsights> {
     const row = getGameRow(this.deps.db, gameId)
     const appId = await this.steamAppId(gameId).catch(() => null)
-    return this.overviewOf(appId, row.igdbId)
+    const insights = await this.overviewOf(appId, row.igdbId)
+    if (row.source !== 'rockstar') return insights
+    return { ...insights, links: withRockstarLink(row.sourceId, insights.links) }
   }
 
   /** Same blocks for a Steam app that is not in the library (store page of a game to buy). */

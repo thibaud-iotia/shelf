@@ -157,7 +157,9 @@ export function useInstallGame() {
       toast.info(
         mode === 'background'
           ? 'Installation lancée en arrière-plan : suivez-la sur la fiche du jeu.'
-          : 'Ouverture du launcher pour l’installation…'
+          : mode === 'followed'
+            ? 'Confirmez l’installation dans le launcher : Shelf la suit sur la fiche du jeu.'
+            : 'Ouverture du launcher pour l’installation…'
       )
       // "Toujours installer ici" saved a default location.
       if (request?.remember) void client.invalidateQueries({ queryKey: queryKeys.settings })
@@ -660,14 +662,20 @@ export function useMainEvents() {
     const offInstalling = window.shelf.on('games:installing', setInstalling)
     const offInstallEnded = window.shelf.on('games:installEnded', ({ title, outcome, error }) => {
       if (outcome === 'installed') toast.success(`« ${title} » est installé.`)
-      else if (outcome === 'cancelled') toast.info(`Installation de « ${title} » annulée.`)
+      else if (outcome === 'cancelled') toast.info(error ?? `Installation de « ${title} » annulée.`)
       else toast.error(error ?? `L’installation de « ${title} » a échoué.`)
     })
     const offRunning = window.shelf.on('games:running', setRunning)
     const offLaunching = window.shelf.on('games:launching', setLaunching)
     const offTimeout = window.shelf.on('games:launchTimeout', ({ title, launcher }) =>
       toast.error(
-        `« ${title} » ne s’est pas lancé${launcher === 'steam' ? ' : vérifiez la fenêtre de Steam' : ''}.`
+        `« ${title} » ne s’est pas lancé${
+          launcher === 'steam'
+            ? ' : vérifiez la fenêtre de Steam'
+            : launcher === 'rockstar'
+              ? ' : vérifiez la fenêtre du Rockstar Games Launcher'
+              : ''
+        }.`
       )
     )
     const offLibrary = window.shelf.on('library:changed', ({ reason }) => {

@@ -9,6 +9,8 @@ export interface DetectedGame {
   executablePath: string | null
   /** The launcher has an update pending for this install (queued, downloading or paused). */
   updateAvailable?: boolean
+  /** Saves folder found on disk, used when the game has none set (Rockstar games). */
+  savePath?: string | null
 }
 
 /**

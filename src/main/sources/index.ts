@@ -2,6 +2,7 @@ import type { LauncherLocations } from '../platform/paths'
 import { epicSource } from './epic'
 import { gogSource } from './gog'
 import { itchSource } from './itch'
+import { rockstarSource } from './rockstar'
 import { steamSource } from './steam'
 import type { GameSource } from './types'
 
@@ -18,6 +19,12 @@ export function createSources(locations: () => LauncherLocations): GameSource[] 
       gameDirs: locations().gogGameDirs,
       heroicInstalled: locations().heroicGogInstalled
     })),
-    itchSource(() => locations().itchDatabases)
+    itchSource(() => locations().itchDatabases),
+    rockstarSource(() => ({
+      uninstallKeys: locations().rockstarUninstallKeys,
+      launcher: locations().rockstarLauncher,
+      logDir: locations().rockstarLogDir,
+      savesDir: locations().rockstarSavesDir
+    }))
   ]
 }

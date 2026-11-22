@@ -61,7 +61,11 @@ export class GameRunner extends EventEmitter<{ change: [number[]] }> {
           child.once('error', reject)
         })
         child.unref()
-      } catch {
+      } catch (error) {
+        if (!plan.uri) {
+          const reason = error instanceof Error ? error.message : String(error)
+          throw new AppError('UNAVAILABLE', `Impossible de démarrer le launcher : ${reason}`)
+        }
         await this.deps.openExternal(plan.uri)
       }
       return { tracked: false, method: 'uri' }

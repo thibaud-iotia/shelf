@@ -26,6 +26,7 @@ export function installPhaseLabel(
   progress: Pick<InstallProgress, 'phase' | 'source' | 'progress'>
 ): string {
   const steam = progress.source === 'steam'
+  const rockstar = progress.source === 'rockstar'
   switch (progress.phase) {
     case 'preparing':
       return steam ? 'Ajout à Steam…' : 'Préparation…'
@@ -34,7 +35,7 @@ export function installPhaseLabel(
     case 'waitingGame':
       return 'En attente de Steam…'
     case 'queued':
-      return 'En file dans Steam…'
+      return rockstar ? 'Installation dans le launcher Rockstar…' : 'En file dans Steam…'
     case 'allocating':
       return 'Allocation de l’espace disque…'
     case 'downloading': {
@@ -44,7 +45,7 @@ export function installPhaseLabel(
     case 'finishing':
       return 'Finalisation…'
     case 'paused':
-      return 'En pause dans Steam'
+      return rockstar ? 'En pause dans le launcher Rockstar' : 'En pause dans Steam'
   }
 }
 
@@ -71,7 +72,14 @@ export function installHint(
   if (progress.phase === 'waitingGame') {
     return 'Un jeu Steam est en cours : Steam redémarrera quand il sera fermé.'
   }
-  if (progress.phase === 'paused') return 'Reprenez le téléchargement depuis Steam.'
+  if (progress.phase === 'paused') {
+    return progress.source === 'rockstar'
+      ? 'Reprenez le téléchargement depuis le Rockstar Games Launcher.'
+      : 'Reprenez le téléchargement depuis Steam.'
+  }
+  if (progress.source === 'rockstar' && progress.phase === 'queued') {
+    return 'Choisissez l’emplacement et confirmez dans la fenêtre du launcher Rockstar.'
+  }
   if (
     progress.source === 'steam' &&
     progress.phase === 'queued' &&

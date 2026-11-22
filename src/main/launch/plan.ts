@@ -1,6 +1,7 @@
 import { basename, dirname, extname } from 'node:path'
 import type { GameSourceId } from '../../shared/domain'
 import { AppError } from '../../shared/errors'
+import { ROCKSTAR_TITLE_ID } from '../../shared/rockstar'
 import type { GameRow } from '../games/repository'
 import { launchUri } from '../sources/uris'
 import { parseArgs } from './args'
@@ -13,7 +14,8 @@ export type LaunchPlan =
       kind: 'launcher'
       command: string
       args: string[]
-      uri: string
+      /** Absent when the launcher has no URI scheme (Rockstar Games Launcher). */
+      uri?: string
       env?: Record<string, string>
     }
 
@@ -26,6 +28,8 @@ export interface LaunchOptions {
    * Epic Games Launcher does not know it, Legendary launches it.
    */
   legendary?: { file: string; configPath?: string } | null
+  /** Rockstar Games Launcher executable (Windows): its games only start through it. */
+  rockstarLauncher?: string | null
   /** Wine or Proton executable (Linux). */
   runnerPath: string | null
   /** Prefix directory handed to Proton (STEAM_COMPAT_DATA_PATH). */
@@ -41,12 +45,36 @@ type LaunchTarget = Pick<
 export function launcherOf(
   game: Pick<LaunchTarget, 'source' | 'executablePath'>
 ): GameSourceId | null {
-  if (game.source === 'steam' || game.source === 'epic') return game.source
+  if (game.source === 'steam' || game.source === 'epic' || game.source === 'rockstar') {
+    return game.source
+  }
   return game.executablePath ? null : game.source
+}
+
+/**
+ * Rockstar games need the Rockstar Games Launcher (DRM, Social Club, cloud saves). It has no
+ * URI scheme; `-minmodeApp` is what the games' own `Play*.exe` use: a small launcher window
+ * checks for updates, then starts the game, without the launcher's main window.
+ */
+export function rockstarLaunchPlan(
+  titleId: string,
+  launcher: string | null | undefined
+): LaunchPlan {
+  if (!ROCKSTAR_TITLE_ID.test(titleId)) {
+    throw new AppError('VALIDATION', 'Identifiant de jeu Rockstar invalide.')
+  }
+  if (!launcher) {
+    throw new AppError(
+      'NOT_FOUND',
+      'Rockstar Games Launcher introuvable : installez-le (Windows) pour lancer ce jeu.'
+    )
+  }
+  return { kind: 'launcher', command: launcher, args: [`-minmodeApp=${titleId}`] }
 }
 
 /** Decides how a game starts: through its launcher's URI, or as a process Shelf tracks. */
 export function buildLaunchPlan(game: LaunchTarget, options: LaunchOptions): LaunchPlan {
+  if (game.source === 'rockstar') return rockstarLaunchPlan(game.sourceId, options.rockstarLauncher)
   // Steam and Epic games need their launcher (DRM, overlay, cloud saves).
   if (game.source === 'steam' || game.source === 'epic') {
     const uri = launchUri(game, options.platform)!

@@ -1,0 +1,12 @@
+{
+  "status": true,
+  "accounts": [
+    {
+      "rockstarAccount": {
+        "rockstarId": 123456789,
+        "displayName": "PlayerOne",
+        "avatarUrl": "https://a.rsg.sc/n/playerone/l"
+      }
+    }
+  ]
+}

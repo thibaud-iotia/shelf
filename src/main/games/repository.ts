@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { dirname } from 'node:path'
 import { and, asc, desc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm'
 import { AppError } from '../../shared/errors'
+import { rockstarTitle } from '../../shared/rockstar'
 import type { Game, GameDetail, GameInput, GamePatch, PlaySession } from '../../shared/models'
 import type { ShelfDatabase } from '../db/client'
 import { collectionGames, gameDlcs, gameTags, games, playSessions, tags } from '../db/schema'
@@ -132,7 +133,7 @@ export function toGame(
     developer: row.developer,
     genres: row.genres ?? [],
     igdbId: row.igdbId,
-    steamAppId: row.steamAppId ?? (row.source === 'steam' ? row.sourceId : null),
+    steamAppId: row.steamAppId ?? defaultSteamAppId(row),
     favorite: row.favorite,
     hidden: row.hidden,
     addedAt: row.addedAt.getTime(),
@@ -146,10 +147,26 @@ export function toGame(
     collectionIds,
     savePath: row.savePath,
     useRunner: row.useRunner,
-    canInstall: row.installState !== 'installed' && installUri(row) !== null,
+    canInstall:
+      row.installState !== 'installed' && (installUri(row) !== null || isRockstarOnWindows(row)),
     canUninstall: row.installState === 'installed' && mayUninstall(row),
-    canUpdate: row.installState === 'installed' && row.updateAvailable && updateUri(row) !== null
+    canUpdate:
+      row.installState === 'installed' &&
+      row.updateAvailable &&
+      (updateUri(row) !== null || isRockstarOnWindows(row))
   }
+}
+
+/** Steam appid known without a search: Steam games, Rockstar games of the catalogue. */
+export function defaultSteamAppId(row: Pick<GameRow, 'source' | 'sourceId'>): string | null {
+  if (row.source === 'steam') return row.sourceId
+  if (row.source === 'rockstar') return rockstarTitle(row.sourceId)?.steamAppId ?? null
+  return null
+}
+
+/** The Rockstar Games Launcher (Windows only) installs and updates its games. */
+function isRockstarOnWindows(row: Pick<GameRow, 'source'>): boolean {
+  return row.source === 'rockstar' && process.platform === 'win32'
 }
 
 export function listGames(db: ShelfDatabase): Game[] {

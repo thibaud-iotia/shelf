@@ -33,6 +33,9 @@ function uninstallHint(game: Game): string {
   if (game.source === 'steam') {
     return 'Steam va s’ouvrir et vous demander de confirmer. Le jeu reste dans votre bibliothèque, prêt à être réinstallé.'
   }
+  if (game.source === 'rockstar') {
+    return 'Le Rockstar Games Launcher va s’ouvrir sur la désinstallation du jeu. Le jeu reste dans votre bibliothèque, prêt à être réinstallé.'
+  }
   return 'Le désinstalleur du jeu va s’ouvrir (Windows peut demander une autorisation). Les fichiers du jeu sont supprimés par celui-ci.'
 }
 

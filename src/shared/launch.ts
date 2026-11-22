@@ -9,6 +9,7 @@ const LAUNCHER_NAMES: Record<GameSourceId, string> = {
   epic: 'Epic Games',
   gog: 'GOG Galaxy',
   itch: 'itch',
+  rockstar: 'Rockstar Games',
   manual: 'le jeu'
 }
 

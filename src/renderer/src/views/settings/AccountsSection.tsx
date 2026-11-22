@@ -283,6 +283,15 @@ export function AccountsSection() {
       >
         <ItchForm />
       </ProviderCard>
+
+      <ProviderCard
+        kind="rockstar-social"
+        title="Rockstar Games Social Club (non officiel)"
+        accounts={list}
+        description="Connexion à votre compte Rockstar dans une fenêtre dédiée, puis lecture des jeux du compte sur le site Social Club. Les jeux installés par le Rockstar Games Launcher sont détectés sans compte ; le temps de jeu vient du journal du launcher. Intégration non officielle, isolée : si elle casse, le reste de Shelf continue de fonctionner."
+      >
+        <ConnectButton input={{ kind: 'rockstar-social' }} label="Se connecter à Rockstar Games…" />
+      </ProviderCard>
     </>
   )
 }

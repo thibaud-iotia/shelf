@@ -12,6 +12,10 @@ export function registerLibraryHandlers(ctx: AppContext): void {
     if (!Array.isArray(decisions)) return ctx.importer.apply([])
     const report = ctx.importer.apply(decisions)
     broadcast('library:changed', { reason: 'import' })
+    // New Rockstar games: their past runs are in the launcher's logs.
+    void ctx
+      .importPlaySessions()
+      .catch((error: unknown) => console.warn('[import] play sessions failed', error))
     return report
   })
 

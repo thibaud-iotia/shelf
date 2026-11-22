@@ -21,6 +21,9 @@ export function InstallPending({ progress }: { progress: InstallProgress }) {
   const bytes = installBytesLabel(progress)
   const hint = installHint(progress, now)
   const ratio = progress.progress
+  // The Rockstar Games Launcher runs the install: Shelf can only stop following it.
+  const cancelLabel =
+    progress.source === 'rockstar' ? 'Ne plus suivre l’installation' : 'Annuler l’installation'
 
   return (
     <>
@@ -62,8 +65,8 @@ export function InstallPending({ progress }: { progress: InstallProgress }) {
         <Button
           variant="secondary"
           size="lg"
-          aria-label="Annuler l’installation"
-          title="Annuler l’installation"
+          aria-label={cancelLabel}
+          title={cancelLabel}
           onClick={() => cancel.mutate(progress.gameId)}
         >
           ✕

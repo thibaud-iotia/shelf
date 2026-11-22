@@ -1,4 +1,5 @@
 import type { GameLink, GameVideo, LinkKind } from '../../shared/models'
+import { rockstarTitle } from '../../shared/rockstar'
 import { remoteImageUrl } from '../media/remote'
 
 const LABELS: Record<LinkKind, string> = {
@@ -82,6 +83,17 @@ export function buildLinks(official: string | null | undefined, others: string[]
     if (url) add(url, linkKind(url))
   }
   return links.sort((a, b) => ORDER.indexOf(a.kind) - ORDER.indexOf(b.kind))
+}
+
+/** Page of a Rockstar Games Launcher game on rockstargames.com, first of its links. */
+export function withRockstarLink(titleId: string, links: GameLink[]): GameLink[] {
+  const slug = rockstarTitle(titleId)?.slug
+  if (!slug) return links
+  const url = `https://www.rockstargames.com/fr/games/${slug}`
+  return [
+    { kind: 'official', label: 'Rockstar Games', url },
+    ...links.filter((link) => link.url.replace(/\/+$/, '') !== url)
+  ]
 }
 
 const YOUTUBE_ID = /^[\w-]{6,20}$/

@@ -328,6 +328,25 @@ Bilan des tests : 238 unitaires, 37 e2e (+ 1 test de fumée de l'app packagée).
   pause. Nouvelles phases `allocating` (« Allocation de l'espace disque… ») et `finishing`
   (« Finalisation… »). Sans log ni compteur : manifeste seul, comme avant.
 
+- Rockstar Games Launcher « comme Steam » (retour : « rajoute toutes les fonctionnalités qu'il y a
+  par exemple sur Steam mais pour le launcher Rockstar Games ») — branche `feature/rockstar`, détail,
+  relevés sur la vraie machine et choix dans [feature/rockstar.md](../feature/rockstar.md). Nouvelle
+  source `rockstar` (Windows). Détection par les entrées de désinstallation que le launcher écrit
+  (`uninstall.exe -uninstall=<titleId>`), catalogue de 15 jeux (`shared/rockstar.ts`). Lancement
+  sans la fenêtre du launcher : `Launcher.exe -minmodeApp=<id>` (ce que font les `Play*.exe`),
+  suivi par le journal `Documents\Rockstar Games\Launcher\launcher*.log` (phases, « En cours »,
+  fin de partie, vérifiée par `tasklist`). Temps de jeu : aucune API, les exécutions du journal
+  deviennent des sessions Shelf (idempotent, même pour les parties lancées hors Shelf).
+  Mises à jour : tableau « Installed titles » du journal → badge, « Mettre à jour » ouvre le
+  launcher. Installer : `-enableFullMode -install=<id>` ouvre le launcher sur l'installation, Shelf
+  la suit (nouveau mode `followed`, « ✕ » = ne plus suivre) jusqu'à « Update/Install of … succeeded ».
+  Désinstaller : `-enableFullMode -uninstall=<id>`. Jeux possédés non installés : compte « Rockstar
+  Games Social Club (non officiel) », choisi par l'utilisateur : fenêtre de connexion, cookies
+  chiffrés (`SecretStore`), `getGoogleTagManagerSetupData` → `gamesOwned`. Fiche enrichie par
+  l'appid Steam du catalogue (+ lien rockstargames.com), dossier de sauvegardes proposé.
+  Nouveaux hôtes : `socialclub.rockstargames.com`, `scapi.rockstargames.com`. Vérifié sur la
+  machine réelle : GTA V détecté, 7 sessions (~4 h) retrouvées, mise à jour de 5,37 Go vue.
+
 ## Décisions et écarts au plan
 
 - `GameSource.launch()` n'existe pas : le lancement est décidé par `launch/plan.ts` depuis la ligne en base
@@ -361,6 +380,12 @@ Bilan des tests : 238 unitaires, 37 e2e (+ 1 test de fumée de l'app packagée).
   Le refus lui-même reste couvert par `metadata.spec.ts`.
 
 ## Points ouverts
+
+- Rockstar : compte Social Club testé sur fixtures seulement (forme tirée de l'intégration GOG
+  Galaxy) ; `gamesOwned` ne listerait que les jeux déjà lancés ; tags Social Club de GTA V Enhanced,
+  Red Dead Redemption et de la trilogie Definitive inconnus. Fin d'installation déduite des lignes
+  de mise à jour du journal (aucune installation complète observée). Le launcher ne garde que 10
+  journaux : les parties plus anciennes jamais vues par Shelf sont perdues.
 
 - macOS et Linux non testés sur machine réelle (code et CI prêts) ; dmg non signé (donc mise à jour
   de Shelf par lien, pas en place). Mise à jour en place non encore vérifiée de bout en bout

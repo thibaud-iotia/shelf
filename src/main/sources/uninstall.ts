@@ -2,6 +2,8 @@
 // - Steam: its uninstall URI (Steam asks for confirmation);
 // - GOG and manual games on Windows: the uninstaller the installer left in the game folder
 //   (Inno Setup `unins000.exe` for GOG). Linux scripts expect a terminal: not run from Shelf.
+// - Rockstar Games Launcher (Windows): `Launcher.exe -enableFullMode -uninstall=<titleId>`,
+//   its own removal flow (the game's `uninstall.exe` needs the launcher's service anyway).
 // Epic (no uninstaller in the folder) and itch.io are uninstalled from their launcher.
 
 import { readdirSync } from 'node:fs'
@@ -15,7 +17,10 @@ interface UninstallTarget {
   installPath: string | null
 }
 
-export type UninstallPlan = { kind: 'uri'; uri: string } | { kind: 'program'; path: string }
+export type UninstallPlan =
+  | { kind: 'uri'; uri: string }
+  | { kind: 'program'; path: string }
+  | { kind: 'rockstar'; titleId: string }
 
 const PROGRAM_SOURCES: readonly GameSourceId[] = ['gog', 'manual']
 
@@ -30,6 +35,7 @@ export function mayUninstall(
   platform: NodeJS.Platform = process.platform
 ): boolean {
   if (uninstallUri(game) !== null) return true
+  if (game.source === 'rockstar') return platform === 'win32'
   return (
     game.installPath !== null &&
     PROGRAM_SOURCES.includes(game.source) &&
@@ -62,6 +68,9 @@ export function uninstallPlan(
 ): UninstallPlan | null {
   const uri = uninstallUri(game)
   if (uri) return { kind: 'uri', uri }
+  if (game.source === 'rockstar') {
+    return platform === 'win32' ? { kind: 'rockstar', titleId: game.sourceId } : null
+  }
   if (!mayUninstall(game, platform) || !game.installPath) return null
   const path = findUninstaller(game.installPath, platform)
   return path ? { kind: 'program', path } : null

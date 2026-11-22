@@ -1,6 +1,6 @@
 // Domain vocabulary shared by main, preload and renderer. No runtime dependencies.
 
-export const GAME_SOURCES = ['steam', 'epic', 'gog', 'itch', 'manual'] as const
+export const GAME_SOURCES = ['steam', 'epic', 'gog', 'itch', 'rockstar', 'manual'] as const
 export type GameSourceId = (typeof GAME_SOURCES)[number]
 
 export const OWNERSHIPS = ['owned', 'manual'] as const
@@ -14,6 +14,7 @@ export const SOURCE_LABELS: Record<GameSourceId, string> = {
   epic: 'Epic',
   gog: 'GOG',
   itch: 'itch.io',
+  rockstar: 'Rockstar',
   manual: 'Manuel'
 }
 

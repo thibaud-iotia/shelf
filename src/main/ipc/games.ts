@@ -100,6 +100,8 @@ export function registerGameHandlers(ctx: AppContext): void {
     }
     if (plan.kind === 'uri') {
       await shell.openExternal(plan.uri)
+    } else if (plan.kind === 'rockstar') {
+      await ctx.rockstar.run('uninstall', plan.titleId)
     } else {
       // ShellExecute (not spawn): the uninstallers ask for elevation through UAC.
       const error = await shell.openPath(plan.path)
@@ -203,6 +205,11 @@ export function registerGameHandlers(ctx: AppContext): void {
 
   handle('games:applyUpdate', async (id) => {
     const game = getGameRow(db, validateGameId(id))
+    // The Rockstar Games Launcher downloads pending updates once open.
+    if (game.source === 'rockstar' && game.installState === 'installed') {
+      await ctx.rockstar.run('open')
+      return null
+    }
     const uri = game.installState === 'installed' ? updateUri(game) : null
     if (!uri) {
       throw new AppError('NOT_FOUND', 'Mettez ce jeu à jour depuis son launcher.')

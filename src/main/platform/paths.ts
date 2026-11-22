@@ -1,12 +1,14 @@
 // All filesystem locations used by the app live here. No hard-coded path anywhere else.
 
 import { existsSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { app } from 'electron'
 import type { LegendaryBinary } from '../install/legendary'
+import { launcherFromKey } from '../sources/rockstar'
 import { readSteamStatusFromVdf, toSteamStatus, type SteamStatus } from '../sources/steam-running'
-import { queryRegistry, queryRegistryValue } from './registry'
+import { parseRegQuery, queryRegistry, queryRegistryValue, type RegistryKey } from './registry'
 
 /**
  * Lets e2e tests (and power users) isolate data in a throwaway directory.
@@ -26,6 +28,8 @@ export const paths = {
   covers: (): string => join(app.getPath('userData'), 'covers'),
   /** Encrypted secrets (safeStorage blobs), never stored in the DB. */
   secrets: (): string => join(app.getPath('userData'), 'secrets.json'),
+  /** Diagnostics of the last Rockstar Social Club login and syncs (no secret in it). */
+  rockstarSocialLog: (): string => join(app.getPath('userData'), 'logs', 'rockstar-social.log'),
   /** Update Shelf restarted on, checked at the next startup (install blocked by an antivirus?). */
   updateAttempt: (): string => join(app.getPath('userData'), 'update-attempt.json'),
   // Wine prefix handed to Proton for non-Steam .exe games (Linux).
@@ -62,6 +66,21 @@ export interface LauncherLocations {
   heroicGogInstalled: string[]
   itchDatabases: string[]
   galaxyDatabases: string[]
+  /** Windows uninstall entries, where the Rockstar Games Launcher registers its games. */
+  rockstarUninstallKeys: () => Promise<RegistryKey[]>
+  /** Rockstar Games Launcher executable; null when absent (games start through it). */
+  rockstarLauncher: () => Promise<string | null>
+  /** Folder of the Rockstar Games Launcher's `launcher.log` (sessions, updates). */
+  rockstarLogDir: string
+  /** `Documents\Rockstar Games`: saves of the Rockstar games. */
+  rockstarSavesDir: string
+}
+
+const noRockstar = {
+  rockstarUninstallKeys: async (): Promise<RegistryKey[]> => [],
+  rockstarLauncher: async (): Promise<string | null> => null,
+  rockstarLogDir: '',
+  rockstarSavesDir: ''
 }
 
 /** Fixture layout used when SHELF_LAUNCHER_ROOT is set (e2e): one sub-folder per launcher. */
@@ -78,9 +97,20 @@ function fixtureLocations(root: string): LauncherLocations {
     gogGameDirs: [join(root, 'gog')],
     heroicGogInstalled: [join(root, 'heroic', 'gog_store', 'installed.json')],
     itchDatabases: [join(root, 'itch', 'butler.db')],
-    galaxyDatabases: [join(root, 'galaxy', 'galaxy-2.0.db')]
+    galaxyDatabases: [join(root, 'galaxy', 'galaxy-2.0.db')],
+    // `reg query` output saved as text: the e2e tests cannot write the registry.
+    rockstarUninstallKeys: () =>
+      readFile(join(root, 'rockstar', 'registry.txt'), 'utf8').then(parseRegQuery, () => []),
+    rockstarLauncher: async () => null,
+    rockstarLogDir: join(root, 'rockstar', 'logs'),
+    rockstarSavesDir: join(root, 'rockstar', 'Documents')
   }
 }
+
+const ROCKSTAR_UNINSTALL_KEYS = [
+  'HKLM\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall',
+  'HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall'
+]
 
 async function steamRootFromRegistry(): Promise<string[]> {
   const [key] = await queryRegistry('HKCU\\Software\\Valve\\Steam')
@@ -172,7 +202,16 @@ export function launcherLocations(): LauncherLocations {
       gogGameDirs: [join(programFilesX86, 'GOG Galaxy', 'Games'), 'C:\\GOG Games'],
       heroicGogInstalled: [join(appData, 'heroic', 'gog_store', 'installed.json')],
       itchDatabases: [join(appData, 'itch', 'db', 'butler.db')],
-      galaxyDatabases: [join(programData, 'GOG.com', 'Galaxy', 'storage', 'galaxy-2.0.db')]
+      galaxyDatabases: [join(programData, 'GOG.com', 'Galaxy', 'storage', 'galaxy-2.0.db')],
+      rockstarUninstallKeys: async () =>
+        (await Promise.all(ROCKSTAR_UNINSTALL_KEYS.map((key) => queryRegistry(key)))).flat(),
+      rockstarLauncher: async () => {
+        const keys = await queryRegistry('HKLM\\SOFTWARE\\WOW6432Node\\Rockstar Games\\Launcher')
+        const fallback = join(programFiles, 'Rockstar Games', 'Launcher', 'Launcher.exe')
+        return launcherFromKey(keys) ?? (existsSync(fallback) ? fallback : null)
+      },
+      rockstarLogDir: join(app.getPath('documents'), 'Rockstar Games', 'Launcher'),
+      rockstarSavesDir: join(app.getPath('documents'), 'Rockstar Games')
     }
   }
 
@@ -209,7 +248,8 @@ export function launcherLocations(): LauncherLocations {
       gogGameDirs: [],
       heroicGogInstalled: [join(support, 'heroic', 'gog_store', 'installed.json')],
       itchDatabases: [join(support, 'itch', 'db', 'butler.db')],
-      galaxyDatabases: ['/Users/Shared/GOG.com/Galaxy/Storage/galaxy-2.0.db']
+      galaxyDatabases: ['/Users/Shared/GOG.com/Galaxy/Storage/galaxy-2.0.db'],
+      ...noRockstar
     }
   }
 
@@ -258,6 +298,7 @@ export function launcherLocations(): LauncherLocations {
       join(flatpakHeroic, 'gog_store', 'installed.json')
     ],
     itchDatabases: [join(config, 'itch', 'db', 'butler.db')],
-    galaxyDatabases: []
+    galaxyDatabases: [],
+    ...noRockstar
   }
 }

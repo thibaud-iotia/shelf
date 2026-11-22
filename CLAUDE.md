@@ -1,7 +1,7 @@
 # Shelf — guide de développement
 
 Application desktop (Electron) personnelle qui centralise, lance et suit les jeux de toutes
-provenances (Steam, Epic, GOG, itch.io, ajout manuel), installés ou seulement possédés.
+provenances (Steam, Epic, GOG, itch.io, Rockstar Games Launcher, ajout manuel), installés ou seulement possédés.
 
 - Plan complet et phases : [docs/PLAN.md](docs/PLAN.md)
 - Avancement, décisions, reste à faire : [docs/PROGRESS.md](docs/PROGRESS.md) — **à mettre à jour à chaque fin de tâche**
@@ -38,6 +38,7 @@ src/
     errors.ts      AppError { code, message } sérialisable (VALIDATION, AUTH, RATE_LIMITED, NETWORK…)
     domain.ts      GAME_SOURCES, OWNERSHIPS, INSTALL_STATES, libellés
     library.ts     filtres, règles des collections intelligentes, recherche floue (palette)
+    rockstar.ts    catalogue Rockstar (titleId, exe, tag Social Club, appid Steam, sauvegardes)
     format.ts      temps de jeu, dates, tailles (fr-FR)
   main/            process principal — TOUTE la logique système (fichiers, processus, DB, réseau)
     index.ts       bootstrap : userData, protocole média, services (AppContext), fenêtre, tray, synchro auto
@@ -45,14 +46,14 @@ src/
     window.ts      fenêtre sans cadre (overlay des contrôles), fermeture vers la barre système
     system.ts      tray, lancement à l'ouverture de session
     events.ts      broadcast(event) vers le renderer (+ abonnés main : tray)
-    platform/      ★ paths.ts (seul endroit des chemins OS, launcherLocations()), registry.ts (reg query), process-io.ts (octets écrits par un processus)
+    platform/      ★ paths.ts (seul endroit des chemins OS, launcherLocations()), registry.ts (reg query), process-io.ts (octets écrits par un processus), processes.ts (tasklist)
     db/            schema.ts (Drizzle), client.ts (openDatabase + migrations)
-    games/         repository (CRUD, sessions), organize (tags, collections), validation, titles
-    launch/        args (parseur d'arguments), plan (URI launcher / processus / Wine-Proton), runner (suivi des processus)
-    sources/       détection locale : vdf, steam, epic, gog, itch, folder-scan, uris (launch/install/uninstall)
+    games/         repository (CRUD, sessions), organize (tags, collections), validation, titles, rockstar-sessions (sessions du journal Rockstar)
+    launch/        args (parseur d'arguments), plan (URI launcher / processus / Wine-Proton), runner (suivi des processus), steam-watch / rockstar-watch (parties lancées par le launcher)
+    sources/       détection locale : vdf, steam, epic, gog, itch, rockstar (+ rockstar-log : journal du launcher), folder-scan, uris (launch/install/uninstall)
     import/        candidates (nouveau / màj / doublon / exclu) + ImportService
-    install/       installation sans fenêtre du launcher : steam-manifest (appmanifest en file, libraryfolders), steam (écriture, nouvelle bibliothèque, redémarrage silencieux de Steam), steam-log (progression en direct : content_log + octets écrits par Steam), disk (espace libre), steam-client, legendary (Epic), service (suivi, progression)
-    accounts/      synchro des jeux possédés : steam, itch, gog-galaxy (option A), gog-oauth (option B), epic-launcher (cache local du launcher Epic), service
+    install/       installation sans fenêtre du launcher : steam-manifest (appmanifest en file, libraryfolders), steam (écriture, nouvelle bibliothèque, redémarrage silencieux de Steam), steam-log (progression en direct : content_log + octets écrits par Steam), disk (espace libre), steam-client, legendary (Epic), rockstar (Launcher.exe : installer / désinstaller / ouvrir), service (suivi, progression)
+    accounts/      synchro des jeux possédés : steam, itch, gog-galaxy (option A), gog-oauth (option B), epic-launcher (cache local du launcher Epic), rockstar-social (+ rockstar-browser : fenêtre de connexion et sessions Electron, Social Club, non officiel), service
     metadata/      igdb, steamgriddb, service (clés, recherche, enrichissement)
     insights/      fiche enrichie : steam-store (actus, vidéos, avis, joueurs, communauté, succès), links, service (cache 10 min)
     store/         boutique : cheapshark (prix $), steam (souhaits, prix €), gog (catalogue), instant-gaming (revendeur de clés, JSON embarqué dans la page de recherche), purchase (URI launcher / URL), wishlist, watcher (détection d'achat), cache (TTL par id, limiter), service (+ prewarm au démarrage)
@@ -84,9 +85,9 @@ design/            export de la maquette Claude Design (référence, non buildé
 - Les handlers valident leurs arguments et lèvent des `AppError(code, message)` ; le message est affiché tel quel dans l'UI → en français, clair.
 - Aucun chemin en dur hors `src/main/platform/paths.ts`. `SHELF_USER_DATA` et `SHELF_LAUNCHER_ROOT` isolent les données et les launchers (tests) ; `SHELF_STORE_PREWARM_MS` règle le préchauffage de la Boutique (`off` en e2e par défaut) ; `SHELF_UPDATE_SIMULATE=<version>` (ou `manual:<version>`) simule une nouvelle version de Shelf (e2e, option de fixture `appEnv`).
 - Secrets (clés API, tokens) : uniquement via `SecretStore` (safeStorage) ; la DB ne stocke qu'une référence (`credentialsRef`).
-- Réseau : uniquement via `main/net/http.ts` (liste blanche : Steam Web API et boutique, Twitch/IGDB, SteamGridDB, itch.io, GOG, CheapShark, Instant Gaming, CDN d'images). Seule exception : `main/updates/electron-updater.ts` (client HTTP propre à electron-updater, GitHub Releases, app packagée uniquement). Aucun appel réseau dans les tests : `fetch` injecté + réponses enregistrées (`tests/fixtures/api`) ; en e2e le `fetch` du main échoue par défaut, `stubFetch(app, routes)` rejoue des réponses.
+- Réseau : uniquement via `main/net/http.ts` (liste blanche : Steam Web API et boutique, Twitch/IGDB, SteamGridDB, itch.io, GOG, CheapShark, Instant Gaming, Rockstar Social Club, CDN d'images). Exceptions : `main/updates/electron-updater.ts` (client HTTP propre à electron-updater, GitHub Releases, app packagée uniquement) ; `main/accounts/rockstar-browser.ts` (sessions Electron en mémoire du Social Club : cookies et redirections sur plusieurs hôtes Rockstar, `webRequest` limité aux hôtes Rockstar). Aucun appel réseau dans les tests : `fetch` injecté + réponses enregistrées (`tests/fixtures/api`) ; en e2e le `fetch` du main échoue par défaut, `stubFetch(app, routes)` rejoue des réponses.
 - Un jeu est unique par `(source, sourceId)` : détection locale, import et synchro font un upsert sur la même ligne. Jeux manuels : `sourceId` = UUID.
-- Intégrations non officielles (cache du launcher Epic, installs Epic via Legendary, GOG option B) isolées dans leur module : une erreur est stockée sur le compte (`lastError`) ou la source, jamais propagée au reste.
+- Intégrations non officielles (cache du launcher Epic, installs Epic via Legendary, GOG option B, Social Club Rockstar) isolées dans leur module : une erreur est stockée sur le compte (`lastError`) ou la source, jamais propagée au reste.
 - Imports : `@shared/*` et `@renderer/*` côté renderer ; chemins relatifs dans main/preload/tests (drizzle-kit ne résout pas les alias).
 - Fichiers avec antislashs ou séquences `\u` : les écrire avec l'outil d'écriture de fichiers, pas via heredoc shell (les échappements y sont altérés).
 
