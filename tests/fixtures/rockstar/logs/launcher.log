@@ -1,0 +1,19 @@
+[2026-11-20 18:00:00.001] [DISPLAY] [Main ] [launcher] Opening log file.
+[2026-11-20 18:00:00.002] [DISPLAY] [Main ] [startupinfo] Command line: "C:\Program Files\Rockstar Games\Launcher\Launcher.exe"
+[2026-11-20 18:00:00.051] [DISPLAY] [Main ] [titlestorage] Installed titles:
+[2026-11-20 18:00:00.051] [DISPLAY] [Main ] [titlestorage]  Title                             Progress               Version              Location
+[2026-11-20 18:00:00.051] [DISPLAY] [Main ] [titlestorage]  Grand Theft Auto V Legacy         131.84 Mo / 5.37 Go    1.0.3351.0           C:\Program Files\Rockstar Games\Grand Theft Auto V
+[2026-11-20 18:00:00.051] [DISPLAY] [Main ] [titlestorage]  Red Dead Redemption 2             Up-to-date             1.0.1491.50          D:\Jeux\Red Dead Redemption 2
+[2026-11-20 18:00:00.115] [DISPLAY] [Workr] [selfupdate] Up-to-date.
+[2026-11-20 18:01:00.000] [DISPLAY] [Main ] [scuicallbacks] Launch requested
+[2026-11-20 18:01:00.000] [DISPLAY] [Main ] [scuicallbacks] Launch requested by user: rdr2,
+[2026-11-20 18:01:10.000] [DISPLAY] [31337] [gamelaunch] Launching game...
+[2026-11-20 18:01:10.000] [DISPLAY] [31337] [gamelaunch]  Path: D:\Jeux\Red Dead Redemption 2\RDR2.exe
+[2026-11-20 18:01:10.000] [DISPLAY] [31337] [gamelaunch]  Command Line: "D:\Jeux\Red Dead Redemption 2\RDR2.exe" -enableCrashpad -rglLanguage=fr-FR
+[2026-11-20 18:01:10.000] [DISPLAY] [31337] [gamelaunch]  Working Directory: D:\Jeux\Red Dead Redemption 2
+[2026-11-20 19:31:10.000] [DISPLAY] [31337] [gamelaunch] Game exited with code 0x0 (0)
+[2026-11-20 19:31:10.020] [DISPLAY] [31337] [crashdetection] Exit code 0x0 indicates a clean game shutdown
+[2026-11-20 20:00:00.000] [DISPLAY] [Main ] [external] Creating RGL min mode launch: gta5
+[2026-11-20 20:00:05.000] [DISPLAY] [40000] [gamelaunch] Launching game...
+[2026-11-20 20:00:05.000] [DISPLAY] [40000] [gamelaunch]  Path: C:\Program Files\Rockstar Games\Grand Theft Auto V\GTA5.exe
+[2026-11-20 20:00:05.000] [DISPLAY] [40000] [gamelaunch]  Working Directory: C:\Program Files\Rockstar Games\Grand Theft Auto V

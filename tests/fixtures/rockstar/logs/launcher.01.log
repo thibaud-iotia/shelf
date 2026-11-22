@@ -1,0 +1,16 @@
+[2026-11-18 20:59:00.001] [DISPLAY] [Main ] [launcher] Opening log file.
+[2026-11-18 20:59:00.051] [DISPLAY] [Main ] [titlemanager] Installed titles:
+[2026-11-18 20:59:00.051] [DISPLAY] [Main ] [titlemanager]  Title                             Progress               Version              Location
+[2026-11-18 20:59:00.051] [DISPLAY] [Main ] [titlemanager]  Grand Theft Auto V                Up-to-date             1.0.3274.0           C:\Program Files\Rockstar Games\Grand Theft Auto V
+[2026-11-18 20:59:30.000] [DISPLAY] [Main ] [scuicallbacks] Launch requested by user: gta5,
+[2026-11-18 21:00:00.000] [DISPLAY] [19784] [gamelaunch] Launching game...
+[2026-11-18 21:00:00.000] [DISPLAY] [19784] [gamelaunch]  Path: C:\Program Files\Rockstar Games\Grand Theft Auto V\GTA5_BE.exe
+[2026-11-18 21:00:00.000] [DISPLAY] [19784] [gamelaunch]  Working Directory: C:\Program Files\Rockstar Games\Grand Theft Auto V
+[2026-11-18 21:05:00.000] [WARNING] [19784] [gamelaunch] 300 seconds elapsed and still no game window.
+[2026-11-18 22:30:00.000] [DISPLAY] [19784] [gamelaunch] Game exited with code 0x0 (0)
+[2026-11-18 22:31:00.000] [DISPLAY] [20000] [gamelaunch] Launching game...
+[2026-11-18 22:31:00.000] [DISPLAY] [20000] [gamelaunch]  Path: C:\Program Files\Rockstar Games\Grand Theft Auto V\GTA5_BE.exe
+[2026-11-18 22:31:10.000] [DISPLAY] [20000] [gamelaunch] Game exited with code 0xc0000005 (-1073741819)
+[2026-11-18 22:40:00.000] [DISPLAY] [Workr] [titleupdater] Update of Grand Theft Auto V succeeded.
+[2026-11-18 23:00:00.000] [DISPLAY] [21000] [gamelaunch] Launching game...
+[2026-11-18 23:00:00.000] [DISPLAY] [21000] [gamelaunch]  Path: C:\Program Files\Rockstar Games\Grand Theft Auto V\GTA5.exe
